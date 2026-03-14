@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/publish-queue",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/oauth/refresh-tokens",
@@ -10,4 +10,3 @@
     }
   ]
 }
-
