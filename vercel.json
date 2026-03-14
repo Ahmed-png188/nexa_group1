@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/publish-queue",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/oauth/refresh-tokens",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
+

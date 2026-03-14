@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════
+   NEXA DESIGN SYSTEM
+   ═══════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400;1,9..40,600&display=swap');
+
+:root {
+  /* Backgrounds */
+  --bg:     #09090D;
+  --bg2:    #0D0D14;
+  --bg3:    #111118;
+
+  /* Accent */
+  --cyan:   #00AAFF;
+  --cyan2:  #0077CC;
+  --cyan3:  #33BBFF;
+
+  /* Glow variants */
+  --cglow:  rgba(0, 170, 255, 0.14);
+  --cglow2: rgba(0, 170, 255, 0.07);
+  --cline:  rgba(0, 170, 255, 0.22);
+  --cline2: rgba(0, 170, 255, 0.11);
+
+  /* Glass surfaces */
+  --glass:  rgba(255, 255, 255, 0.04);
+  --glass2: rgba(255, 255, 255, 0.065);
+
+  /* Borders */
+  --line:   rgba(255, 255, 255, 0.08);
+  --line2:  rgba(255, 255, 255, 0.13);
+
+  /* Text scale */
+  --t1: #F0EDE8;
+  --t2: rgba(240, 237, 232, 0.82);
+  --t3: rgba(240, 237, 232, 0.54);
+  --t4: rgba(240, 237, 232, 0.36);
+  --t5: rgba(240, 237, 232, 0.22);
+
+  /* Status */
+  --green:  #00D68F;
+  --amber:  #FFB800;
+  --red:    #FF6B6B;
+
+  /* Fonts */
+  --sans:    'Plus Jakarta Sans', system-ui, sans-serif;
+  --display: 'DM Sans', system-ui, sans-serif;
+
+  /* Layout */
+  --rail-w: 52px;
+  --topbar-h: 58px;
+  --chat-w: 320px;
+  --r: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Film grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ─── Animations ─── */
+@keyframes fadeup {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%       { transform: scale(1.04); opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── Utilities ─── */
+.font-display { font-family: var(--display); }
+.text-gradient {
+  background: linear-gradient(120deg, var(--cyan), rgba(0,160,255,0.65));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
