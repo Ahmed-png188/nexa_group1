@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
 
   const state = Buffer.from(JSON.stringify({ workspace_id, user_id: user.id })).toString('base64')
 
-  // Use Facebook OAuth endpoint (required for Instagram Graph API via Facebook apps)
-  const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth')
+  // Instagram Login OAuth
+  const authUrl = new URL('https://api.instagram.com/oauth/authorize')
   authUrl.searchParams.set('client_id', appId!)
   authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('scope', 'instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,pages_manage_posts')
+  authUrl.searchParams.set('scope', 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments')
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('state', state)
 

@@ -11,14 +11,14 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
 
   if (error || !code || !stateRaw) {
-    return NextResponse.redirect(`${appUrl}/dashboard/schedule?tab=platforms&error=instagram_denied`)
+    return NextResponse.redirect(`${appUrl}/dashboard/schedule?error=instagram_denied`)
   }
 
   let state: { workspace_id: string; user_id: string }
   try {
     state = JSON.parse(Buffer.from(stateRaw, 'base64').toString())
   } catch {
-    return NextResponse.redirect(`${appUrl}/dashboard/schedule?tab=platforms&error=invalid_state`)
+    return NextResponse.redirect(`${appUrl}/dashboard/schedule?error=invalid_state`)
   }
 
   const appId = process.env.INSTAGRAM_APP_ID!
@@ -26,68 +26,44 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${appUrl}/api/oauth/instagram/callback`
 
   try {
-    // Step 1: Exchange code for Facebook access token
-    const tokenRes = await fetch('https://graph.facebook.com/v19.0/oauth/access_token', {
+    // Exchange code for short-lived token
+    const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         client_id: appId,
         client_secret: appSecret,
+        grant_type: 'authorization_code',
         redirect_uri: redirectUri,
         code,
       }),
     })
     const tokenData = await tokenRes.json()
-    if (!tokenData.access_token) throw new Error('No access token returned')
+    if (!tokenData.access_token) throw new Error('No access token')
 
-    // Step 2: Get long-lived token
-    const longLivedRes = await fetch(
-      `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${tokenData.access_token}`
+    // Exchange for long-lived token
+    const longRes = await fetch(
+      `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${appSecret}&access_token=${tokenData.access_token}`
     )
-    const longLivedData = await longLivedRes.json()
-    const finalToken = longLivedData.access_token ?? tokenData.access_token
+    const longData = await longRes.json()
+    const finalToken = longData.access_token ?? tokenData.access_token
 
-    // Step 3: Get Facebook user's connected Instagram accounts
-    const pagesRes = await fetch(
-      `https://graph.facebook.com/v19.0/me/accounts?access_token=${finalToken}`
+    // Get profile
+    const profileRes = await fetch(
+      `https://graph.instagram.com/v19.0/me?fields=id,username&access_token=${finalToken}`
     )
-    const pagesData = await pagesRes.json()
-    const page = pagesData.data?.[0]
+    const profile = await profileRes.json()
 
-    let igUserId = null
-    let igUsername = 'instagram_user'
-
-    if (page) {
-      // Get Instagram Business Account connected to this Facebook Page
-      const igRes = await fetch(
-        `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token ?? finalToken}`
-      )
-      const igData = await igRes.json()
-      igUserId = igData.instagram_business_account?.id
-
-      if (igUserId) {
-        const igProfileRes = await fetch(
-          `https://graph.facebook.com/v19.0/${igUserId}?fields=username&access_token=${finalToken}`
-        )
-        const igProfile = await igProfileRes.json()
-        igUsername = igProfile.username ?? igUsername
-      }
-    }
-
-    // Step 4: Get basic Facebook user info as fallback
-    const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name&access_token=${finalToken}`)
-    const meData = await meRes.json()
-
-    const expiresAt = longLivedData.expires_in
-      ? new Date(Date.now() + longLivedData.expires_in * 1000).toISOString()
+    const expiresAt = longData.expires_in
+      ? new Date(Date.now() + longData.expires_in * 1000).toISOString()
       : null
 
     await supabase.from('connected_platforms').upsert({
       workspace_id: state.workspace_id,
       platform: 'instagram',
-      platform_user_id: igUserId ?? meData.id,
-      platform_username: igUsername,
-      platform_name: igUsername,
+      platform_user_id: profile.id ?? tokenData.user_id,
+      platform_username: profile.username ?? 'instagram_user',
+      platform_name: profile.username ?? 'Instagram',
       access_token: finalToken,
       token_expires_at: expiresAt,
       is_active: true,
@@ -98,7 +74,7 @@ export async function GET(request: NextRequest) {
       workspace_id: state.workspace_id,
       user_id: state.user_id,
       type: 'platform_connected',
-      title: `Instagram connected (@${igUsername})`,
+      title: `Instagram connected (@${profile.username ?? 'user'})`,
     })
 
     return NextResponse.redirect(`${appUrl}/dashboard/schedule?connected=instagram`)
