@@ -47,6 +47,9 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
   const router = useRouter()
   const supabase = createClient()
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const chatFileRef = useRef<HTMLInputElement>(null)
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([])
+  const [uploadingFile, setUploadingFile] = useState(false)
 
   const [credits, setCredits] = useState(initialCredits)
   const [chatOpen, setChatOpen] = useState(true)
@@ -121,8 +124,8 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
   }
 
   async function sendMessage() {
-    if (!chatInput.trim() || chatLoading) return
-    const userMsg = chatInput.trim()
+    if ((!chatInput.trim() && attachedFiles.length === 0) || chatLoading) return
+    const userMsg = chatInput.trim() || (attachedFiles.length > 0 ? 'Please analyze this file and tell me what you learn about my brand.' : '')
     setChatInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMsg }])
     setChatLoading(true)
@@ -130,7 +133,7 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, workspace_id: workspace.id, history: messages }),
+        body: JSON.stringify({ message: userMsg, workspace_id: workspace.id, history: messages, files: attachedFiles }),
       })
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
@@ -139,6 +142,24 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
     }
     setChatLoading(false)
   }
+
+  async function handleFileUpload(file: File) {
+    setUploadingFile(true)
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const base64 = (e.target?.result as string)?.split(',')[1]
+      const fileType = file.type || 'application/octet-stream'
+      setAttachedFiles(prev => [...prev, {
+        name: file.name,
+        type: fileType.includes('pdf') ? 'pdf' : fileType,
+        data: base64,
+        size: file.size,
+      }])
+      setUploadingFile(false)
+    }
+    reader.readAsDataURL(file)
+  }
+
 
   const ibtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, background: 'transparent', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t4)', cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0 }
 
@@ -360,25 +381,49 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
             ))}
           </div>
 
+          {/* Attached files preview */}
+          {attachedFiles.length > 0 && (
+            <div style={{ padding: '6px 10px', borderTop: '1px solid var(--line)', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {attachedFiles.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: 'rgba(0,170,255,0.08)', border: '1px solid var(--cline2)', borderRadius: 6, fontSize: 10 }}>
+                  <span style={{ color: 'var(--cyan)' }}>📎</span>
+                  <span style={{ color: 'var(--t3)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: 'var(--t5)', cursor: 'pointer', fontSize: 10, padding: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Input */}
           <div style={{ padding: '8px 10px', borderTop: '1px solid var(--line)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, padding: '7px 8px 7px 12px' }}>
+              <button
+                onClick={() => chatFileRef.current?.click()}
+                style={{ width: 22, height: 22, borderRadius: 5, background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t5)', fontSize: 13, flexShrink: 0 }}
+                title="Attach file — Nexa will learn from it"
+              >
+                📎
+              </button>
+              <input ref={chatFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" style={{ display: 'none' }}
+                onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
               <input
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                placeholder="Message Nexa..."
+                placeholder={attachedFiles.length > 0 ? "Add a message or just send the file..." : "Message Nexa..."}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 12.5, color: 'var(--t1)', fontFamily: 'var(--sans)' }}
               />
               <button
                 onClick={sendMessage}
-                disabled={!chatInput.trim() || chatLoading}
-                style={{ width: 26, height: 26, borderRadius: 6, background: chatInput.trim() ? 'var(--cyan)' : 'var(--glass2)', border: 'none', cursor: chatInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: chatInput.trim() ? '#000' : 'var(--t5)', transition: 'all 0.15s' }}
+                disabled={(!chatInput.trim() && attachedFiles.length === 0) || chatLoading}
+                style={{ width: 26, height: 26, borderRadius: 6, background: (chatInput.trim() || attachedFiles.length > 0) ? 'var(--cyan)' : 'var(--glass2)', border: 'none', cursor: (chatInput.trim() || attachedFiles.length > 0) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: (chatInput.trim() || attachedFiles.length > 0) ? '#000' : 'var(--t5)', transition: 'all 0.15s' }}
               >
                 {Ic.send}
               </button>
             </div>
-            <div style={{ fontSize: 10, color: 'var(--t5)', textAlign: 'center', marginTop: 5 }}>Press Enter to send</div>
+            <div style={{ fontSize: 10, color: 'var(--t5)', textAlign: 'center', marginTop: 5 }}>
+              {uploadingFile ? 'Loading file...' : 'Enter to send · 📎 to teach Nexa your brand'}
+            </div>
           </div>
         </div>
       )}

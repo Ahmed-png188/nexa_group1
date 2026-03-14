@@ -1,92 +1,128 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getBrandContext } from '@/lib/brand-context'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { message, workspace_id, history } = await request.json()
+    const { message, workspace_id, history, files } = await request.json()
 
-    // Fetch workspace + brand context
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('id', workspace_id)
-      .single()
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+    const { data: credits } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
 
-    // Fetch user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .single()
+    // Get full brand context
+    const brand = await getBrandContext(workspace_id)
 
-    // Fetch credit balance
-    const { data: credits } = await supabase
-      .from('credits')
-      .select('balance')
+    // Get recent activity for context
+    const { data: recentActivity } = await supabase.from('activity')
+      .select('type, title, created_at')
       .eq('workspace_id', workspace_id)
-      .single()
+      .order('created_at', { ascending: false })
+      .limit(5)
 
-    // Build system prompt with brand context
-    const systemPrompt = `You are Nexa AI, the intelligent assistant built into the Nexa creative operating system. You are permanently docked in the right panel of the Nexa dashboard, always watching and always ready.
+    const activityContext = recentActivity?.map(a => `- ${a.type}: ${a.title}`).join('\n') || 'No recent activity'
 
-## About the user
-- Name: ${profile?.full_name ?? 'the user'}
-- Workspace: ${workspace?.name ?? 'their workspace'}
-- Brand: ${workspace?.brand_name ?? workspace?.name ?? 'their brand'}
-- Brand voice: ${workspace?.brand_voice ?? 'Not yet analyzed — encourage them to complete onboarding'}
-- Brand audience: ${workspace?.brand_audience ?? 'Not yet defined'}
-- Current credits: ${credits?.balance ?? 0}
+    const brandContext = brand?.profile ? `
+## Brand Intelligence Profile (Active)
+Voice: ${brand.profile.voice?.primary_tone || brand.workspace?.brand_voice || 'Not analyzed'}
+Writing style: ${brand.profile.voice?.writing_style || 'Not analyzed'}
+Audience: ${brand.profile.audience?.primary || brand.workspace?.brand_audience || 'Not defined'}
+Audience psychology: ${brand.profile.audience?.psychology || 'Not analyzed'}
+Content pillars: ${brand.profile.content?.themes?.join(', ') || 'Not defined'}
+Positioning: ${brand.profile.positioning?.unique_angle || 'Not analyzed'}
+Brand promise: ${brand.profile.positioning?.brand_promise || 'Not defined'}
+Visual aesthetic: ${brand.profile.visual?.aesthetic || 'Not defined'}
+` : `
+## Brand (Basic)
+Name: ${brand?.workspace?.brand_name || 'Not set'}
+Voice: ${brand?.workspace?.brand_voice || 'Not analyzed yet — encourage uploading brand assets'}
+Audience: ${brand?.workspace?.brand_audience || 'Not defined yet'}
+`
 
-## Your personality
-You are direct, intelligent, and strategic. You speak like a senior brand strategist who happens to know every marketing tool ever built. You're not a chatbot — you're a co-pilot. You're concise, you push back when needed, and you always give the next concrete action.
+    const systemPrompt = `You are Nexa AI — the brand intelligence engine and creative co-pilot built into Nexa. You are not a generic chatbot. You are a strategic partner who knows this brand deeply and helps them create, automate, and dominate.
 
-## What you can help with
-1. Generating content ideas and copy (in their brand voice)
-2. Building content strategy and 30-day plans
-3. Scheduling and publishing decisions
-4. Email sequences and outreach strategy
-5. Analyzing what's working and what isn't
-6. Explaining how to use any Nexa feature
+## Who you're talking to
+- Name: ${profile?.full_name || 'the user'}
+- Brand: ${brand?.brandName || 'their brand'}
+- Credits remaining: ${credits?.balance || 0}
 
-## Credit costs (so you can advise)
-- Image generation: 5 credits
-- Video generation: 20 credits  
-- Voiceover: 8 credits
-- Full content piece (copy + image): 10 credits
-- Email sequence per 100 sends: 15 credits
-- Schedule + publish a post: 1 credit
-- Strategy, chat, planning: FREE always
+${brandContext}
+
+## Recent activity
+${activityContext}
+
+## Your capabilities
+You can help with:
+1. **Content creation** — write posts, hooks, threads, emails, ad copy in their exact brand voice
+2. **Strategy** — build content plans, audience insights, posting rhythms
+3. **Brand coaching** — analyze what's working, suggest improvements, position against competitors
+4. **File analysis** — when users share files/docs, extract brand insights and update their profile
+5. **Workflow guidance** — explain how to use any Nexa feature
+6. **Campaign planning** — full campaign architecture from concept to publishing
+
+## How you think
+- You speak like a senior brand strategist + master copywriter who built their own brand from nothing
+- You're direct, specific, and tactical — no fluff, no generic advice
+- When generating content, you write it FULLY — never say "here's what I'd write" then summarize
+- You understand psychology: why people buy, what triggers action, how identity drives decisions
+- You always think: "what is the NEXT concrete action this person should take?"
 
 ## Rules
-- Keep responses tight and actionable. No fluff.
-- If they ask you to generate content, write it fully — don't summarize what you'd write.
-- Always be aware of their credit balance and mention cost when relevant.
-- If they haven't completed onboarding, gently remind them to upload brand assets.
-- Never make up data or performance metrics you don't have.`
+- Never start with "Great question!" or sycophantic openers
+- Keep it tight — say what needs to be said, nothing more
+- If they ask for copy, write the full copy immediately
+- If they upload a file, analyze it deeply and extract every brand insight you can
+- Always be aware of credit costs when advising on generations
+- Credit costs: Image 5cr, Video 20cr, Voice 8cr, Copy 2-5cr, Schedule 1cr, Strategy/Chat FREE
 
-    // Build message history for Claude
+## When files are shared
+If the user shares a document, PDF, or content file:
+1. Read it thoroughly
+2. Extract: voice patterns, audience signals, content themes, positioning, tone markers
+3. Tell the user exactly what you learned about their brand
+4. Suggest updating their Brand Brain profile
+5. Offer to generate content immediately using what you learned`
+
+    // Build message content — handle file attachments
+    let userContent: any = message
+
+    if (files && files.length > 0) {
+      userContent = [
+        ...files.map((f: any) => {
+          if (f.type === 'pdf') {
+            return {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: f.data }
+            }
+          } else if (f.type?.startsWith('image/')) {
+            return {
+              type: 'image',
+              source: { type: 'base64', media_type: f.type, data: f.data }
+            }
+          }
+          return null
+        }).filter(Boolean),
+        { type: 'text', text: message || 'Please analyze this file and tell me what you learn about my brand.' }
+      ]
+    }
+
     const claudeMessages = [
-      ...(history || []).slice(-10).map((m: any) => ({
+      ...(history || []).slice(-12).map((m: any) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
-      { role: 'user' as const, content: message },
+      { role: 'user' as const, content: userContent },
     ]
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      model: 'claude-opus-4-5',
+      max_tokens: 2048,
       system: systemPrompt,
       messages: claudeMessages,
     })
@@ -96,30 +132,35 @@ You are direct, intelligent, and strategic. You speak like a senior brand strate
       .map(block => (block as any).text)
       .join('')
 
-    // Save conversation to database
-    // First, get or create conversation
-    const { data: existingConv } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('workspace_id', workspace_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    // If files were shared, trigger brand profile update in background
+    if (files && files.length > 0) {
+      // Extract brand insights from the AI response and update profile
+      const updatePrompt = `Based on this analysis: "${reply.slice(0, 500)}", extract brand insights in JSON:
+{"voice_notes": "...", "audience_notes": "...", "content_notes": "..."}`
+
+      // Fire and forget — don't await
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analyze-brand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': request.headers.get('Authorization') || '' },
+        body: JSON.stringify({ workspace_id, force_reanalyze: false }),
+      }).catch(() => {})
+    }
+
+    // Save to conversations
+    const { data: existingConv } = await supabase.from('conversations').select('id')
+      .eq('workspace_id', workspace_id).order('created_at', { ascending: false }).limit(1).single()
 
     let conversationId = existingConv?.id
-
     if (!conversationId) {
-      const { data: newConv } = await supabase
-        .from('conversations')
-        .insert({ workspace_id, user_id: user.id, title: message.slice(0, 60) })
-        .select('id')
-        .single()
+      const { data: newConv } = await supabase.from('conversations')
+        .insert({ workspace_id, user_id: user.id, title: message?.slice(0, 60) || 'File analysis' })
+        .select('id').single()
       conversationId = newConv?.id
     }
 
     if (conversationId) {
       await supabase.from('messages').insert([
-        { conversation_id: conversationId, workspace_id, role: 'user', content: message },
+        { conversation_id: conversationId, workspace_id, role: 'user', content: message || '[File shared]' },
         { conversation_id: conversationId, workspace_id, role: 'assistant', content: reply },
       ])
     }
@@ -128,9 +169,6 @@ You are direct, intelligent, and strategic. You speak like a senior brand strate
 
   } catch (error: any) {
     console.error('Chat API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to get response', reply: 'Something went wrong. Please try again.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed', reply: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
