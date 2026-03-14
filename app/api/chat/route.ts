@@ -132,17 +132,48 @@ If the user shares a document, PDF, or content file:
       .map(block => (block as any).text)
       .join('')
 
-    // If files were shared, trigger brand profile update in background
+    // If files were shared, extract and store brand learnings
     if (files && files.length > 0) {
-      // Extract brand insights from the AI response and update profile
-      const updatePrompt = `Based on this analysis: "${reply.slice(0, 500)}", extract brand insights in JSON:
-{"voice_notes": "...", "audience_notes": "...", "content_notes": "..."}`
+      const fileName = files[0]?.name || 'uploaded file'
+      
+      // Store the learning from this file
+      const learningInsights = []
+      
+      // Extract key insights from AI reply to store as learnings
+      if (reply.length > 100) {
+        const lines = reply.split('\n').filter((l: string) => l.trim().length > 30)
+        for (const line of lines.slice(0, 5)) {
+          const clean = line.replace(/^[-*•#]+\s*/, '').trim()
+          if (clean.length > 20) {
+            let insightType = 'content'
+            if (clean.toLowerCase().includes('voice') || clean.toLowerCase().includes('tone') || clean.toLowerCase().includes('write')) insightType = 'voice'
+            else if (clean.toLowerCase().includes('audience') || clean.toLowerCase().includes('customer') || clean.toLowerCase().includes('people')) insightType = 'audience'
+            else if (clean.toLowerCase().includes('visual') || clean.toLowerCase().includes('image') || clean.toLowerCase().includes('color')) insightType = 'visual'
+            else if (clean.toLowerCase().includes('strategy') || clean.toLowerCase().includes('position') || clean.toLowerCase().includes('competi')) insightType = 'strategy'
+            
+            learningInsights.push({
+              workspace_id,
+              source: 'file_upload',
+              source_name: fileName,
+              insight_type: insightType,
+              insight: clean.slice(0, 500),
+              confidence: 0.85,
+            })
+          }
+        }
+        
+        if (learningInsights.length > 0) {
+          await supabase.from('brand_learnings').insert(learningInsights).catch(() => {})
+        }
+      }
 
-      // Fire and forget — don't await
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analyze-brand`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': request.headers.get('Authorization') || '' },
-        body: JSON.stringify({ workspace_id, force_reanalyze: false }),
+      // Log activity
+      await supabase.from('activity').insert({
+        workspace_id,
+        user_id: user.id,
+        type: 'brand_learned',
+        title: `Nexa learned from "${fileName}" — ${learningInsights.length} insights extracted`,
+        metadata: { file_name: fileName, learnings_count: learningInsights.length },
       }).catch(() => {})
     }
 
