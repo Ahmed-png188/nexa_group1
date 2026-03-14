@@ -397,8 +397,10 @@ function SchedulePageInner() {
                           <IconCheck /> Connected
                         </div>
                       ) : (
-                        <a href={`/api/oauth/${platform.id}?workspace_id=${workspace?.id}`}
-                          style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', background: 'var(--glass2)', border: '1px solid var(--line2)', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--sans)', textDecoration: 'none', display: 'inline-block' }}>
+                        <a
+                          href={workspace?.id ? `/api/oauth/${platform.id}?workspace_id=${workspace.id}` : '#'}
+                          onClick={e => { if (!workspace?.id) e.preventDefault() }}
+                          style={{ fontSize: 11, fontWeight: 700, color: workspace?.id ? 'var(--t2)' : 'var(--t5)', background: 'var(--glass2)', border: '1px solid var(--line2)', padding: '6px 14px', borderRadius: 8, cursor: workspace?.id ? 'pointer' : 'not-allowed', fontFamily: 'var(--sans)', textDecoration: 'none', display: 'inline-block', opacity: workspace?.id ? 1 : 0.5 }}>
                           Connect →
                         </a>
                       )}
