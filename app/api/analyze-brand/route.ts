@@ -10,126 +10,146 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, website_url, brand_name } = await request.json()
+    const { workspace_id, force_reanalyze } = await request.json()
 
-    // Fetch any uploaded brand assets
-    const { data: assets } = await supabase
-      .from('brand_assets')
+    // Fetch workspace
+    const { data: workspace } = await supabase.from('workspaces').select('*').eq('id', workspace_id).single()
+
+    // Fetch all brand assets
+    const { data: assets } = await supabase.from('brand_assets').select('*').eq('workspace_id', workspace_id)
+
+    // Fetch recent content (to learn from what they've already made)
+    const { data: recentContent } = await supabase.from('content')
+      .select('type, body, platform, metadata')
+      .eq('workspace_id', workspace_id)
+      .not('body', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // Fetch strategy if exists
+    const { data: strategy } = await supabase.from('strategies')
       .select('*')
       .eq('workspace_id', workspace_id)
-      .limit(10)
+      .single()
 
-    // Build context for Claude
-    const assetContext = assets && assets.length > 0
-      ? `\n\nBrand assets uploaded: ${assets.map(a => `${a.type}: ${a.file_name}`).join(', ')}`
-      : '\n\nNo assets uploaded yet — analyze based on brand name and website.'
+    const assetsList = assets?.map(a => `- ${a.type}: ${a.file_name}${a.analysis ? ` (analyzed: ${JSON.stringify(a.analysis).slice(0, 100)})` : ''}`).join('\n') || 'None uploaded yet'
 
-    const prompt = `You are a world-class brand strategist and psychologist. Analyze this brand and extract deep insights.
+    const contentSamples = recentContent?.filter(c => c.body).slice(0, 5).map(c => `[${c.type}/${c.platform}]: ${c.body?.slice(0, 200)}`).join('\n\n') || 'No content generated yet'
 
-Brand name: ${brand_name}
-Website: ${website_url || 'Not provided'}${assetContext}
+    const prompt = `You are the world's best brand strategist, copywriter, and psychologist. Your job is to deeply understand this brand and create a comprehensive Brand Intelligence Profile that will be used to generate ALL future content.
 
-Analyze this brand deeply and return a JSON object with EXACTLY this structure (no markdown, no backticks, pure JSON):
+This profile will be injected into every AI generation — images, videos, copy, voiceovers — so it must be extremely specific, actionable, and capture the brand's true essence.
 
+## Brand Information
+Name: ${workspace?.brand_name || workspace?.name}
+Tagline: ${workspace?.brand_tagline || 'Not provided'}
+Website: ${workspace?.brand_website || 'Not provided'}
+Current voice description: ${workspace?.brand_voice || 'Not defined yet'}
+Audience: ${workspace?.brand_audience || 'Not defined yet'}
+Tone: ${workspace?.brand_tone || 'Not defined yet'}
+
+## Uploaded Assets
+${assetsList}
+
+## Strategy Data
+${strategy ? `Pillars: ${JSON.stringify(strategy.pillars || [])}\nAudience: ${JSON.stringify(strategy.audience || {})}` : 'Not yet built'}
+
+## Sample Content They've Created
+${contentSamples}
+
+---
+
+Based on ALL of the above, create a comprehensive Brand Intelligence Profile in JSON format. Be extremely specific — no generic statements. Every field should be immediately usable to generate content.
+
+Return ONLY valid JSON with this structure:
 {
-  "brand_voice": "2-3 sentence description of the brand's communication style, tone, and personality",
-  "brand_audience": "2-3 sentence description of the target audience — their psychology, motivations, and what they respond to",
-  "brand_tone": "5 comma-separated adjectives describing the tone (e.g. confident, direct, premium, provocative, intelligent)",
-  "content_pillars": ["pillar 1", "pillar 2", "pillar 3", "pillar 4"],
-  "top_angles": [
-    "Best performing content angle 1 — specific and psychologically driven",
-    "Best performing content angle 2 — specific and psychologically driven", 
-    "Best performing content angle 3 — specific and psychologically driven"
-  ],
-  "platform_strategy": {
-    "instagram": "1 sentence strategy for Instagram",
-    "linkedin": "1 sentence strategy for LinkedIn",
-    "x": "1 sentence strategy for X/Twitter"
+  "voice": {
+    "primary_tone": "e.g. confident and direct without being arrogant",
+    "writing_style": "e.g. short punchy sentences, minimal fluff, data-backed claims",
+    "vocabulary": ["words they use", "power words", "words to avoid"],
+    "sentence_structure": "e.g. declarative statements, questions that provoke thought",
+    "emotional_triggers": ["what emotions their content evokes"],
+    "forbidden": ["words/phrases/styles that feel off-brand"]
   },
-  "voice_match_score": 91,
-  "audience_fit_score": 88,
-  "visual_style_score": 94,
-  "first_post_hook": "A specific, high-converting first post hook written in the brand voice — ready to use",
-  "first_post_body": "The full body of that first post — 3-4 sentences, on-brand, ready to publish"
-}
-
-Be specific, psychologically insightful, and actionable. Do not be generic. Return ONLY the JSON.`
+  "audience": {
+    "primary": "specific description of who they speak to",
+    "psychology": "what drives them, their fears, aspirations",
+    "pain_points": ["specific problems they have"],
+    "desires": ["what they want to achieve"],
+    "language": "how the audience speaks to each other"
+  },
+  "content": {
+    "themes": ["main topics they cover"],
+    "formats": ["content formats that work for them"],
+    "hooks": ["types of opening lines that work"],
+    "cta_style": "how they drive action",
+    "posting_rhythm": "recommended frequency and cadence"
+  },
+  "visual": {
+    "aesthetic": "overall visual feel and style",
+    "photography_style": "type of imagery that fits the brand",
+    "color_mood": "emotional feel of their palette",
+    "composition": "how their visuals should be composed",
+    "video_style": "motion and video aesthetic"
+  },
+  "positioning": {
+    "unique_angle": "what makes this brand different from competitors",
+    "authority_signals": ["how they establish credibility"],
+    "brand_promise": "the core transformation they offer",
+    "competitor_contrast": "how to position against alternatives"
+  },
+  "generation_instructions": {
+    "copy_prompt_prefix": "A ready-to-use prefix for all copy generation prompts that encodes the full brand context",
+    "image_prompt_prefix": "A ready-to-use prefix for all image generation prompts",
+    "video_prompt_prefix": "A ready-to-use prefix for all video generation prompts",
+    "voice_prompt_prefix": "Instructions for voiceover generation"
+  }
+}`
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      model: 'claude-opus-4-5',
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as any).text)
-      .join('')
+    const text = (response.content[0] as any).text
+    let brandProfile: any = {}
 
-    // Parse JSON response
-    let analysis: any
     try {
-      // Strip any markdown if Claude adds it
-      const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      analysis = JSON.parse(cleaned)
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) brandProfile = JSON.parse(jsonMatch[0])
     } catch {
-      // Fallback if JSON parse fails
-      analysis = {
-        brand_voice: `${brand_name} speaks with authority and clarity. Direct, confident, and outcome-focused.`,
-        brand_audience: 'Ambitious founders and creators who value results over tactics and want a competitive edge.',
-        brand_tone: 'confident, direct, premium, strategic, intelligent',
-        content_pillars: ['Expertise & Authority', 'Results & Outcomes', 'Strategy & Psychology', 'Brand Story'],
-        top_angles: [
-          'Identity-level framing — position your brand as a category of one',
-          'Contrast angles — what you are vs. what everyone else does',
-          'Result-first storytelling — outcome in the hook, method in the body',
-        ],
-        platform_strategy: {
-          instagram: 'Short-form video and carousels that lead with a bold insight or counterintuitive take.',
-          linkedin: 'Authority-building long-form that shares real strategy, not surface-level tips.',
-          x: 'Sharp, confident threads that challenge industry assumptions.',
-        },
-        voice_match_score: 89,
-        audience_fit_score: 86,
-        visual_style_score: 92,
-        first_post_hook: `Most ${brand_name.toLowerCase()} advice is backwards. Here's what actually works:`,
-        first_post_body: `Everyone tells you to post consistently. No one tells you that consistency without strategy is just noise. The brands winning right now aren't posting more — they're saying things that actually matter to the right people. That's the difference.`,
-      }
+      brandProfile = { raw: text }
     }
 
-    // Save analysis to workspace
+    // Update workspace with extracted brand intelligence
     await supabase.from('workspaces').update({
-      brand_voice: analysis.brand_voice,
-      brand_audience: analysis.brand_audience,
-      brand_tone: analysis.brand_tone,
-      brand_onboarded: true,
+      brand_voice: brandProfile.voice?.primary_tone || workspace?.brand_voice,
+      brand_audience: brandProfile.audience?.primary || workspace?.brand_audience,
+      brand_tone: brandProfile.voice?.writing_style || workspace?.brand_tone,
+      updated_at: new Date().toISOString(),
     }).eq('id', workspace_id)
 
-    // Save strategy plan
-    await supabase.from('strategy_plans').upsert({
+    // Store full profile in brand_assets as a special record
+    await supabase.from('brand_assets').upsert({
       workspace_id,
-      title: `${brand_name} — Brand Strategy`,
-      status: 'active',
-      audience_map: { description: analysis.brand_audience, tone: analysis.brand_tone },
-      content_pillars: analysis.content_pillars,
-      platform_strategy: analysis.platform_strategy,
-      insights: {
-        top_angles: analysis.top_angles,
-        first_post_hook: analysis.first_post_hook,
-        first_post_body: analysis.first_post_body,
-      },
-    })
+      type: 'brand_doc',
+      file_url: 'internal://brand-profile',
+      file_name: 'nexa_brand_intelligence.json',
+      ai_analyzed: true,
+      analysis: brandProfile,
+    }, { onConflict: 'workspace_id,file_name' })
 
     // Log activity
     await supabase.from('activity').insert({
       workspace_id,
       user_id: user.id,
       type: 'brand_analyzed',
-      title: `Brand DNA analyzed for ${brand_name}`,
-      description: `Voice: ${analysis.brand_tone}`,
+      title: 'Nexa AI analyzed your brand and built your Brand Intelligence Profile',
+      metadata: { fields_extracted: Object.keys(brandProfile).length },
     })
 
-    return NextResponse.json({ success: true, analysis })
+    return NextResponse.json({ success: true, profile: brandProfile })
 
   } catch (error: any) {
     console.error('Brand analysis error:', error)
