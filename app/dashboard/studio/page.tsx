@@ -596,7 +596,7 @@ export default function StudioPage() {
           </>
         )}
 
-        {/* ── COPY TAB ── */}}
+        {/* ── COPY TAB ── */}
         {activeTab === 'copy' && (
           <>
             <div style={{ marginBottom: 18 }}>
