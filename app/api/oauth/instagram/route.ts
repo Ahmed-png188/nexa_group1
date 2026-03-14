@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexaa.cc'
   const redirectUri = `${appUrl}/api/oauth/instagram/callback`
 
-  // State encodes workspace + user for callback verification
   const state = Buffer.from(JSON.stringify({ workspace_id, user_id: user.id })).toString('base64')
 
-  const authUrl = new URL('https://api.instagram.com/oauth/authorize')
+  // Use Facebook OAuth endpoint (required for Instagram Graph API via Facebook apps)
+  const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth')
   authUrl.searchParams.set('client_id', appId!)
   authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('scope', 'instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement')
+  authUrl.searchParams.set('scope', 'instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list,pages_read_engagement,pages_manage_posts')
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('state', state)
 
