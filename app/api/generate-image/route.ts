@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { persistFile } from '@/lib/storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +10,6 @@ export async function POST(request: NextRequest) {
 
     const { workspace_id, prompt, style, aspect_ratio = '1:1', model = 'flux-pro' } = await request.json()
 
-    // Deduct 5 credits
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
       p_amount: 5,
@@ -25,16 +25,10 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    // Fetch workspace brand context for style guidance
-    const { data: workspace } = await supabase
-      .from('workspaces').select('brand_voice, brand_tone, brand_name').eq('id', workspace_id).single()
-
-    // Build enhanced prompt with brand context
     const enhancedPrompt = style
       ? `${prompt}, ${style} style, professional quality, brand photography`
       : `${prompt}, professional quality, clean composition, brand photography`
 
-    // Call fal.ai Flux API
     const falResponse = await fetch('https://fal.run/fal-ai/flux/dev', {
       method: 'POST',
       headers: {
@@ -55,50 +49,37 @@ export async function POST(request: NextRequest) {
 
     if (!falResponse.ok) {
       const err = await falResponse.text()
-      console.error('Fal.ai error:', err)
-
-      // Refund credits if API failed
-      await supabase.from('credit_transactions').insert({
-        workspace_id,
-        user_id: user.id,
-        amount: 5,
-        action: 'refund',
-        description: 'Image generation failed — credits refunded',
-      })
-      await supabase.from('credits').update({
-        balance: supabase.rpc('increment_balance' as any, { amount: 5 }),
-      }).eq('workspace_id', workspace_id)
-
+      const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
+      await supabase.from('credits').update({ balance: (cr?.balance ?? 0) + 5 }).eq('workspace_id', workspace_id)
       return NextResponse.json({ error: 'Image generation failed', details: err }, { status: 500 })
     }
 
     const falData = await falResponse.json()
-    const imageUrl = falData.images?.[0]?.url
+    const tempUrl = falData.images?.[0]?.url
+    if (!tempUrl) return NextResponse.json({ error: 'No image returned' }, { status: 500 })
 
-    if (!imageUrl) {
-      return NextResponse.json({ error: 'No image returned' }, { status: 500 })
-    }
-
-    // Save to content table
+    // Save to DB first to get ID
     const { data: savedContent } = await supabase.from('content').insert({
       workspace_id,
       created_by: user.id,
       type: 'image',
       platform: 'general',
       status: 'draft',
-      image_url: imageUrl,
+      image_url: tempUrl,
       prompt: enhancedPrompt,
       credits_used: 5,
       ai_model: `fal-ai/${model}`,
-      metadata: {
-        aspect_ratio,
-        style,
-        original_prompt: prompt,
-        fal_seed: falData.seed,
-      },
+      metadata: { aspect_ratio, style, original_prompt: prompt, fal_seed: falData.seed },
     }).select().single()
 
-    // Log activity
+    // Persist to Supabase Storage (permanent URL)
+    const permanentUrl = await persistFile(tempUrl, workspace_id, 'image', savedContent?.id)
+
+    // Update with permanent URL
+    if (savedContent?.id && permanentUrl !== tempUrl) {
+      await supabase.from('content').update({ image_url: permanentUrl }).eq('id', savedContent.id)
+    }
+
     await supabase.from('activity').insert({
       workspace_id,
       user_id: user.id,
@@ -109,10 +90,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      image_url: imageUrl,
+      image_url: permanentUrl,
       content_id: savedContent?.id,
       credits_used: 5,
-      seed: falData.seed,
     })
 
   } catch (error: any) {

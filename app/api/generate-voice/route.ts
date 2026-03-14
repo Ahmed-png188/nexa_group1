@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { persistFile } from '@/lib/storage'
 
-// Popular ElevenLabs voice IDs
-const VOICES = {
-  'rachel':  '21m00Tcm4TlvDq8ikWAM', // warm, professional female
-  'drew':    '29vD33N1ost6f7gBRAFC', // confident male
-  'clyde':   '2EiwWnXFnvU5JabPnv8n', // expressive male
-  'paul':    '5Q0t7uMcjvnagumLfvZi', // authoritative male
-  'domi':    'AZnzlk1XvdvUeBnXmlld', // strong female
-  'bella':   'EXAVITQu4vr4xnSDxMaL', // soft female
-  'Antoni':  'ErXwobaYiN019PkySvjV', // well-rounded male
-  'elli':    'MF3mGyEYCl7XYWbV9V6O', // emotional female
+const VOICE_IDS: Record<string, string> = {
+  'rachel':  '21m00Tcm4TlvDq8ikWAM',
+  'drew':    '29vD33N1ost6f7gBRAFC',
+  'clyde':   '2EiwWnXFnvU5JabPnv8n',
+  'paul':    '5Q0t7uMcjvnagumLfvZi',
+  'domi':    'AZnzlk1XvdvUeBnXmlld',
+  'bella':   'EXAVITQu4vr4xnSDxMaL',
+  'Antoni':  'ErXwobaYiN019PkySvjV',
+  'elli':    'MF3mGyEYCl7XYWbV9V6O',
 }
 
 export async function POST(request: NextRequest) {
@@ -19,11 +19,9 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, text, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75, style = 0.5 } = await request.json()
-
+    const { workspace_id, text, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
     if (!text?.trim()) return NextResponse.json({ error: 'Text is required' }, { status: 400 })
 
-    // Deduct 8 credits
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
       p_amount: 8,
@@ -39,23 +37,22 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    const elevenKey = process.env.ELEVENLABS_API_KEY
-    const resolvedVoiceId = VOICES[voice_id as keyof typeof VOICES] ?? VOICES['rachel']
+    const resolvedVoiceId = VOICE_IDS[voice_id] ?? VOICE_IDS['rachel']
 
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}`, {
       method: 'POST',
       headers: {
-        'xi-api-key': elevenKey!,
+        'xi-api-key': process.env.ELEVENLABS_API_KEY!,
         'Content-Type': 'application/json',
         'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
-        text: text.slice(0, 5000), // ElevenLabs limit
+        text: text.slice(0, 5000),
         model_id: 'eleven_multilingual_v2',
         voice_settings: {
           stability,
           similarity_boost,
-          style,
+          style: 0.5,
           use_speaker_boost: true,
         },
       }),
@@ -63,16 +60,28 @@ export async function POST(request: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text()
-      // Refund credits
       const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
       await supabase.from('credits').update({ balance: (cr?.balance ?? 0) + 8 }).eq('workspace_id', workspace_id)
       throw new Error(`ElevenLabs error: ${errText}`)
     }
 
-    // Get audio as buffer and convert to base64 data URL
+    // Save audio to Supabase Storage (not base64 — permanent file)
     const audioBuffer = await res.arrayBuffer()
-    const base64 = Buffer.from(audioBuffer).toString('base64')
-    const audioDataUrl = `data:audio/mpeg;base64,${base64}`
+    const filename = `${workspace_id}/voices/${Date.now()}.mp3`
+
+    const { error: uploadError } = await supabase.storage
+      .from('generated-content')
+      .upload(filename, audioBuffer, { contentType: 'audio/mpeg', upsert: true })
+
+    let audioUrl: string
+    if (uploadError) {
+      // Fallback to base64 if storage fails
+      const base64 = Buffer.from(audioBuffer).toString('base64')
+      audioUrl = `data:audio/mpeg;base64,${base64}`
+    } else {
+      const { data: urlData } = supabase.storage.from('generated-content').getPublicUrl(filename)
+      audioUrl = urlData.publicUrl
+    }
 
     // Save to content table
     const { data: savedContent } = await supabase.from('content').insert({
@@ -81,11 +90,11 @@ export async function POST(request: NextRequest) {
       type: 'voice',
       platform: 'general',
       status: 'draft',
-      voice_url: audioDataUrl,
+      voice_url: audioUrl,
       body: text,
       credits_used: 8,
       ai_model: 'elevenlabs-multilingual-v2',
-      metadata: { voice_id, stability, similarity_boost, style, char_count: text.length },
+      metadata: { voice_id, stability, similarity_boost, char_count: text.length },
     }).select().single()
 
     await supabase.from('activity').insert({
@@ -98,10 +107,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      audio_url: audioDataUrl,
+      audio_url: audioUrl,
       content_id: savedContent?.id,
       credits_used: 8,
-      char_count: text.length,
     })
 
   } catch (error: any) {
@@ -110,18 +118,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET — return available voices
 export async function GET() {
   return NextResponse.json({
     voices: [
-      { id: 'rachel',  name: 'Rachel',  desc: 'Warm · Professional · Female' },
-      { id: 'drew',    name: 'Drew',    desc: 'Confident · Clear · Male' },
-      { id: 'clyde',   name: 'Clyde',   desc: 'Expressive · Dynamic · Male' },
-      { id: 'paul',    name: 'Paul',    desc: 'Authoritative · Deep · Male' },
-      { id: 'domi',    name: 'Domi',    desc: 'Strong · Direct · Female' },
-      { id: 'bella',   name: 'Bella',   desc: 'Soft · Warm · Female' },
-      { id: 'Antoni',  name: 'Antoni',  desc: 'Balanced · Natural · Male' },
-      { id: 'elli',    name: 'Elli',    desc: 'Emotional · Engaging · Female' },
+      { id: 'rachel', name: 'Rachel', desc: 'Warm · Professional · Female' },
+      { id: 'drew',   name: 'Drew',   desc: 'Confident · Clear · Male' },
+      { id: 'clyde',  name: 'Clyde',  desc: 'Expressive · Dynamic · Male' },
+      { id: 'paul',   name: 'Paul',   desc: 'Authoritative · Deep · Male' },
+      { id: 'domi',   name: 'Domi',   desc: 'Strong · Direct · Female' },
+      { id: 'bella',  name: 'Bella',  desc: 'Soft · Warm · Female' },
+      { id: 'Antoni', name: 'Antoni', desc: 'Balanced · Natural · Male' },
+      { id: 'elli',   name: 'Elli',   desc: 'Emotional · Engaging · Female' },
     ]
   })
 }
