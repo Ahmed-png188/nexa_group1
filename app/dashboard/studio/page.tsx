@@ -82,7 +82,7 @@ const ANGLES = [
 ───────────────────────────────────────────────────────────────── */
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:10 }}>
+    <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.2)', marginBottom:8 }}>
       {children}
     </div>
   )
@@ -471,42 +471,32 @@ export default function StudioPage() {
         {/* ═══════════════════════════════════════════
             LEFT — CREATION CANVAS
         ═══════════════════════════════════════════ */}
-        <div style={{ overflowY:'auto', padding:'32px 36px 48px', borderRight:'1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ overflowY:'auto', padding:'24px 28px 40px', borderRight:'1px solid rgba(255,255,255,0.05)' }}>
 
           {/* ── Page header ── */}
-          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:32, animation:'studioUp .4s ease both' }}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:22, animation:'studioUp .4s ease both' }}>
             <div>
-              <h1 style={{ fontFamily:'var(--display)', fontSize:28, fontWeight:800, letterSpacing:'-0.05em', color:'rgba(255,255,255,0.95)', lineHeight:1, marginBottom:6 }}>
+              <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:4 }}>
                 Studio
               </h1>
-              <p style={{ fontSize:12.5, color:'rgba(255,255,255,0.32)', fontWeight:400, maxWidth:420, lineHeight:1.5 }}>
+              <p style={{ fontSize:11.5, color:'rgba(255,255,255,0.28)', fontWeight:400, maxWidth:400, lineHeight:1.5 }}>
                 {ws?.brand_voice
-                  ? `Writing as: ${ws.brand_voice.slice(0,58)}…`
+                  ? `Writing as: ${ws.brand_voice.slice(0,52)}…`
                   : 'Every generation is written in your brand voice'}
               </p>
             </div>
 
-            {/* Credits — premium pill */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 16px 8px 12px',
-              background: 'linear-gradient(135deg, rgba(77,159,255,0.12) 0%, rgba(77,159,255,0.06) 100%)',
-              border: '1px solid rgba(77,159,255,0.25)',
-              borderRadius: 100,
-              boxShadow: '0 0 20px rgba(77,159,255,0.12)',
-            }}>
-              <div style={{ width:7, height:7, borderRadius:'50%', background:'#4D9FFF', boxShadow:'0 0 8px #4D9FFF', animation:'studioPulse 2.5s ease-in-out infinite' }}/>
-              <span style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:800, color:'#4D9FFF', letterSpacing:'-0.03em', lineHeight:1 }}>
-                {credits.toLocaleString()}
-              </span>
-              <span style={{ fontSize:11, color:'rgba(77,159,255,0.6)', fontWeight:600 }}>credits</span>
+            {/* Credits — small subtle, not duplicating topbar */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 11px', background:'rgba(77,159,255,0.06)', border:'1px solid rgba(77,159,255,0.15)', borderRadius:8 }}>
+              <div style={{ width:5, height:5, borderRadius:'50%', background:'#4D9FFF', animation:'studioPulse 2.5s ease-in-out infinite' }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'rgba(77,159,255,0.8)', fontFamily:'var(--display)' }}>{credits.toLocaleString()} cr</span>
             </div>
           </div>
 
           {/* ── Tab selector — premium feel ── */}
-          <div style={{ marginBottom:36, animation:'studioUp .4s ease .05s both' }}>
+          <div style={{ marginBottom:24, animation:'studioUp .4s ease .05s both' }}>
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap:6,
+              display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap:6,
               padding: 5,
               background: 'rgba(255,255,255,0.025)',
               border: '1px solid rgba(255,255,255,0.06)',
@@ -545,10 +535,10 @@ export default function StudioPage() {
           {tab === 'copy' && (
             <div style={{ maxWidth:620, animation:'studioUp .3s ease both' }}>
 
-              {/* Format grid — premium cards */}
-              <div style={{ marginBottom:28 }}>
+              {/* Format grid */}
+              <div style={{ marginBottom:20 }}>
                 <FieldLabel>Format</FieldLabel>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap:8 }}>
                   {FORMATS.map(f => (
                     <FormatCard key={f.id} f={f} active={fmt===f.id} onClick={()=>setFmt(f.id)} color="#4D9FFF"/>
                   ))}
@@ -556,7 +546,7 @@ export default function StudioPage() {
               </div>
 
               {/* Platform pills */}
-              <div style={{ marginBottom:28 }}>
+              <div style={{ marginBottom:20 }}>
                 <FieldLabel>Platform</FieldLabel>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {PLATFORMS.map(p => (
@@ -566,23 +556,23 @@ export default function StudioPage() {
               </div>
 
               {/* Direction */}
-              <div style={{ marginBottom:16 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <div style={{ marginBottom:12 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
                   <FieldLabel>Direction</FieldLabel>
-                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)', fontWeight:500 }}>⌘ Enter to generate</span>
+                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.16)', fontWeight:500 }}>⌘ Enter to generate</span>
                 </div>
-                <StudioTextarea value={prompt} onChange={setPrompt} rows={5}
+                <StudioTextarea value={prompt} onChange={setPrompt} rows={4}
                   placeholder={`Give Nexa a direction, angle, or idea.\n\n"Why perfectionism is killing your engagement" lands harder than "a post about productivity."`}/>
               </div>
 
-              {/* Angle suggestions */}
-              <div style={{ marginBottom:28, display:'flex', gap:6, flexWrap:'wrap' }}>
+              {/* Angle suggestions — ultra-subtle, blend into background */}
+              <div style={{ marginBottom:20, display:'flex', gap:5, flexWrap:'wrap' }}>
                 {ANGLES.map((a,i) => (
                   <button key={i} onClick={()=>setPrompt(a)}
-                    style={{ padding:'5px 12px', borderRadius:100, fontSize:11, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all .15s', textAlign:'left' }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.25)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.7)'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.35)'}}>
-                    {a.length > 50 ? a.slice(0,50)+'…' : a}
+                    style={{ padding:'4px 10px', borderRadius:100, fontSize:11, background:'transparent', border:'1px solid rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.22)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all .2s', textAlign:'left' }}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.2)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.55)';(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.04)'}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.05)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.22)';(e.currentTarget as HTMLElement).style.background='transparent'}}>
+                    {a.length > 46 ? a.slice(0,46)+'…' : a}
                   </button>
                 ))}
               </div>
@@ -800,7 +790,7 @@ export default function StudioPage() {
 
               <div style={{ marginBottom:24 }}>
                 <FieldLabel>Voice</FieldLabel>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px, 1fr))', gap:7 }}>
                   {VOICES.map(v => (
                     <button key={v.id} onClick={()=>setVxId(v.id)}
                       style={{ padding:'11px 10px', borderRadius:11, background:vxId===v.id?'rgba(52,211,153,0.09)':'rgba(255,255,255,0.03)', border:`1px solid ${vxId===v.id?'rgba(52,211,153,0.3)':'rgba(255,255,255,0.07)'}`, cursor:'pointer', fontFamily:'var(--sans)', textAlign:'left', transition:'all .15s', boxShadow:vxId===v.id?'0 0 14px rgba(52,211,153,0.14)':'none' }}>
