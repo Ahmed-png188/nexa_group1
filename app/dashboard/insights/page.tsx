@@ -2,22 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: '#E1306C',
   linkedin:  '#0A66C2',
   x:         '#1DA1F2',
-  tiktok:    '#000000',
+  tiktok:    '#FF0050',
   email:     '#00AAFF',
   general:   '#888888',
 }
 
-const IconBar = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-const IconRefresh = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-const IconStar = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-const IconUp = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-const IconMail = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+type TabId = 'overview' | 'content' | 'email' | 'platforms' | 'export'
 
 export default function InsightsPage() {
   const supabase = createClient()
@@ -25,8 +21,13 @@ export default function InsightsPage() {
   const [insights, setInsights] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState(30)
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [aiExplanation, setAiExplanation] = useState<string | null>(null)
   const [explaining, setExplaining] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any>(null)
+  const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([])
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => { loadInsights() }, [period])
 
@@ -38,11 +39,16 @@ export default function InsightsPage() {
     const ws = (m as any)?.workspaces
     setWorkspace(ws)
 
-    const res = await fetch(`/api/get-insights?workspace_id=${ws?.id}&period=${period}`)
-    if (res.ok) {
-      const data = await res.json()
+    const [insightsRes, platformsRes] = await Promise.all([
+      fetch(`/api/get-insights?workspace_id=${ws?.id}&period=${period}`),
+      supabase.from('connected_platforms').select('*').eq('workspace_id', ws?.id).eq('is_active', true),
+    ])
+
+    if (insightsRes.ok) {
+      const data = await insightsRes.json()
       setInsights(data)
     }
+    setConnectedPlatforms(platformsRes.data ?? [])
     setLoading(false)
   }
 
@@ -50,231 +56,404 @@ export default function InsightsPage() {
     if (!insights || explaining) return
     setExplaining(true)
     setAiExplanation(null)
-
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspace_id: workspace.id,
-          message: `Analyze my content performance data for the last ${period} days and give me 3 specific, actionable insights:
-
-Data:
-- Total content created: ${insights.overview.total_content}
-- Published: ${insights.overview.published}
-- Total reach: ${insights.overview.total_reach}
-- Total engagements: ${insights.overview.total_engagements}
-- Credits used: ${insights.overview.credits_used}
-- Platform breakdown: ${JSON.stringify(insights.platform_breakdown)}
-- Email open rate: ${insights.email_stats.avg_open_rate}%
-- Active email sequences: ${insights.email_stats.active_sequences}
-
-Give me 3 specific insights about what's working, what's not, and exactly what to do next. Be direct and data-driven.`,
+          message: `Analyze my content performance for the last ${period} days and give me 3 specific, actionable insights. Data: ${JSON.stringify(insights.overview)}. Platform breakdown: ${JSON.stringify(insights.platform_breakdown)}. Content types: ${JSON.stringify(insights.content_type_breakdown)}. Email: ${JSON.stringify(insights.email_stats)}. Be direct and tactical — what should I do differently next week?`,
           history: [],
         }),
       })
       const data = await res.json()
       setAiExplanation(data.reply)
-    } catch (err) { console.error(err) }
+    } catch { setAiExplanation('Unable to generate AI analysis right now.') }
     setExplaining(false)
   }
 
-  // Simple bar chart component
-  function MiniBarChart({ data, maxVal }: { data: number[]; maxVal: number }) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 48 }}>
-        {data.map((v, i) => (
-          <div key={i} style={{
-            flex: 1,
-            height: maxVal > 0 ? `${Math.max(4, (v / maxVal) * 100)}%` : '4px',
-            background: v > 0 ? 'var(--cyan)' : 'var(--glass)',
-            borderRadius: '2px 2px 0 0',
-            opacity: v > 0 ? (0.4 + (v / maxVal) * 0.6) : 0.2,
-            transition: 'height 0.3s ease',
-          }} />
-        ))}
-      </div>
-    )
+  async function syncPlatformData() {
+    if (!workspace || syncing) return
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/sync-platform-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspace.id }),
+      })
+      const data = await res.json()
+      setSyncResult(data)
+      await loadInsights()
+    } catch {}
+    setSyncing(false)
   }
 
+  async function exportData(format_type: 'csv' | 'json') {
+    if (!insights) return
+    setExporting(true)
+
+    const exportData = {
+      workspace: workspace?.name,
+      period: `Last ${period} days`,
+      generated_at: new Date().toISOString(),
+      overview: insights.overview,
+      platform_breakdown: insights.platform_breakdown,
+      content_type_breakdown: insights.content_type_breakdown,
+      email_stats: insights.email_stats,
+      top_content: insights.top_content?.map((c: any) => ({
+        type: c.type,
+        platform: c.platform,
+        status: c.status,
+        body_preview: c.body?.slice(0, 100),
+        likes: c.likes,
+        comments: c.comments,
+        shares: c.shares,
+        reach: c.reach,
+        created_at: c.created_at,
+      })),
+    }
+
+    if (format_type === 'json') {
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nexa-insights-${workspace?.name}-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } else {
+      // CSV export
+      const rows = [
+        ['Metric', 'Value'],
+        ['Total content', insights.overview.total_content],
+        ['Published', insights.overview.published],
+        ['Scheduled', insights.overview.scheduled],
+        ['Total reach', insights.overview.total_reach],
+        ['Total engagements', insights.overview.total_engagements],
+        ['Credits used', insights.overview.credits_used],
+        ['', ''],
+        ['Platform', 'Posts', 'Reach', 'Engagements'],
+        ...Object.entries(insights.platform_breakdown || {}).map(([p, d]: [string, any]) => [p, d.count, d.reach, d.engagements]),
+        ['', ''],
+        ['Email Sequences', insights.email_stats.total_sequences],
+        ['Emails sent', insights.email_stats.total_sent],
+        ['Avg open rate', `${insights.email_stats.avg_open_rate}%`],
+      ]
+      const csv = rows.map(r => r.join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nexa-insights-${workspace?.name}-${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+    setExporting(false)
+  }
+
+  const TABS: { id: TabId; label: string }[] = [
+    { id: 'overview',   label: 'Overview' },
+    { id: 'content',    label: 'Content' },
+    { id: 'email',      label: 'Email' },
+    { id: 'platforms',  label: 'Platforms' },
+    { id: 'export',     label: '↓ Export' },
+  ]
+
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-      <div style={{ fontSize: 13, color: 'var(--t4)' }}>Loading insights...</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t4)', fontSize: 13 }}>
+      Loading insights...
     </div>
   )
 
   const ov = insights?.overview ?? {}
-  const chart = insights?.chart_data ?? []
-  const chartMax = Math.max(...chart.map((d: any) => d.content), 1)
-  const platforms = insights?.platform_breakdown ?? {}
-  const emailStats = insights?.email_stats ?? {}
-  const topContent = insights?.top_content ?? []
-  const activity = insights?.recent_activity ?? []
+  const chartData = insights?.chart_data ?? []
+  const maxChart = Math.max(...chartData.map((d: any) => d.content), 1)
 
   return (
-    <div style={{ padding: '28px', maxWidth: 1000 }}>
+    <div style={{ padding: '24px 28px', maxWidth: 1000, overflowY: 'auto', height: 'calc(100vh - var(--topbar-h))' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 3 }}>Insights</h1>
-          <p style={{ fontSize: 12, color: 'var(--t4)' }}>Your content performance across all platforms</p>
+          <div style={{ fontSize: 12, color: 'var(--t4)' }}>Performance analytics for your brand</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Period selector */}
-          <div style={{ display: 'flex', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, padding: 3, gap: 2 }}>
-            {[7, 30, 90].map(d => (
-              <button key={d} onClick={() => setPeriod(d)} style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: period === d ? 'var(--glass2)' : 'transparent', color: period === d ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>
-                {d}d
-              </button>
-            ))}
-          </div>
-          <button onClick={loadInsights} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconRefresh />
+          {[7, 30, 90].map(d => (
+            <button key={d} onClick={() => setPeriod(d)}
+              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, background: period === d ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${period === d ? 'var(--cline2)' : 'var(--line2)'}`, color: period === d ? 'var(--cyan)' : 'var(--t4)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+              {d}d
+            </button>
+          ))}
+          <button onClick={syncPlatformData} disabled={syncing}
+            style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            {syncing ? <>Syncing...</> : <>↺ Sync</>}
           </button>
         </div>
       </div>
 
-      {/* Overview stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        {[
-          { label: 'Content created', value: ov.total_content ?? 0,     icon: <IconStar />,  color: 'var(--t1)' },
-          { label: 'Published',       value: ov.published ?? 0,          icon: <IconUp />,    color: '#00d68f' },
-          { label: 'Total reach',     value: ov.total_reach > 0 ? `${(ov.total_reach/1000).toFixed(1)}k` : '0', icon: <IconBar />, color: 'var(--cyan)' },
-          { label: 'Engagements',     value: ov.total_engagements ?? 0,  icon: <IconStar />,  color: 'var(--t1)' },
-        ].map(stat => (
-          <div key={stat.label} style={{ padding: '16px 14px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ color: 'var(--t4)' }}>{stat.icon}</div>
-            </div>
-            <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-            <div style={{ fontSize: 11, color: 'var(--t4)', marginTop: 5 }}>{stat.label}</div>
-          </div>
+      {/* Sync result banner */}
+      {syncResult && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>{syncResult.message}</span>
+          <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', color: 'var(--t5)', cursor: 'pointer', fontSize: 14 }}>✕</button>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--line)', marginBottom: 24, gap: 0 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            style={{ padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: activeTab === t.id ? 700 : 500, color: activeTab === t.id ? 'var(--t1)' : 'var(--t4)', borderBottom: activeTab === t.id ? '2px solid var(--cyan)' : '2px solid transparent', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {/* Chart + AI explanation */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 10, marginBottom: 16 }}>
+      {/* ── OVERVIEW ── */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Content activity chart */}
-        <div style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)' }}>Content activity · Last {period} days</div>
-            <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--t5)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--cyan)', display: 'inline-block' }} /> Created</span>
-            </div>
-          </div>
-          <MiniBarChart data={chart.map((d: any) => d.content)} maxVal={chartMax} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            {chart.filter((_: any, i: number) => i % Math.ceil(chart.length / 6) === 0).map((d: any) => (
-              <span key={d.date} style={{ fontSize: 9, color: 'var(--t5)' }}>{d.label}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Email stats */}
-        <div style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <IconMail /> Email performance
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Stats grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
             {[
-              { label: 'Active sequences', value: emailStats.active_sequences ?? 0, color: 'var(--cyan)' },
-              { label: 'Total sent',       value: emailStats.total_sent ?? 0,        color: 'var(--t1)' },
-              { label: 'Avg open rate',    value: `${emailStats.avg_open_rate ?? 0}%`, color: emailStats.avg_open_rate > 40 ? '#00d68f' : emailStats.avg_open_rate > 20 ? 'var(--amber)' : 'var(--t1)' },
+              { label: 'Content created', value: ov.total_content ?? 0, color: 'var(--cyan)', sub: `${period}d period` },
+              { label: 'Published', value: ov.published ?? 0, color: '#00d68f', sub: 'live on platforms' },
+              { label: 'Total reach', value: (ov.total_reach ?? 0).toLocaleString(), color: 'var(--t1)', sub: 'across all platforms' },
+              { label: 'Engagements', value: (ov.total_engagements ?? 0).toLocaleString(), color: '#8b5cf6', sub: 'likes + comments + shares' },
             ].map(stat => (
-              <div key={stat.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--t4)' }}>{stat.label}</span>
-                <span style={{ fontFamily: 'var(--display)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.03em', color: stat.color }}>{stat.value}</span>
+              <div key={stat.label} style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, padding: '16px' }}>
+                <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginTop: 5 }}>{stat.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--t5)', marginTop: 2 }}>{stat.sub}</div>
               </div>
             ))}
           </div>
+
+          {/* Activity chart */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 16 }}>Content created · last {period} days</div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80 }}>
+              {chartData.filter((_: any, i: number) => period <= 30 || i % 3 === 0).map((d: any, i: number) => (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div style={{ width: '100%', background: d.content > 0 ? 'var(--cyan)' : 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0', height: `${Math.max((d.content / maxChart) * 70, d.content > 0 ? 4 : 2)}px`, transition: 'height 0.3s', opacity: d.content > 0 ? 0.8 : 0.3 }} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--t5)' }}>{chartData[0]?.label}</span>
+              <span style={{ fontSize: 10, color: 'var(--t5)' }}>{chartData[chartData.length - 1]?.label}</span>
+            </div>
+          </div>
+
+          {/* AI explanation */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aiExplanation ? 12 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>Nexa AI Analysis</span>
+              </div>
+              <button onClick={getAiExplanation} disabled={explaining}
+                style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: explaining ? 'var(--glass)' : 'var(--cyan)', color: explaining ? 'var(--t4)' : '#000', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                {explaining ? 'Analyzing...' : aiExplanation ? '↺ Re-analyze' : 'Analyze my data →'}
+              </button>
+            </div>
+            {aiExplanation && (
+              <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{aiExplanation}</div>
+            )}
+            {!aiExplanation && !explaining && (
+              <div style={{ fontSize: 12, color: 'var(--t5)', marginTop: 8 }}>Get AI-powered insights and specific recommendations based on your performance data.</div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Platform breakdown + AI insights */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      {/* ── CONTENT ── */}
+      {activeTab === 'content' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Content type breakdown */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Content by type</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {Object.entries(insights?.content_type_breakdown || {}).map(([type, count]: [string, any]) => (
+                <div key={type} style={{ padding: '10px 16px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 10 }}>
+                  <div style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, color: 'var(--cyan)', lineHeight: 1 }}>{count}</div>
+                  <div style={{ fontSize: 11, color: 'var(--t4)', marginTop: 4, textTransform: 'capitalize' }}>{type}</div>
+                </div>
+              ))}
+              {Object.keys(insights?.content_type_breakdown || {}).length === 0 && (
+                <div style={{ fontSize: 13, color: 'var(--t5)' }}>No content created in this period yet.</div>
+              )}
+            </div>
+          </div>
 
-        {/* Platform breakdown */}
-        <div style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Platform breakdown</div>
-          {Object.keys(platforms).length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {Object.entries(platforms).map(([platform, data]: [string, any]) => (
-                <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: PLATFORM_COLORS[platform] ?? '#888', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--t3)', flex: 1, textTransform: 'capitalize' }}>{platform}</span>
-                  <span style={{ fontSize: 11, color: 'var(--t4)', marginRight: 8 }}>{data.count} posts</span>
-                  <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, (data.count / ov.total_content) * 100)}%`, background: PLATFORM_COLORS[platform] ?? '#888', borderRadius: 4 }} />
+          {/* Top performing content */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)' }}>Top performing content</div>
+              <div style={{ fontSize: 11, color: 'var(--t5)' }}>Sorted by engagements</div>
+            </div>
+            {insights?.top_content?.length > 0 ? insights.top_content.map((c: any, i: number) => (
+              <div key={c.id} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < insights.top_content.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(0,170,255,0.08)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--cyan)', flexShrink: 0 }}>{i + 1}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'var(--glass2)', border: '1px solid var(--line)', color: 'var(--t4)', textTransform: 'uppercase' }}>{c.type}</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 3, background: `${PLATFORM_COLORS[c.platform] || '#888'}15`, color: PLATFORM_COLORS[c.platform] || 'var(--t4)', textTransform: 'uppercase' }}>{c.platform}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--t3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body?.slice(0, 80) || c.title || 'Untitled'}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--t4)', flexShrink: 0 }}>
+                  <span>❤️ {c.likes ?? 0}</span>
+                  <span>💬 {c.comments ?? 0}</span>
+                  <span>↗️ {c.shares ?? 0}</span>
+                </div>
+              </div>
+            )) : (
+              <div style={{ fontSize: 13, color: 'var(--t5)', textAlign: 'center', padding: '20px 0' }}>
+                No published content yet. Publish posts to see performance data here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── EMAIL ── */}
+      {activeTab === 'email' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {[
+              { label: 'Active sequences', value: insights?.email_stats?.active_sequences ?? 0, color: 'var(--cyan)' },
+              { label: 'Emails sent', value: (insights?.email_stats?.total_sent ?? 0).toLocaleString(), color: 'var(--t1)' },
+              { label: 'Avg open rate', value: `${insights?.email_stats?.avg_open_rate ?? 0}%`, color: insights?.email_stats?.avg_open_rate > 30 ? '#00d68f' : 'var(--amber)' },
+            ].map(stat => (
+              <div key={stat.label} style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, padding: '16px' }}>
+                <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginTop: 5 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '16px 18px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
+            Industry average open rate is 20-25%. {insights?.email_stats?.avg_open_rate > 25 ? `Your ${insights.email_stats.avg_open_rate}% is above average — your subject lines and audience targeting are working.` : 'Build your email sequences in the Automate tab to start growing this number.'}
+          </div>
+          <a href="/dashboard/automate" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: 12, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, textDecoration: 'none', width: 'fit-content' }}>
+            Manage email sequences →
+          </a>
+        </div>
+      )}
+
+      {/* ── PLATFORMS ── */}
+      {activeTab === 'platforms' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Connected platforms */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)' }}>Connected platforms</div>
+              <a href="/dashboard/schedule" style={{ fontSize: 11, color: 'var(--cyan)', textDecoration: 'none' }}>Manage →</a>
+            </div>
+            {connectedPlatforms.length > 0 ? connectedPlatforms.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${PLATFORM_COLORS[p.platform] || '#888'}20`, border: `1px solid ${PLATFORM_COLORS[p.platform] || '#888'}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: PLATFORM_COLORS[p.platform] || 'var(--t3)', textTransform: 'capitalize', flexShrink: 0 }}>
+                  {p.platform.slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', textTransform: 'capitalize' }}>{p.platform}</div>
+                  <div style={{ fontSize: 11, color: 'var(--t5)' }}>@{p.platform_username || 'connected'} · Connected {p.connected_at ? format(new Date(p.connected_at), 'MMM d') : ''}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00d68f' }} />
+                  <span style={{ fontSize: 11, color: '#00d68f', fontWeight: 600 }}>Active</span>
+                </div>
+              </div>
+            )) : (
+              <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 13, color: 'var(--t5)' }}>
+                No platforms connected. <a href="/dashboard/schedule" style={{ color: 'var(--cyan)', textDecoration: 'none' }}>Connect platforms →</a>
+              </div>
+            )}
+          </div>
+
+          {/* Platform performance breakdown */}
+          {Object.keys(insights?.platform_breakdown || {}).length > 0 && (
+            <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Performance by platform</div>
+              {Object.entries(insights.platform_breakdown).map(([platform, data]: [string, any]) => (
+                <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: `${PLATFORM_COLORS[platform] || '#888'}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: PLATFORM_COLORS[platform] || 'var(--t3)', flexShrink: 0 }}>{platform.slice(0, 2).toUpperCase()}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', marginBottom: 4, textTransform: 'capitalize' }}>{platform}</div>
+                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min((data.count / Math.max(...Object.values(insights.platform_breakdown).map((d: any) => d.count), 1)) * 100, 100)}%`, background: PLATFORM_COLORS[platform] || 'var(--cyan)', borderRadius: 4 }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--t4)', textAlign: 'right', flexShrink: 0 }}>
+                    <div>{data.count} posts</div>
+                    <div style={{ color: 'var(--t5)' }}>{data.engagements} engagements</div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 12, color: 'var(--t5)' }}>
-              No published content yet. Start creating in Studio.
-            </div>
           )}
-        </div>
 
-        {/* Credits used */}
-        <div style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Credits used · {period} days</div>
-          <div style={{ fontFamily: 'var(--display)', fontSize: 48, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--t1)', lineHeight: 1, marginBottom: 6 }}>
-            {ov.credits_used ?? 0}
+          {/* Live data status */}
+          <div style={{ padding: '16px 18px', background: 'rgba(212,82,26,0.04)', border: '1px solid rgba(212,82,26,0.2)', borderRadius: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', marginBottom: 6 }}>Live platform data</div>
+            <div style={{ fontSize: 12, color: 'var(--t4)', lineHeight: 1.7, marginBottom: 10 }}>
+              Real-time reach, impressions, and engagement data from Instagram, LinkedIn, and X will flow automatically here once the platform apps are approved. The infrastructure is built and ready — it activates the moment approvals come through.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['Instagram', 'LinkedIn', 'X', 'TikTok'].map(p => (
+                <span key={p} style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? 'rgba(0,214,143,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? 'rgba(0,214,143,0.3)' : 'var(--line)'}`, color: connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? '#00d68f' : 'var(--t5)' }}>
+                  {p} {connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? '✓ Connected' : '○ Not connected'}
+                </span>
+              ))}
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--t4)', marginBottom: 16 }}>credits consumed this period</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {Object.entries(insights?.content_type_breakdown ?? {}).map(([type, count]: [string, any]) => (
-              <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--t4)', textTransform: 'capitalize' }}>{type}</span>
-                <span style={{ color: 'var(--t2)', fontWeight: 600 }}>{count} pieces</span>
+        </div>
+      )}
+
+      {/* ── EXPORT ── */}
+      {activeTab === 'export' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ padding: '16px 18px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
+            Export your Nexa performance data for reporting, analysis, or sharing with clients. Choose your format and period below.
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[
+              { format: 'csv' as const, label: 'CSV Export', desc: 'Open in Excel, Google Sheets, or any spreadsheet tool. Includes all metrics, platform breakdown, and email stats.', icon: '📊' },
+              { format: 'json' as const, label: 'JSON Export', desc: 'Full structured data export. Use for custom dashboards, API integrations, or developer tools.', icon: '{ }' },
+            ].map(opt => (
+              <div key={opt.format} style={{ padding: '20px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14 }}>
+                <div style={{ fontSize: 28, marginBottom: 12 }}>{opt.icon}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 6 }}>{opt.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--t4)', lineHeight: 1.6, marginBottom: 16 }}>{opt.desc}</div>
+                <button onClick={() => exportData(opt.format)} disabled={exporting}
+                  style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                  Download {opt.format.toUpperCase()} →
+                </button>
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* AI Signal Explanation */}
-      <div style={{ marginBottom: 16, padding: '18px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aiExplanation ? 14 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(0,170,255,0.1)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--cyan)' }}>✦</div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>Nexa AI reads your signals</span>
-          </div>
-          <button onClick={getAiExplanation} disabled={explaining} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-            {explaining ? (
-              <><div style={{ width: 11, height: 11, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Analyzing...</>
-            ) : '✦ Explain my data'}
-          </button>
-        </div>
-
-        {aiExplanation && (
-          <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.75, whiteSpace: 'pre-line' as const }}>
-            {aiExplanation}
-          </div>
-        )}
-
-        {!aiExplanation && !explaining && (
-          <div style={{ fontSize: 12, color: 'var(--t4)', marginTop: 8 }}>
-            Ask Nexa AI to analyze your data and tell you exactly what to do next. Free — uses your chat.
-          </div>
-        )}
-      </div>
-
-      {/* Recent activity */}
-      {activity.length > 0 && (
-        <div style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Recent activity</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {activity.map((item: any) => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cyan)', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: 'var(--t2)', flex: 1 }}>{item.title}</span>
-                <span style={{ fontSize: 10, color: 'var(--t5)', flexShrink: 0 }}>{item.created_at ? format(parseISO(item.created_at), 'MMM d, h:mm a') : ''}</span>
+          {/* What's included */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 12 }}>What's included in the export</div>
+            {[
+              'Overview metrics (content created, published, reach, engagements)',
+              'Platform breakdown (posts, reach, engagements per platform)',
+              'Content type breakdown (posts, images, videos, threads)',
+              'Email sequence stats (sent, opened, open rate)',
+              'Top performing content with engagement metrics',
+              'Period: last ' + period + ' days',
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 12, color: 'var(--t3)' }}>
+                <span style={{ color: '#00d68f' }}>✓</span> {item}
               </div>
             ))}
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--t5)' }}>
+              Live platform data (Instagram/LinkedIn reach + impressions) will be included once platform apps are approved.
+            </div>
           </div>
         </div>
       )}
