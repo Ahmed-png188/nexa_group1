@@ -148,7 +148,7 @@ export default function DashboardHome() {
         ].flat().filter(Boolean)
 
         if (learnings.length > 0) {
-          await supabase.from('brand_learnings').insert(learnings) } catch {}
+          try { await supabase.from('brand_learnings').insert(learnings) } catch {}
         }
       }
 
