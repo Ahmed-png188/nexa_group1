@@ -51,7 +51,8 @@
 
   /* Layout */
   --rail-w: 52px;
-  --topbar-h: 58px;
+  --sidebar-w: 220px;
+  --topbar-h: 52px;
   --chat-w: 320px;
   --r: 14px;
 }
@@ -95,6 +96,10 @@ body::after {
 @keyframes breathe {
   0%, 100% { transform: scale(1); opacity: 0.8; }
   50%       { transform: scale(1.04); opacity: 1; }
+}
+@keyframes progress-pulse {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
