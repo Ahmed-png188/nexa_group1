@@ -164,7 +164,7 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
         <div style={{ padding: sidebarCollapsed ? '16px 12px' : '16px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={() => setSidebarCollapsed(c => !c)}>
             <div style={{ width: 28, height: 28, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--line2)' }}>
-              <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAB9KADAAQAAAABAAAB9AAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src="/favicon.png" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             {!sidebarCollapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -381,7 +381,7 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
           <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <div style={{ width: 26, height: 26, borderRadius: 7, overflow: 'hidden', border: '1px solid var(--cline2)', flexShrink: 0 }}>
-                <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAB9KADAAQAAAABAAAB9AAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/favicon.png" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--display)' }}>Nexa AI</div>
@@ -406,7 +406,7 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
               <div key={i} style={{ display: 'flex', gap: 8, flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
                 <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, overflow: 'hidden', background: msg.role === 'assistant' ? 'rgba(0,170,255,0.1)' : 'var(--glass2)', border: `1px solid ${msg.role === 'assistant' ? 'var(--cline2)' : 'var(--line2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {msg.role === 'assistant'
-                    ? <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAB9KADAAQAAAABAAAB9AAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src="/favicon.png" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--t4)' }}>{initial}</span>
                   }
                 </div>
@@ -418,7 +418,7 @@ export default function DashboardShell({ user, workspace, credits: initialCredit
             {chatLoading && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                 <div style={{ width: 22, height: 22, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--cline2)', flexShrink: 0 }}>
-                  <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAB9KADAAQAAAABAAAB9AAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src="/favicon.png" alt="N" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div style={{ padding: '9px 12px', background: 'var(--glass)', border: '1px solid var(--line)', borderRadius: '2px 10px 10px 10px', display: 'flex', gap: 4, alignItems: 'center' }}>
                   {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--t4)', animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}
