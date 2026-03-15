@@ -1,587 +1,366 @@
 'use client'
-
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format, parseISO } from 'date-fns'
+import { formatDistanceToNow, parseISO } from 'date-fns'
 
-type View = 'sequences' | 'new' | 'detail' | 'webhooks'
+type View = 'sequences'|'new'|'detail'|'webhooks'
 
-const lbl: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t4)', marginBottom: 7 }
-const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: 'var(--sans)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, color: 'var(--t1)', outline: 'none', transition: 'border-color .15s' }
-const inputStyle = inp
-
-const IconZap = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-const IconPlus = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-const IconMail = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-const IconPlay = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-const IconPause = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-const IconBack = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-const IconSend = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="22 2 15 22 11 13 2 9"/></svg>
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'var(--t4)',
-  active: 'var(--cyan)',
-  paused: 'var(--amber)',
-  completed: '#00d68f',
+const STATUS_COLORS: Record<string,string> = {
+  active:'#34D399', paused:'#FFB547', draft:'rgba(255,255,255,0.3)',
+  completed:'#4D9FFF', failed:'#FF5757',
 }
+
+const Ic = {
+  bolt:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  plus:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  play:   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  pause:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
+  back:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  mail:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  webhook:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,
+  trash:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
+  copy:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+  check:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  close:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+}
+
+const SEQUENCE_TEMPLATES = [
+  { id:'welcome',  name:'Welcome Sequence',    desc:'Onboard new subscribers with 5 brand-voice emails over 7 days', steps:5, icon:Ic.mail,    color:'#4D9FFF' },
+  { id:'nurture',  name:'Nurture Sequence',    desc:'Keep leads warm with weekly value-first content for 30 days',  steps:8, icon:Ic.bolt,    color:'#A78BFA' },
+  { id:'launch',   name:'Product Launch',      desc:'Build anticipation and drive conversions across 7 touchpoints', steps:7, icon:Ic.play,    color:'#FF7A40' },
+  { id:'reengag',  name:'Re-engagement',       desc:'Win back cold leads with a 3-email pattern interrupt sequence', steps:3, icon:Ic.webhook, color:'#34D399' },
+]
+
+const TRIGGER_OPTIONS = [
+  'New subscriber joins list','Lead magnet downloaded','Form submission','Purchase completed',
+  'Trial started','Webinar registered','Manual trigger','Webhook received',
+]
 
 export default function AutomatePage() {
   const supabase = createClient()
-  const [workspace, setWorkspace] = useState<any>(null)
-  const [credits, setCredits] = useState(0)
-  const [view, setView] = useState<View>('sequences')
-  const [sequences, setSequences] = useState<any[]>([])
-  const [selectedSeq, setSelectedSeq] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [sending, setSending] = useState(false)
+  const [ws,         setWs]        = useState<any>(null)
+  const [view,       setView]      = useState<View>('sequences')
+  const [sequences,  setSequences] = useState<any[]>([])
+  const [webhooks,   setWebhooks]  = useState<any[]>([])
+  const [runs,       setRuns]      = useState<any[]>([])
+  const [loading,    setLoading]   = useState(true)
+  const [selSeq,     setSelSeq]    = useState<any>(null)
+  const [toast,      setToast]     = useState<{msg:string;type:'success'|'error'}|null>(null)
+  const [copiedId,   setCopiedId]  = useState<string|null>(null)
 
-  // New sequence form
-  const [seqName, setSeqName] = useState('')
-  const [seqGoal, setSeqGoal] = useState('')
-  const [seqAudience, setSeqAudience] = useState('')
-  const [seqEmails, setSeqEmails] = useState(5)
+  // new sequence form
+  const [nName,     setNName]     = useState('')
+  const [nTrigger,  setNTrigger]  = useState(TRIGGER_OPTIONS[0])
+  const [nTemplate, setNTemplate] = useState<string|null>(null)
+  const [nDesc,     setNDesc]     = useState('')
+  const [creating,  setCreating]  = useState(false)
 
-  // Webhooks state
-  const [webhooks, setWebhooks] = useState<any[]>([])
-  const [showNewWebhook, setShowNewWebhook] = useState(false)
-  const [webhookName, setWebhookName] = useState('')
-  const [webhookTrigger, setWebhookTrigger] = useState('new_lead')
-  const [webhookAction, setWebhookAction] = useState('generate_post')
-  const [webhookPlatform, setWebhookPlatform] = useState('instagram')
-  const [savingWebhook, setSavingWebhook] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  function showToast(msg:string, type:'success'|'error'='success') { setToast({msg,type}); setTimeout(()=>setToast(null),4000) }
 
-  // Send modal
-  const [showSendModal, setShowSendModal] = useState(false)
-  const [sendStep, setSendStep] = useState(1)
-  const [contactsText, setContactsText] = useState('')
-  const [sendResult, setSendResult] = useState<any>(null)
+  useEffect(() => { load() }, [])
 
-  useEffect(() => { loadData() }, [])
-
-  async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
+  async function load() {
+    const { data:{ user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id', user.id).limit(1).single()
-    const ws = (m as any)?.workspaces
-    setWorkspace(ws)
-    const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', ws?.id).single()
-    setCredits(cr?.balance ?? 0)
-
-    // Load webhooks
-    try {
-      const whRes = await fetch(`/api/webhooks?workspace_id=${ws?.id}`)
-      if (whRes.ok) { const whData = await whRes.json(); setWebhooks(whData.webhooks ?? []) }
-    } catch {}
-
-    const res = await fetch(`/api/create-sequence?workspace_id=${ws?.id}`)
-    if (res.ok) {
-      const data = await res.json()
-      setSequences(data.sequences ?? [])
-    }
-    setLoading(false)
+    const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
+    const w = (m as any)?.workspaces; setWs(w)
+    const [{ data:seq }, { data:wh }, { data:r }] = await Promise.all([
+      supabase.from('sequences').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}),
+      supabase.from('webhooks').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}),
+      supabase.from('agent_runs').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}).limit(20),
+    ])
+    setSequences(seq??[]); setWebhooks(wh??[]); setRuns(r??[]); setLoading(false)
   }
 
   async function createSequence() {
-    if (!seqName.trim() || !seqGoal.trim()) return
+    if (!nName.trim()||creating) return
     setCreating(true)
     try {
-      const res = await fetch('/api/create-sequence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspace.id,
-          name: seqName,
-          goal: seqGoal,
-          audience: seqAudience,
-          num_emails: seqEmails,
-          generate_with_ai: true,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setSelectedSeq(data.sequence)
-        await loadData()
-        setView('detail')
-        setSeqName(''); setSeqGoal(''); setSeqAudience('')
-      }
-    } catch (err) { console.error(err) }
+      const tmpl = SEQUENCE_TEMPLATES.find(t=>t.id===nTemplate)
+      const r = await fetch('/api/create-sequence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,name:nName,trigger:nTrigger,description:nDesc||tmpl?.desc||'',template:nTemplate,steps:tmpl?.steps||3})})
+      const d = await r.json()
+      if (d.success) { showToast('Sequence created'); setView('sequences'); setNName(''); setNTemplate(null); load() }
+      else showToast(d.error||'Failed','error')
+    } catch { showToast('Error','error') }
     setCreating(false)
   }
 
-  async function sendSequenceStep() {
-    if (!contactsText.trim() || !selectedSeq) return
-    setSending(true)
-
-    // Parse contacts from textarea (one per line, format: email or "Name <email>")
-    const lines = contactsText.trim().split('\n').filter(l => l.trim())
-    const contacts = lines.map(line => {
-      const match = line.match(/^(.+?)\s*<(.+?)>$/)
-      if (match) return { name: match[1].trim(), email: match[2].trim() }
-      return { name: '', email: line.trim() }
-    }).filter(c => c.email.includes('@'))
-
-    if (contacts.length === 0) { setSending(false); return }
-
-    const step = selectedSeq.steps?.[sendStep - 1]
-    if (!step) { setSending(false); return }
-
-    try {
-      const res = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspace.id,
-          sequence_id: selectedSeq.id,
-          to_emails: contacts,
-          step_number: sendStep,
-          subject: step.subject,
-          body: step.body,
-          from_name: workspace.brand_name ?? workspace.name,
-        }),
-      })
-      const data = await res.json()
-      setSendResult(data)
-      if (data.success) {
-        setCredits(prev => prev - (data.credits_used ?? 0))
-        await loadData()
-      }
-    } catch (err) { console.error(err) }
-    setSending(false)
+  async function toggleStatus(seq:any) {
+    const next = seq.status==='active'?'paused':'active'
+    await supabase.from('sequences').update({status:next}).eq('id',seq.id)
+    showToast(`Sequence ${next}`); load()
   }
 
-  async function updateSequenceStatus(seqId: string, status: string) {
-    await supabase.from('email_sequences').update({ status }).eq('id', seqId)
-    await loadData()
-    if (selectedSeq?.id === seqId) {
-      setSelectedSeq((prev: any) => prev ? { ...prev, status } : prev)
-    }
+  async function deleteSequence(id:string) {
+    await supabase.from('sequences').delete().eq('id',id)
+    showToast('Deleted'); load(); if(selSeq?.id===id)setView('sequences')
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-      <div style={{ fontSize: 13, color: 'var(--t4)' }}>Loading automations...</div>
-    </div>
-  )
+  async function copyWebhookUrl(url:string, id:string) {
+    await navigator.clipboard.writeText(url)
+    setCopiedId(id); setTimeout(()=>setCopiedId(null),2000)
+  }
+
+  if (loading) return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.3)',fontSize:13 }}>Loading…</div>
 
   return (
-    <div style={{ padding: '28px', maxWidth: 900 }}>
+    <>
+      <style>{`
+        @keyframes autoUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes autoSpin{to{transform:rotate(360deg)}}
+        .seq-card:hover{border-color:rgba(255,255,255,0.13)!important;background:rgba(255,255,255,0.05)!important;}
+        .tmpl-card:hover{border-color:rgba(255,255,255,0.14)!important;}
+        .run-row:hover{background:rgba(255,255,255,0.04)!important;}
+      `}</style>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          {view !== 'sequences' && (
-            <button onClick={() => setView('sequences')} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 8, fontFamily: 'var(--sans)', padding: 0 }}>
-              <IconBack /> Back to sequences
-            </button>
-          )}
-          <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 3 }}>
-            {view === 'new' ? 'New sequence' : view === 'detail' ? selectedSeq?.name : 'Automate'}
-          </h1>
-          <div style={{ fontSize: 12, color: 'var(--t4)', display: 'flex', gap: 12 }}>
-            {view === 'sequences' && <span>{sequences.length} sequence{sequences.length !== 1 ? 's' : ''}</span>}
-            <span style={{ color: 'var(--cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--cyan)', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-              {credits} credits
-            </span>
+      <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>
+
+        {/* Header */}
+        <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24,animation:'autoUp .4s ease both' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+            {(view==='new'||view==='detail'||view==='webhooks') && (
+              <button onClick={()=>setView('sequences')}
+                style={{ width:32,height:32,borderRadius:8,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.09)',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.5)',cursor:'pointer',marginRight:4 }}>
+                {Ic.back}
+              </button>
+            )}
+            <div>
+              <h1 style={{ fontFamily:'var(--display)',fontSize:22,fontWeight:800,letterSpacing:'-0.04em',color:'rgba(255,255,255,0.92)',lineHeight:1,marginBottom:4 }}>
+                {view==='new'?'New Sequence':view==='webhooks'?'Webhooks':view==='detail'&&selSeq?selSeq.name:'Automate'}
+              </h1>
+              <p style={{ fontSize:12,color:'rgba(255,255,255,0.3)' }}>
+                {view==='sequences'?`${sequences.length} sequence${sequences.length!==1?'s':''} · ${runs.length} total runs`:''}
+                {view==='new'?'Build an automated email or content sequence':''}
+                {view==='webhooks'?'Trigger Nexa from external tools':''}
+              </p>
+            </div>
           </div>
+          {view==='sequences' && (
+            <div style={{ display:'flex',gap:6 }}>
+              <button onClick={()=>setView('webhooks')}
+                style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',fontSize:12,fontWeight:600,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9,cursor:'pointer',fontFamily:'var(--sans)' }}>
+                <span style={{ display:'flex' }}>{Ic.webhook}</span>Webhooks
+              </button>
+              <button onClick={()=>setView('new')}
+                style={{ display:'flex',alignItems:'center',gap:7,padding:'8px 16px',fontSize:13,fontWeight:700,background:'#4D9FFF',color:'#000',border:'none',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',boxShadow:'0 4px 16px rgba(77,159,255,0.3)',letterSpacing:'-0.01em' }}>
+                <span style={{ display:'flex' }}>{Ic.plus}</span>New sequence
+              </button>
+            </div>
+          )}
         </div>
-        {view === 'sequences' && (
-          <button onClick={() => setView('new')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-            <IconPlus /> New sequence
-          </button>
-        )}
-      </div>
 
-      {/* Tab switcher */}
-      {(view === 'sequences' || view === 'webhooks') && (
-        <div style={{ display: 'flex', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 10, padding: 3, gap: 2, marginBottom: 20, width: 'fit-content' }}>
-          {[
-            { id: 'sequences', label: '📧 Email Sequences' },
-            { id: 'webhooks', label: '⚡ Webhooks' },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setView(tab.id as any)}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: view === tab.id ? 'var(--glass2)' : 'transparent', color: view === tab.id ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
+        {/* ── SEQUENCES LIST ── */}
+        {view==='sequences' && (
+          <div style={{ animation:'autoUp .35s ease both' }}>
 
-      {/* ── SEQUENCES LIST ── */}
-      {view === 'sequences' && (
-        <div>
-          {sequences.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sequences.map(seq => (
-                <div key={seq.id} style={{ padding: '18px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, cursor: 'pointer', transition: 'border-color .15s' }}
-                  onClick={() => { setSelectedSeq(seq); setView('detail') }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--line2)')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--cglow2)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
-                        <IconMail />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)' }}>{seq.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--t4)' }}>{seq.steps?.length ?? 0} emails · {seq.total_contacts ?? 0} contacts</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${STATUS_COLORS[seq.status]}18`, color: STATUS_COLORS[seq.status], border: `1px solid ${STATUS_COLORS[seq.status]}33`, textTransform: 'capitalize' as const }}>
-                        {seq.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                    {[
-                      { label: 'Sent',      value: seq.emails_sent ?? 0 },
-                      { label: 'Opened',    value: seq.emails_opened ?? 0 },
-                      { label: 'Clicked',   value: seq.emails_clicked ?? 0 },
-                      { label: 'Open rate', value: seq.emails_sent > 0 ? `${Math.round((seq.emails_opened / seq.emails_sent) * 100)}%` : '—' },
-                    ].map(stat => (
-                      <div key={stat.label} style={{ padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 7 }}>
-                        <div style={{ fontFamily: 'var(--display)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--t1)', lineHeight: 1 }}>{stat.value}</div>
-                        <div style={{ fontSize: 10, color: 'var(--t5)', marginTop: 3 }}>{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
+            {/* Stats row */}
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:8,marginBottom:24 }}>
+              {[
+                { label:'Active',    value:sequences.filter(s=>s.status==='active').length,    color:'#34D399' },
+                { label:'Paused',    value:sequences.filter(s=>s.status==='paused').length,    color:'#FFB547' },
+                { label:'Total runs',value:runs.length,                                        color:'#4D9FFF' },
+                { label:'Completed', value:runs.filter(r=>r.status==='completed').length,      color:'#A78BFA' },
+              ].map(s=>(
+                <div key={s.label} style={{ padding:'12px 16px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12 }}>
+                  <div style={{ fontFamily:'var(--display)',fontSize:22,fontWeight:800,letterSpacing:'-0.04em',color:s.color,lineHeight:1 }}>{s.value}</div>
+                  <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:4,fontWeight:500 }}>{s.label}</div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '60px 40px', background: 'var(--glass)', border: '1px solid var(--line)', borderRadius: 14 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--cglow2)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--cyan)' }}>
-                <IconZap />
-              </div>
-              <h2 style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 10, color: 'var(--t1)' }}>No sequences yet</h2>
-              <p style={{ fontSize: 13, color: 'var(--t4)', maxWidth: 360, margin: '0 auto 24px', lineHeight: 1.7 }}>
-                Create an email sequence and Nexa AI will write all the emails for you — welcome flows, nurture sequences, outreach campaigns.
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--cyan)', fontWeight: 600, marginBottom: 20 }}>15 credits per 100 sends · Writing is free</p>
-              <button onClick={() => setView('new')} style={{ padding: '11px 24px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                Create your first sequence →
-              </button>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ── NEW SEQUENCE FORM ── */}
-      {view === 'new' && (
-        <div style={{ maxWidth: 560 }}>
-          <div style={{ padding: '24px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={lbl}>Sequence name</label>
-                <input value={seqName} onChange={e => setSeqName(e.target.value)} placeholder="e.g. Welcome sequence, Cold outreach, Product launch" style={inp}
-                  onFocus={e => (e.target.style.borderColor = 'var(--cline2)')} onBlur={e => (e.target.style.borderColor = 'var(--line2)')}/>
+            {/* Sequences */}
+            {sequences.length>0 ? (
+              <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+                {sequences.map(seq=>(
+                  <div key={seq.id} className="seq-card"
+                    style={{ display:'flex',alignItems:'center',gap:14,padding:'14px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:13,transition:'all .15s',cursor:'pointer' }}
+                    onClick={()=>{setSelSeq(seq);setView('detail')}}>
+                    <div style={{ width:38,height:38,borderRadius:10,background:`${STATUS_COLORS[seq.status]||'rgba(255,255,255,0.1)'}14`,border:`1px solid ${STATUS_COLORS[seq.status]||'rgba(255,255,255,0.1)'}28`,display:'flex',alignItems:'center',justifyContent:'center',color:STATUS_COLORS[seq.status]||'rgba(255,255,255,0.4)',flexShrink:0 }}>
+                      {Ic.mail}
+                    </div>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:14,fontWeight:700,color:'rgba(255,255,255,0.88)',marginBottom:3,letterSpacing:'-0.02em' }}>{seq.name}</div>
+                      <div style={{ display:'flex',gap:10,alignItems:'center' }}>
+                        <span style={{ fontSize:10,fontWeight:700,padding:'1px 8px',borderRadius:100,background:`${STATUS_COLORS[seq.status]||'rgba(255,255,255,0.1)'}14`,border:`1px solid ${STATUS_COLORS[seq.status]||'rgba(255,255,255,0.1)'}28`,color:STATUS_COLORS[seq.status]||'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'.04em' }}>{seq.status}</span>
+                        <span style={{ fontSize:11,color:'rgba(255,255,255,0.3)' }}>{seq.trigger||'Manual trigger'}</span>
+                        <span style={{ fontSize:11,color:'rgba(255,255,255,0.28)' }}>{seq.steps_count||0} steps</span>
+                      </div>
+                    </div>
+                    <div style={{ display:'flex',gap:5 }} onClick={e=>e.stopPropagation()}>
+                      <button onClick={()=>toggleStatus(seq)}
+                        style={{ display:'flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:7,fontSize:11,fontWeight:600,background:seq.status==='active'?'rgba(255,181,71,0.08)':'rgba(52,211,153,0.08)',border:`1px solid ${seq.status==='active'?'rgba(255,181,71,0.2)':'rgba(52,211,153,0.2)'}`,color:seq.status==='active'?'#FFB547':'#34D399',cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s' }}>
+                        <span style={{ display:'flex' }}>{seq.status==='active'?Ic.pause:Ic.play}</span>
+                        {seq.status==='active'?'Pause':'Resume'}
+                      </button>
+                      <button onClick={()=>deleteSequence(seq.id)}
+                        style={{ width:30,height:30,borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid rgba(255,255,255,0.07)',color:'rgba(255,255,255,0.28)',cursor:'pointer',transition:'all .15s' }}
+                        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,87,87,0.3)';(e.currentTarget as HTMLElement).style.color='#FF5757'}}
+                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.28)'}}>
+                        {Ic.trash}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label style={lbl}>Goal of this sequence</label>
-                <input value={seqGoal} onChange={e => setSeqGoal(e.target.value)} placeholder="e.g. Convert leads to discovery calls, Onboard new customers, Re-engage cold contacts" style={inp}
-                  onFocus={e => (e.target.style.borderColor = 'var(--cline2)')} onBlur={e => (e.target.style.borderColor = 'var(--line2)')}/>
-              </div>
-              <div>
-                <label style={lbl}>Who is this for? <span style={{ color: 'var(--t5)', fontWeight: 400 }}>(optional)</span></label>
-                <input value={seqAudience} onChange={e => setSeqAudience(e.target.value)} placeholder="e.g. Founders who downloaded our guide, Dubai-based consultants" style={inp}
-                  onFocus={e => (e.target.style.borderColor = 'var(--cline2)')} onBlur={e => (e.target.style.borderColor = 'var(--line2)')}/>
-              </div>
-              <div>
-                <label style={lbl}>Number of emails</label>
-                <div style={{ display: 'flex', gap: 7 }}>
-                  {[3, 5, 7, 10].map(n => (
-                    <button key={n} onClick={() => setSeqEmails(n)} style={{ flex: 1, padding: '9px', borderRadius: 9, background: seqEmails === n ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${seqEmails === n ? 'var(--cline2)' : 'var(--line2)'}`, color: seqEmails === n ? 'var(--cyan)' : 'var(--t4)', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)' }}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 9, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6 }}>
-                <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>Nexa AI</span> will write all {seqEmails} emails in your brand voice — subject lines, bodies, and CTAs. Writing is free. Sending costs 15 credits per 100 contacts.
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setView('sequences')} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 600, background: 'var(--glass)', color: 'var(--t3)', border: '1px solid var(--line2)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                  Cancel
-                </button>
-                <button onClick={createSequence} disabled={!seqName.trim() || !seqGoal.trim() || creating} style={{ flex: 2, padding: '11px', fontSize: 13, fontWeight: 700, background: seqName.trim() && seqGoal.trim() ? 'var(--cyan)' : 'var(--glass)', color: seqName.trim() && seqGoal.trim() ? '#000' : 'var(--t5)', border: 'none', borderRadius: 9, cursor: seqName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'var(--sans)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  {creating ? (
-                    <>
-                      <div style={{ width: 13, height: 13, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                      Nexa is writing your emails...
-                    </>
-                  ) : `Generate ${seqEmails} emails with AI →`}
+            ) : (
+              <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'40vh',textAlign:'center',padding:'40px 20px' }}>
+                <div style={{ width:56,height:56,borderRadius:14,background:'rgba(77,159,255,0.07)',border:'1px solid rgba(77,159,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#4D9FFF',marginBottom:18 }}>{Ic.bolt}</div>
+                <h3 style={{ fontFamily:'var(--display)',fontSize:18,fontWeight:800,letterSpacing:'-0.03em',marginBottom:8,color:'rgba(255,255,255,0.85)' }}>No sequences yet</h3>
+                <p style={{ fontSize:13,color:'rgba(255,255,255,0.35)',lineHeight:1.7,maxWidth:380,marginBottom:22 }}>Automate your email sequences, content publishing, and audience nurturing — all written in your brand voice.</p>
+                <button onClick={()=>setView('new')}
+                  style={{ display:'flex',alignItems:'center',gap:8,padding:'12px 24px',fontSize:13,fontWeight:700,background:'#4D9FFF',color:'#000',border:'none',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',boxShadow:'0 4px 16px rgba(77,159,255,0.3)',letterSpacing:'-0.01em' }}>
+                  <span style={{ display:'flex' }}>{Ic.plus}</span>Build first sequence
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* ── SEQUENCE DETAIL ── */}
-      {view === 'detail' && selectedSeq && (
-        <div>
-          {/* Status bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 16px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${STATUS_COLORS[selectedSeq.status]}18`, color: STATUS_COLORS[selectedSeq.status], border: `1px solid ${STATUS_COLORS[selectedSeq.status]}33`, textTransform: 'capitalize' as const }}>
-              {selectedSeq.status}
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--t4)' }}>{selectedSeq.steps?.length ?? 0} emails · Created {selectedSeq.created_at ? format(parseISO(selectedSeq.created_at), 'MMM d') : 'recently'}</span>
-            <div style={{ flex: 1 }} />
-            <button onClick={() => setShowSendModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-              <IconSend /> Send to contacts
-            </button>
-            {selectedSeq.status === 'active' ? (
-              <button onClick={() => updateSequenceStatus(selectedSeq.id, 'paused')} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 12, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 8, color: 'var(--amber)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                <IconPause /> Pause
-              </button>
-            ) : selectedSeq.status !== 'completed' && (
-              <button onClick={() => updateSequenceStatus(selectedSeq.id, 'active')} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 12, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 8, color: 'var(--cyan)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                <IconPlay /> Activate
-              </button>
+            {/* Recent runs */}
+            {runs.length>0 && (
+              <div style={{ marginTop:28 }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:12 }}>Recent runs</div>
+                {runs.slice(0,8).map(run=>(
+                  <div key={run.id} className="run-row"
+                    style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,transition:'background .15s',marginBottom:4 }}>
+                    <div style={{ width:7,height:7,borderRadius:'50%',background:STATUS_COLORS[run.status]||'rgba(255,255,255,0.3)',flexShrink:0 }}/>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:12,color:'rgba(255,255,255,0.65)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{run.agent_type||run.sequence_name||'Automation run'}</div>
+                      <div style={{ fontSize:10,color:'rgba(255,255,255,0.28)',marginTop:2 }}>{run.created_at?formatDistanceToNow(parseISO(run.created_at))+ ' ago':''}</div>
+                    </div>
+                    <span style={{ fontSize:10,fontWeight:600,color:STATUS_COLORS[run.status]||'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'.04em' }}>{run.status}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
+        )}
 
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
-            {[
-              { label: 'Emails sent',  value: selectedSeq.emails_sent ?? 0,   color: 'var(--t1)' },
-              { label: 'Opened',       value: selectedSeq.emails_opened ?? 0,  color: 'var(--cyan)' },
-              { label: 'Clicked',      value: selectedSeq.emails_clicked ?? 0, color: 'var(--t1)' },
-              { label: 'Open rate',    value: selectedSeq.emails_sent > 0 ? `${Math.round(((selectedSeq.emails_opened ?? 0) / selectedSeq.emails_sent) * 100)}%` : '—', color: '#00d68f' },
-            ].map(stat => (
-              <div key={stat.label} style={{ padding: '14px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 10 }}>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: 11, color: 'var(--t4)', marginTop: 4 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+        {/* ── NEW SEQUENCE ── */}
+        {view==='new' && (
+          <div style={{ maxWidth:620,animation:'autoUp .35s ease both' }}>
 
-          {/* Email steps */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t4)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 12 }}>Email sequence</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(selectedSeq.steps ?? []).map((step: any, i: number) => (
-              <div key={i} style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--cglow2)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--cyan)', flexShrink: 0 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 2 }}>{step.subject}</div>
-                    <div style={{ fontSize: 11, color: 'var(--t4)', display: 'flex', gap: 10 }}>
-                      <span>Day {step.delay_days}</span>
-                      {step.goal && <span>· {step.goal}</span>}
+            {/* Templates */}
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:12 }}>Start from a template</div>
+              <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:8 }}>
+                {SEQUENCE_TEMPLATES.map(tmpl=>(
+                  <div key={tmpl.id} className="tmpl-card"
+                    onClick={()=>{setNTemplate(nTemplate===tmpl.id?null:tmpl.id);if(!nName)setNName(tmpl.name)}}
+                    style={{ padding:'14px 16px',background:nTemplate===tmpl.id?`${tmpl.color}09`:'rgba(255,255,255,0.03)',border:`1px solid ${nTemplate===tmpl.id?`${tmpl.color}30`:'rgba(255,255,255,0.07)'}`,borderRadius:12,cursor:'pointer',transition:'all .15s',boxShadow:nTemplate===tmpl.id?`0 0 20px ${tmpl.color}12`:'none' }}>
+                    <div style={{ display:'flex',alignItems:'center',gap:9,marginBottom:8 }}>
+                      <div style={{ width:28,height:28,borderRadius:8,background:`${tmpl.color}14`,border:`1px solid ${tmpl.color}28`,display:'flex',alignItems:'center',justifyContent:'center',color:tmpl.color,flexShrink:0 }}>{tmpl.icon}</div>
+                      <span style={{ fontSize:13,fontWeight:700,color:nTemplate===tmpl.id?tmpl.color:'rgba(255,255,255,0.82)',letterSpacing:'-0.02em' }}>{tmpl.name}</span>
                     </div>
+                    <div style={{ fontSize:11.5,color:'rgba(255,255,255,0.38)',lineHeight:1.55,marginBottom:8 }}>{tmpl.desc}</div>
+                    <div style={{ fontSize:10,fontWeight:600,color:tmpl.color,opacity:0.7 }}>{tmpl.steps} steps</div>
                   </div>
-                  <button onClick={() => { setSendStep(i + 1); setShowSendModal(true) }} style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 7, color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <IconSend /> Send this
-                  </button>
-                </div>
-                <div style={{ padding: '0 16px 14px', fontSize: 12.5, color: 'var(--t3)', lineHeight: 1.65, borderTop: '1px solid var(--line)', paddingTop: 12, whiteSpace: 'pre-line' as const }}>
-                  {step.body}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Send Modal ── */}
-      {showSendModal && selectedSeq && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowSendModal(false); setSendResult(null); setContactsText('') } }}
-        >
-          <div style={{ width: '100%', maxWidth: 500, background: '#0D0D14', border: '1px solid var(--line2)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 40px 120px rgba(0,0,0,0.7)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ fontFamily: 'var(--display)', fontSize: 15, fontWeight: 700 }}>Send email · Step {sendStep}</div>
-              <button onClick={() => { setShowSendModal(false); setSendResult(null); setContactsText('') }} style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--t4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--sans)' }}>✕</button>
-            </div>
-            <div style={{ padding: 20 }}>
-              {sendResult ? (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,214,143,0.1)', border: '1px solid rgba(0,214,143,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 20 }}>✓</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 6 }}>{sendResult.sent} emails sent</div>
-                  {sendResult.failed > 0 && <div style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 6 }}>{sendResult.failed} failed</div>}
-                  <div style={{ fontSize: 12, color: 'var(--t4)' }}>{sendResult.credits_used} credits used</div>
-                  <button onClick={() => { setShowSendModal(false); setSendResult(null); setContactsText('') }} style={{ marginTop: 20, padding: '10px 24px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Done</button>
-                </div>
-              ) : (
-                <>
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 8, marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t5)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Sending</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>{selectedSeq.steps?.[sendStep - 1]?.subject}</div>
-                    </div>
-                    <label style={lbl}>
-                      Recipients <span style={{ color: 'var(--t5)', fontWeight: 400 }}>(one per line — email or "Name {'<email>'}") </span>
-                    </label>
-                    <textarea
-                      value={contactsText}
-                      onChange={e => setContactsText(e.target.value)}
-                      placeholder={`ahmed@brand.com\nSara Al-Rashidi <sara@brand.com>\nMarcus Kim <marcus@elevate.com>`}
-                      rows={6}
-                      style={{ ...inp, resize: 'vertical' as const, lineHeight: 1.6, fontFamily: 'monospace', fontSize: 12 }}
-                      onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                      onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--t5)', marginTop: 5 }}>
-                      {contactsText.trim() ? `${contactsText.trim().split('\n').filter(l => l.includes('@')).length} valid contacts · ${Math.ceil(contactsText.trim().split('\n').filter(l => l.includes('@')).length / 100) * 15} credits` : 'Paste your contact list above'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setShowSendModal(false); setContactsText('') }} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 600, background: 'var(--glass)', color: 'var(--t3)', border: '1px solid var(--line2)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Cancel</button>
-                    <button onClick={sendSequenceStep} disabled={!contactsText.trim() || sending} style={{ flex: 2, padding: '11px', fontSize: 13, fontWeight: 700, background: contactsText.trim() ? 'var(--cyan)' : 'var(--glass)', color: contactsText.trim() ? '#000' : 'var(--t5)', border: 'none', borderRadius: 9, cursor: contactsText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'var(--sans)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                      {sending ? <><div style={{ width: 13, height: 13, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Sending...</> : <><IconSend /> Send emails</>}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── WEBHOOKS VIEW ── */}
-      {view === 'webhooks' && (
-        <div>
-          <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 12, color: 'var(--t3)', lineHeight: 1.7 }}>
-            <strong style={{ color: 'var(--cyan)' }}>Connect Nexa to Make, Zapier, or any automation tool.</strong> When something happens in your other tools (new lead, form submission, purchase), Nexa automatically generates content, adds contacts to sequences, or sends notifications.
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, color: 'var(--t4)' }}>{webhooks.length} webhook{webhooks.length !== 1 ? 's' : ''} configured</div>
-            <button onClick={() => setShowNewWebhook(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-              + New webhook
-            </button>
-          </div>
-
-          {/* Webhook list */}
-          {webhooks.length > 0 ? webhooks.map((wh: any) => (
-            <div key={wh.id} style={{ marginBottom: 10, padding: '16px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: wh.is_active ? '#00d68f' : 'var(--t5)' }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>{wh.name}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: 'rgba(0,170,255,0.08)', border: '1px solid var(--cline2)', color: 'var(--cyan)' }}>{wh.trigger}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: 'var(--t5)' }}>{wh.trigger_count || 0} triggers</span>
-                  <button onClick={async () => {
-                    await fetch('/api/webhooks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: wh.id }) })
-                    setWebhooks(prev => prev.filter((w: any) => w.id !== wh.id))
-                  }} style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, background: 'transparent', border: '1px solid var(--line2)', color: 'var(--t5)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Delete</button>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                <span style={{ fontSize: 10, color: 'var(--t5)', flexShrink: 0 }}>Webhook URL:</span>
-                <span style={{ fontSize: 10, color: 'var(--t3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{wh.webhook_url}</span>
-                <button onClick={() => { navigator.clipboard.writeText(wh.webhook_url); setCopiedId(wh.id); setTimeout(() => setCopiedId(null), 2000) }}
-                  style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, background: copiedId === wh.id ? 'rgba(0,214,143,0.1)' : 'var(--glass2)', border: `1px solid ${copiedId === wh.id ? 'rgba(0,214,143,0.3)' : 'var(--line2)'}`, color: copiedId === wh.id ? '#00d68f' : 'var(--cyan)', cursor: 'pointer', fontFamily: 'var(--sans)', flexShrink: 0 }}>
-                  {copiedId === wh.id ? '✓ Copied' : 'Copy'}
-                </button>
+                ))}
               </div>
             </div>
-          )) : (
-            <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--glass)', border: '1px solid var(--line)', borderRadius: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t2)', marginBottom: 6 }}>No webhooks yet</div>
-              <div style={{ fontSize: 13, color: 'var(--t4)', lineHeight: 1.6, marginBottom: 16 }}>Connect Nexa to Make or Zapier to automate content creation when things happen in your other tools.</div>
-              <button onClick={() => setShowNewWebhook(true)} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Create your first webhook →</button>
+
+            {/* Form */}
+            <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:8 }}>Sequence name</div>
+                <input value={nName} onChange={e=>setNName(e.target.value)} placeholder="Welcome New Subscribers"
+                  style={{ width:'100%',padding:'11px 13px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,color:'rgba(255,255,255,0.88)',fontSize:13,fontFamily:'var(--sans)',outline:'none',transition:'border-color .15s' }}
+                  onFocus={e=>e.target.style.borderColor='rgba(77,159,255,0.35)'}
+                  onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}/>
+              </div>
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:8 }}>Trigger</div>
+                <select value={nTrigger} onChange={e=>setNTrigger(e.target.value)}
+                  style={{ width:'100%',padding:'11px 13px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,color:'rgba(255,255,255,0.8)',fontSize:13,fontFamily:'var(--sans)',outline:'none',cursor:'pointer' }}>
+                  {TRIGGER_OPTIONS.map(t=><option key={t} value={t} style={{ background:'#0E0E16' }}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:8 }}>Description <span style={{ fontWeight:400,color:'rgba(255,255,255,0.2)' }}>(optional)</span></div>
+                <textarea value={nDesc} onChange={e=>setNDesc(e.target.value)} rows={3} placeholder="What is this sequence for?"
+                  style={{ width:'100%',padding:'11px 13px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,color:'rgba(255,255,255,0.8)',fontSize:13,fontFamily:'var(--sans)',outline:'none',resize:'vertical',transition:'border-color .15s' }}
+                  onFocus={e=>e.target.style.borderColor='rgba(77,159,255,0.35)'}
+                  onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}/>
+              </div>
+              <button onClick={createSequence} disabled={!nName.trim()||creating}
+                style={{ padding:'13px',fontSize:14,fontWeight:700,fontFamily:'var(--display)',letterSpacing:'-0.02em',background:nName.trim()?'#4D9FFF':'rgba(255,255,255,0.04)',color:nName.trim()?'#000':'rgba(255,255,255,0.2)',border:'none',borderRadius:12,cursor:nName.trim()?'pointer':'not-allowed',display:'flex',alignItems:'center',justifyContent:'center',gap:9,transition:'all .2s',boxShadow:nName.trim()?'0 4px 20px rgba(77,159,255,0.35)':'none' }}>
+                {creating?<><div style={{ width:15,height:15,border:'2px solid rgba(0,0,0,0.25)',borderTopColor:'#000',borderRadius:'50%',animation:'autoSpin .8s linear infinite' }}/>Creating…</>:<><span style={{ display:'flex' }}>{Ic.bolt}</span>Create sequence</>}
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* New webhook modal */}
-          {showNewWebhook && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--line2)', borderRadius: 16, padding: 28, width: 480, maxWidth: '90vw' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--display)', marginBottom: 20 }}>New Webhook</div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Webhook name</label>
-                  <input value={webhookName} onChange={e => setWebhookName(e.target.value)} placeholder="e.g. New lead from Typeform" style={inputStyle} />
+        {/* ── DETAIL VIEW ── */}
+        {view==='detail' && selSeq && (
+          <div style={{ animation:'autoUp .35s ease both' }}>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:8,marginBottom:22 }}>
+              {[
+                { label:'Status',    value:selSeq.status||'draft', color:STATUS_COLORS[selSeq.status]||'rgba(255,255,255,0.4)' },
+                { label:'Trigger',   value:selSeq.trigger||'Manual', color:'rgba(255,255,255,0.7)' },
+                { label:'Steps',     value:String(selSeq.steps_count||0), color:'#4D9FFF' },
+                { label:'Sent',      value:String(selSeq.emails_sent||0), color:'#A78BFA' },
+              ].map(s=>(
+                <div key={s.label} style={{ padding:'12px 14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:11 }}>
+                  <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:6 }}>{s.label}</div>
+                  <div style={{ fontSize:13,fontWeight:700,color:s.color,letterSpacing:'-0.02em' }}>{s.value}</div>
                 </div>
+              ))}
+            </div>
+            {selSeq.description && (
+              <div style={{ padding:'14px 16px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:11,marginBottom:18,fontSize:13,color:'rgba(255,255,255,0.55)',lineHeight:1.65 }}>{selSeq.description}</div>
+            )}
+            <div style={{ display:'flex',gap:8 }}>
+              <button onClick={()=>toggleStatus(selSeq)}
+                style={{ display:'flex',alignItems:'center',gap:7,padding:'9px 18px',fontSize:13,fontWeight:700,background:selSeq.status==='active'?'rgba(255,181,71,0.1)':'rgba(52,211,153,0.1)',border:`1px solid ${selSeq.status==='active'?'rgba(255,181,71,0.25)':'rgba(52,211,153,0.25)'}`,color:selSeq.status==='active'?'#FFB547':'#34D399',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s' }}>
+                <span style={{ display:'flex' }}>{selSeq.status==='active'?Ic.pause:Ic.play}</span>
+                {selSeq.status==='active'?'Pause sequence':'Resume sequence'}
+              </button>
+              <button onClick={()=>deleteSequence(selSeq.id)}
+                style={{ display:'flex',alignItems:'center',gap:7,padding:'9px 18px',fontSize:13,fontWeight:700,background:'rgba(255,87,87,0.07)',border:'1px solid rgba(255,87,87,0.18)',color:'#FF5757',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)' }}>
+                <span style={{ display:'flex' }}>{Ic.trash}</span>Delete
+              </button>
+            </div>
+          </div>
+        )}
 
-                <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Trigger (what sends to this webhook)</label>
-                  <select value={webhookTrigger} onChange={e => setWebhookTrigger(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                    <option value="new_lead">New lead / form submission</option>
-                    <option value="new_customer">New customer / purchase</option>
-                    <option value="content_request">Content request</option>
-                    <option value="scheduled">Scheduled (cron)</option>
-                    <option value="custom">Custom event</option>
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Action (what Nexa does)</label>
-                  <select value={webhookAction} onChange={e => setWebhookAction(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                    <option value="generate_post">Generate & save a post</option>
-                    <option value="add_to_sequence">Add contact to email sequence</option>
-                    <option value="send_notification">Log notification to activity</option>
-                  </select>
-                </div>
-
-                {webhookAction === 'generate_post' && (
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={lbl}>Platform</label>
-                    <select value={webhookPlatform} onChange={e => setWebhookPlatform(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                      <option value="instagram">Instagram</option>
-                      <option value="linkedin">LinkedIn</option>
-                      <option value="x">X</option>
-                      <option value="tiktok">TikTok</option>
-                    </select>
+        {/* ── WEBHOOKS ── */}
+        {view==='webhooks' && (
+          <div style={{ animation:'autoUp .35s ease both' }}>
+            <div style={{ padding:'16px 18px',background:'rgba(77,159,255,0.06)',border:'1px solid rgba(77,159,255,0.18)',borderRadius:12,marginBottom:20 }}>
+              <div style={{ fontSize:11,fontWeight:700,color:'#4D9FFF',marginBottom:6 }}>How webhooks work</div>
+              <div style={{ fontSize:12.5,color:'rgba(255,255,255,0.55)',lineHeight:1.65 }}>
+                Send a POST request to your webhook URL to trigger content generation, sequences, or any Nexa automation from any external tool — Zapier, Make, your CRM, or custom code.
+              </div>
+            </div>
+            {webhooks.length>0 ? webhooks.map(wh=>(
+              <div key={wh.id} style={{ padding:'14px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,marginBottom:8 }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+                  <div>
+                    <div style={{ fontSize:13,fontWeight:700,color:'rgba(255,255,255,0.85)',marginBottom:3 }}>{wh.name||'Webhook'}</div>
+                    <div style={{ fontSize:10,fontWeight:700,padding:'1px 8px',borderRadius:100,background:wh.is_active?'rgba(52,211,153,0.08)':'rgba(255,255,255,0.04)',border:`1px solid ${wh.is_active?'rgba(52,211,153,0.2)':'rgba(255,255,255,0.08)'}`,color:wh.is_active?'#34D399':'rgba(255,255,255,0.3)',display:'inline-flex',textTransform:'uppercase',letterSpacing:'.04em' }}>{wh.is_active?'Active':'Inactive'}</div>
                   </div>
-                )}
-
-                <div style={{ marginBottom: 20, padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.7 }}>
-                  <strong style={{ color: 'var(--cyan)' }}>How it works:</strong> You'll get a unique URL. Paste it into Make or Zapier as the webhook destination. When triggered, Nexa will automatically {webhookAction === 'generate_post' ? `generate a ${webhookPlatform} post and save it as a draft` : webhookAction === 'add_to_sequence' ? 'add the contact to your email sequence' : 'log the event to your activity feed'}.
                 </div>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setShowNewWebhook(false)} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 600, background: 'var(--glass)', color: 'var(--t3)', border: '1px solid var(--line2)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Cancel</button>
-                  <button
-                    onClick={async () => {
-                      if (!webhookName.trim()) return
-                      setSavingWebhook(true)
-                      try {
-                        const res = await fetch('/api/webhooks', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            workspace_id: workspace?.id,
-                            name: webhookName,
-                            trigger: webhookTrigger,
-                            actions: [{ type: webhookAction, platform: webhookPlatform }],
-                          }),
-                        })
-                        const data = await res.json()
-                        if (data.webhook) {
-                          setWebhooks(prev => [data.webhook, ...prev])
-                          setShowNewWebhook(false)
-                          setWebhookName('')
-                        }
-                      } catch {}
-                      setSavingWebhook(false)
-                    }}
-                    disabled={!webhookName.trim() || savingWebhook}
-                    style={{ flex: 2, padding: '11px', fontSize: 13, fontWeight: 700, background: webhookName.trim() ? 'var(--cyan)' : 'var(--glass)', color: webhookName.trim() ? '#000' : 'var(--t5)', border: 'none', borderRadius: 9, cursor: webhookName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'var(--sans)' }}>
-                    {savingWebhook ? 'Creating...' : 'Create webhook →'}
+                <div style={{ display:'flex',alignItems:'center',gap:8,padding:'9px 12px',background:'rgba(0,0,0,0.3)',borderRadius:8,fontFamily:'monospace',fontSize:11,color:'rgba(255,255,255,0.55)' }}>
+                  <span style={{ flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{wh.url}</span>
+                  <button onClick={()=>copyWebhookUrl(wh.url,wh.id)}
+                    style={{ display:'flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:6,fontSize:11,fontWeight:600,background:copiedId===wh.id?'rgba(52,211,153,0.1)':'rgba(255,255,255,0.06)',border:`1px solid ${copiedId===wh.id?'rgba(52,211,153,0.25)':'rgba(255,255,255,0.1)'}`,color:copiedId===wh.id?'#34D399':'rgba(255,255,255,0.5)',cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s',flexShrink:0 }}>
+                    <span style={{ display:'flex' }}>{copiedId===wh.id?Ic.check:Ic.copy}</span>
+                    {copiedId===wh.id?'Copied':'Copy'}
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            )) : (
+              <div style={{ textAlign:'center',padding:'32px',color:'rgba(255,255,255,0.25)',fontSize:13,border:'1px dashed rgba(255,255,255,0.07)',borderRadius:12 }}>
+                No webhooks configured yet. Connect external tools to trigger Nexa automations.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {toast && (
+        <div style={{ position:'fixed',bottom:24,right:24,zIndex:9999,padding:'12px 18px',borderRadius:11,background:toast.type==='error'?'rgba(255,87,87,0.12)':'rgba(52,211,153,0.1)',border:`1px solid ${toast.type==='error'?'rgba(255,87,87,0.3)':'rgba(52,211,153,0.25)'}`,color:toast.type==='error'?'#FF5757':'#34D399',fontSize:13,fontWeight:600,backdropFilter:'blur(16px)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+          {toast.msg}
         </div>
       )}
-
-    </div>
+    </>
   )
 }

@@ -1,598 +1,340 @@
 'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-type AssetType = 'logo' | 'sample_post' | 'product_photo' | 'brand_doc' | 'other'
-type Tab = 'overview' | 'voice' | 'audience' | 'visual' | 'positioning' | 'assets'
+type Tab = 'overview'|'voice'|'audience'|'visual'|'assets'
 
-// ── Icons (no emojis) ─────────────────────────────────────────────────────
 const Ic = {
-  brain:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9.5 2a2.5 2.5 0 0 1 5 0"/><path d="M9.5 22a2.5 2.5 0 0 0 5 0"/><path d="M14.5 2C17 2 19 4 19 6.5c0 2-1.5 3.5-3.5 4C17 11 19 12.5 19 15c0 2.5-2 4.5-4.5 4.5"/><path d="M9.5 2C7 2 5 4 5 6.5c0 2 1.5 3.5 3.5 4C7 11 5 12.5 5 15c0 2.5 2 4.5 4.5 4.5"/></svg>,
-  voice:    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
-  audience: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  visual:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>,
-  position: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  assets:   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
-  upload:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-  file:     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
-  image:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
-  trash:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
-  refresh:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
-  check:    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  spark:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
-  save:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+  bolt:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  upload:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+  refresh: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
+  trash:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
+  star:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  check:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  arrow:   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+  file:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
 }
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview',    label: 'Overview',    icon: Ic.brain },
-  { id: 'voice',       label: 'Voice',       icon: Ic.voice },
-  { id: 'audience',    label: 'Audience',    icon: Ic.audience },
-  { id: 'visual',      label: 'Visual',      icon: Ic.visual },
-  { id: 'positioning', label: 'Positioning', icon: Ic.position },
-  { id: 'assets',      label: 'Assets',      icon: Ic.assets },
+const TABS = [
+  { id:'overview' as Tab, label:'Overview',    color:'#4D9FFF' },
+  { id:'voice'    as Tab, label:'Voice',       color:'#A78BFA' },
+  { id:'audience' as Tab, label:'Audience',    color:'#34D399' },
+  { id:'visual'   as Tab, label:'Visual',      color:'#FF7A40' },
+  { id:'assets'   as Tab, label:'Assets',      color:'#FFB547' },
 ]
 
-const ASSET_TYPES: { id: AssetType; label: string; desc: string }[] = [
-  { id: 'logo',          label: 'Logo',             desc: 'Your brand logo' },
-  { id: 'brand_doc',     label: 'Brand Doc',        desc: 'PDF or brand guide' },
-  { id: 'sample_post',   label: 'Content Sample',   desc: 'Posts that performed' },
-  { id: 'product_photo', label: 'Product Photo',    desc: 'Visuals of your work' },
-  { id: 'other',         label: 'Other',            desc: 'Anything brand-related' },
-]
+const ASSET_TYPES = ['logo','sample_post','product_photo','brand_doc','other'] as const
+
+function InfoRow({ label, value }: { label:string; value?:string }) {
+  if (!value) return null
+  return (
+    <div style={{ padding:'12px 14px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:10,borderLeft:'2px solid rgba(167,139,250,0.4)' }}>
+      <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:5 }}>{label}</div>
+      <div style={{ fontSize:13,color:'rgba(255,255,255,0.68)',lineHeight:1.65 }}>{value}</div>
+    </div>
+  )
+}
+
+function ScoreBar({ label, score, color }: { label:string; score:number; color:string }) {
+  return (
+    <div style={{ marginBottom:12 }}>
+      <div style={{ display:'flex',justifyContent:'space-between',marginBottom:6 }}>
+        <span style={{ fontSize:12,color:'rgba(255,255,255,0.55)' }}>{label}</span>
+        <span style={{ fontSize:12,fontWeight:700,color:'rgba(255,255,255,0.8)' }}>{score}%</span>
+      </div>
+      <div style={{ height:3,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden' }}>
+        <div style={{ height:'100%',width:`${score}%`,background:color,borderRadius:3,transition:'width 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}/>
+      </div>
+    </div>
+  )
+}
 
 export default function BrandPage() {
-  const supabase = createClient()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [workspace, setWorkspace] = useState<any>(null)
-  const [assets, setAssets] = useState<any[]>([])
-  const [profile, setProfile] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadType, setUploadType] = useState<AssetType>('brand_doc')
-  const [saved, setSaved] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [brandName, setBrandName] = useState('')
-  const [brandTagline, setBrandTagline] = useState('')
-  const [brandWebsite, setBrandWebsite] = useState('')
-  const [brandVoice, setBrandVoice] = useState('')
-  const [brandAudience, setBrandAudience] = useState('')
-  const [brandTone, setBrandTone] = useState('')
-  const [scores, setScores] = useState({ voice: 0, audience: 0, visual: 0 })
+  const supabase  = createClient()
+  const fileRef   = useRef<HTMLInputElement>(null)
+
+  const [ws,         setWs]        = useState<any>(null)
+  const [tab,        setTab]       = useState<Tab>('overview')
+  const [profile,    setProfile]   = useState<any>(null)
+  const [learnings,  setLearnings] = useState<any[]>([])
+  const [assets,     setAssets]    = useState<any[]>([])
+  const [loading,    setLoading]   = useState(true)
+  const [analyzing,  setAnalyzing] = useState(false)
+  const [uploading,  setUploading] = useState(false)
+  const [assetType,  setAssetType] = useState<string>('logo')
+  const [dragOver,   setDragOver]  = useState(false)
+  const [toast,      setToast]     = useState<{msg:string;type:'success'|'error'}|null>(null)
+
+  function showToast(msg:string, type:'success'|'error'='success') { setToast({msg,type}); setTimeout(()=>setToast(null),4000) }
 
   useEffect(() => { load() }, [])
 
-  useEffect(() => {
-    if (profile) {
-      setTimeout(() => setScores({
-        voice: profile.voice_match_score || 88,
-        audience: profile.audience_fit_score || 85,
-        visual: profile.visual_style_score || 91,
-      }), 400)
-    }
-  }, [profile])
-
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data:{ user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id', user.id).limit(1).single()
-    const ws = (m as any)?.workspaces
-    setWorkspace(ws)
-    setBrandName(ws?.brand_name || ws?.name || '')
-    setBrandTagline(ws?.brand_tagline || '')
-    setBrandWebsite(ws?.brand_website || '')
-    setBrandVoice(ws?.brand_voice || '')
-    setBrandAudience(ws?.brand_audience || '')
-    setBrandTone(ws?.brand_tone || '')
-    const { data: a } = await supabase.from('brand_assets').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false })
-    setAssets(a ?? [])
-    const p = a?.find((x: any) => x.file_name === 'nexa_brand_intelligence.json')
-    if (p?.analysis) setProfile(p.analysis)
-    setLoading(false)
+    const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
+    const w = (m as any)?.workspaces; setWs(w)
+    const [{ data:ba }, { data:lg }, { data:aa }] = await Promise.all([
+      supabase.from('brand_assets').select('analysis').eq('workspace_id',w?.id).eq('file_name','nexa_brand_intelligence.json').single(),
+      supabase.from('brand_learnings').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}).limit(20),
+      supabase.from('brand_assets').select('*').eq('workspace_id',w?.id).neq('file_name','nexa_brand_intelligence.json').order('created_at',{ascending:false}),
+    ])
+    if (ba?.analysis) setProfile(ba.analysis)
+    setLearnings(lg??[]); setAssets(aa??[]); setLoading(false)
   }
 
-  async function saveFields() {
-    if (!workspace) return
-    await supabase.from('workspaces').update({
-      brand_name: brandName, brand_tagline: brandTagline, brand_website: brandWebsite,
-      brand_voice: brandVoice, brand_audience: brandAudience, brand_tone: brandTone,
-      updated_at: new Date().toISOString(),
-    }).eq('id', workspace.id)
-    setSaved(true); setTimeout(() => setSaved(false), 2500)
-  }
-
-  async function uploadFile(file: File) {
-    if (!workspace) return
-    setUploading(true)
+  async function analyze() {
+    if (!ws||analyzing) return; setAnalyzing(true)
     try {
-      const ext = file.name.split('.').pop()
-      const path = `${workspace.id}/brand/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('brand-assets').upload(path, file, { upsert: true })
-      if (error) throw error
-      const { data: urlData } = supabase.storage.from('brand-assets').getPublicUrl(path)
-      await supabase.from('brand_assets').insert({
-        workspace_id: workspace.id, type: uploadType,
-        file_url: urlData.publicUrl, file_name: file.name, file_size: file.size, ai_analyzed: false,
-      })
-      await load()
-    } catch { console.error('Upload failed') }
-    setUploading(false)
-  }
-
-  async function deleteAsset(id: string) {
-    await supabase.from('brand_assets').delete().eq('id', id)
-    setAssets(prev => prev.filter((a: any) => a.id !== id))
-  }
-
-  async function analyzeWithAI() {
-    if (!workspace) return
-    setAnalyzing(true)
-    try {
-      const res = await fetch('/api/analyze-brand', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace.id }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setProfile(data.profile)
-        if (data.profile.voice) setBrandVoice(data.profile.voice.primary_tone)
-        if (data.profile.audience) setBrandAudience(data.profile.audience.primary)
-        await load()
-        setActiveTab('overview')
-      }
-    } catch { console.error('Analysis failed') }
+      const r = await fetch('/api/analyze-brand',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})})
+      const d = await r.json()
+      if (d.success){setProfile(d.profile);showToast('Brand Brain updated')}
+      else showToast(d.error||'Failed','error')
+    } catch { showToast('Error','error') }
     setAnalyzing(false)
   }
 
-  const nonProfileAssets = assets.filter((a: any) => a.file_name !== 'nexa_brand_intelligence.json')
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+  async function uploadAsset(file:File) {
+    if (!ws||uploading) return; setUploading(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path= `${ws.id}/${assetType}/${Date.now()}.${ext}`
+      const { error:upErr } = await supabase.storage.from('brand-assets').upload(path,file)
+      if (upErr) { showToast('Upload failed','error'); return }
+      const { data:{ publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(path)
+      await supabase.from('brand_assets').insert({ workspace_id:ws.id, file_name:file.name, file_type:assetType, file_url:publicUrl, file_size:file.size })
+      showToast('Asset uploaded'); load()
+    } catch { showToast('Error','error') }
+    setUploading(false)
+  }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
-      <div style={{ width: 32, height: 32, border: '1px solid rgba(0,170,255,0.3)', borderTop: '1px solid #00AAFF', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
-      <span style={{ fontSize: 12, color: 'rgba(240,237,232,0.35)' }}>Loading brand intelligence...</span>
-    </div>
-  )
+  async function deleteAsset(id:string) {
+    await supabase.from('brand_assets').delete().eq('id',id)
+    showToast('Deleted'); load()
+  }
+
+  const voice  = profile?.voice_profile||{}
+  const aud    = profile?.audience_profile||{}
+  const visual = profile?.visual_identity||{}
+  const scores = profile?.brand_scores||{}
+
+  if (loading) return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.3)',fontSize:13 }}>Loading Brand Brain…</div>
 
   return (
     <>
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg) } }
-        @keyframes pulse-dot { 0%,100% { opacity:1 } 50% { opacity:0.35 } }
-        @keyframes fadeUp { from { opacity:0;transform:translateY(12px) } to { opacity:1;transform:translateY(0) } }
-        @keyframes bar-fill { from { width: 0% } }
-        .brand-tab-btn:hover { background: rgba(255,255,255,0.04) !important; color: rgba(240,237,232,0.7) !important; }
-        .asset-card:hover { border-color: rgba(255,255,255,0.14) !important; background: rgba(255,255,255,0.05) !important; }
-        .pill-btn:hover { border-color: rgba(0,170,255,0.3) !important; color: rgba(240,237,232,0.8) !important; }
-        .score-bar { transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1) }
-        .info-card { animation: fadeUp 0.4s ease both }
+        @keyframes brandUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes brandSpin{to{transform:rotate(360deg)}}
+        .btab:hover{background:rgba(255,255,255,0.05)!important;}
+        .a-card:hover{border-color:rgba(255,255,255,0.13)!important;background:rgba(255,255,255,0.05)!important;}
+        .l-row:hover{background:rgba(255,255,255,0.04)!important;}
       `}</style>
 
-      <div style={{ padding: '32px 36px', maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>
 
-        {/* ── PAGE HEADER ── */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,170,255,0.1)', border: '1px solid rgba(0,170,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00AAFF' }}>
-                  {Ic.brain}
-                </div>
-                <div>
-                  <h1 style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 800, letterSpacing: '-0.04em', color: '#F0EDE8', lineHeight: 1 }}>Brand Brain</h1>
-                  <p style={{ fontSize: 12, color: 'rgba(240,237,232,0.35)', marginTop: 3 }}>
-                    {workspace?.brand_name || 'Your brand'} · cognitive fingerprint
-                  </p>
-                </div>
-              </div>
-            </div>
+        {/* Header */}
+        <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:20,animation:'brandUp .4s ease both' }}>
+          <div>
+            <h1 style={{ fontFamily:'var(--display)',fontSize:22,fontWeight:800,letterSpacing:'-0.04em',color:'rgba(255,255,255,0.92)',lineHeight:1,marginBottom:4 }}>Brand Brain</h1>
+            <p style={{ fontSize:12,color:'rgba(255,255,255,0.3)' }}>{assets.length} assets · {learnings.length} learnings · {profile?'Profile active':'No profile yet'}</p>
+          </div>
+          <button onClick={analyze} disabled={analyzing}
+            style={{ display:'flex',alignItems:'center',gap:7,padding:'8px 16px',fontSize:13,fontWeight:700,background:analyzing?'rgba(255,255,255,0.04)':'#A78BFA',color:analyzing?'rgba(255,255,255,0.3)':'#000',border:'none',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',boxShadow:analyzing?'none':'0 4px 16px rgba(167,139,250,0.3)',letterSpacing:'-0.01em',transition:'all .2s' }}>
+            {analyzing?<><div style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'rgba(255,255,255,0.6)',borderRadius:'50%',animation:'brandSpin .8s linear infinite' }}/>Analyzing…</>:<><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze brand</>}
+          </button>
+        </div>
 
-            {/* Status + re-analyze */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              {profile && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(0,214,143,0.06)', border: '1px solid rgba(0,214,143,0.2)', borderRadius: 8 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00d68f', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#00d68f' }}>Intelligence active</span>
-                </div>
-              )}
-              <button onClick={analyzeWithAI} disabled={analyzing}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: analyzing ? 'rgba(0,170,255,0.06)' : '#00AAFF', border: `1px solid ${analyzing ? 'rgba(0,170,255,0.2)' : 'transparent'}`, borderRadius: 9, fontSize: 12, fontWeight: 700, color: analyzing ? '#00AAFF' : '#000', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
-                {analyzing
-                  ? <><div style={{ width: 11, height: 11, border: '1.5px solid rgba(0,170,255,0.3)', borderTopColor: '#00AAFF', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Analyzing...</>
-                  : <>{Ic.refresh}{profile ? 'Re-analyze' : 'Build intelligence'}</>
-                }
+        {/* Tabs */}
+        <div style={{ display:'flex',gap:2,marginBottom:22,background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:4,animation:'brandUp .4s ease .05s both' }}>
+          {TABS.map(t=>{
+            const on=tab===t.id
+            return (
+              <button key={t.id} className="btab" onClick={()=>setTab(t.id)}
+                style={{ flex:1,padding:'8px 4px',borderRadius:9,border:`1px solid ${on?`${t.color}28`:'transparent'}`,background:on?`${t.color}10`:'transparent',color:on?t.color:'rgba(255,255,255,0.32)',cursor:'pointer',fontSize:12,fontWeight:on?700:500,fontFamily:'var(--sans)',transition:'all .15s',whiteSpace:'nowrap' }}>
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* No profile state */}
+        {!profile && tab!=='assets' && (
+          <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'50vh',textAlign:'center',padding:'40px 20px',animation:'brandUp .3s ease both' }}>
+            <div style={{ width:58,height:58,borderRadius:16,background:'rgba(167,139,250,0.07)',border:'1px solid rgba(167,139,250,0.18)',display:'flex',alignItems:'center',justifyContent:'center',color:'#A78BFA',marginBottom:20 }}>{Ic.star}</div>
+            <h3 style={{ fontFamily:'var(--display)',fontSize:18,fontWeight:800,letterSpacing:'-0.03em',marginBottom:8,color:'rgba(255,255,255,0.88)' }}>Build your Brand Brain</h3>
+            <p style={{ fontSize:13,color:'rgba(255,255,255,0.35)',lineHeight:1.7,maxWidth:420,marginBottom:22 }}>
+              Upload assets — logos, sample posts, product photos, brand docs — then run an analysis. Nexa builds a deep profile that powers every generation.
+            </p>
+            <div style={{ display:'flex',gap:10 }}>
+              <button onClick={()=>setTab('assets')} style={{ display:'flex',alignItems:'center',gap:7,padding:'11px 20px',fontSize:13,fontWeight:700,background:'rgba(167,139,250,0.1)',border:'1px solid rgba(167,139,250,0.25)',color:'#A78BFA',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)' }}>
+                <span style={{ display:'flex' }}>{Ic.upload}</span>Upload assets
+              </button>
+              <button onClick={analyze} disabled={analyzing} style={{ display:'flex',alignItems:'center',gap:7,padding:'11px 20px',fontSize:13,fontWeight:700,background:'#A78BFA',color:'#000',border:'none',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',boxShadow:'0 4px 16px rgba(167,139,250,0.3)' }}>
+                <span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze brand
               </button>
             </div>
           </div>
-
-          {/* Score bars — only show if profile exists */}
-          {profile && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 20 }}>
-              {[
-                { label: 'Voice match',   val: scores.voice,    color: '#00AAFF' },
-                { label: 'Audience fit',  val: scores.audience, color: 'rgba(0,214,143,0.9)' },
-                { label: 'Visual style',  val: scores.visual,   color: 'rgba(255,184,0,0.9)' },
-              ].map(s => (
-                <div key={s.label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 11, color: 'rgba(240,237,232,0.45)' }}>{s.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(240,237,232,0.8)' }}>{s.val}%</span>
-                  </div>
-                  <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div className="score-bar" style={{ width: `${s.val}%`, height: '100%', background: s.color, borderRadius: 3 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── TABS ── */}
-        <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 28 }}>
-          {TABS.map(t => (
-            <button key={t.id} className="brand-tab-btn" onClick={() => setActiveTab(t.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', background: 'transparent', border: 'none', borderBottom: `2px solid ${activeTab === t.id ? '#00AAFF' : 'transparent'}`, color: activeTab === t.id ? '#F0EDE8' : 'rgba(240,237,232,0.38)', cursor: 'pointer', fontSize: 12.5, fontWeight: activeTab === t.id ? 600 : 400, fontFamily: 'var(--sans)', transition: 'all .15s', marginBottom: -1 }}>
-              <span style={{ color: activeTab === t.id ? '#00AAFF' : 'inherit', display: 'flex' }}>{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        )}
 
         {/* ── OVERVIEW ── */}
-        {activeTab === 'overview' && (
-          <div className="info-card">
-            {profile ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Brand promise */}
-                {profile.positioning?.brand_promise && (
-                  <div style={{ padding: '18px 20px', background: 'rgba(0,170,255,0.04)', border: '1px solid rgba(0,170,255,0.12)', borderRadius: 12, position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(0,170,255,0.3),transparent)' }} />
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#00AAFF', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>Brand promise</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#F0EDE8', lineHeight: 1.5, letterSpacing: '-0.02em' }}>{profile.positioning.brand_promise}</div>
-                  </div>
-                )}
+        {tab==='overview' && profile && (
+          <div style={{ animation:'brandUp .3s ease both' }}>
+            {/* Score bars */}
+            <div style={{ padding:'18px 20px',background:'rgba(167,139,250,0.05)',border:'1px solid rgba(167,139,250,0.15)',borderRadius:14,marginBottom:16 }}>
+              <div style={{ fontSize:9,fontWeight:700,color:'#A78BFA',letterSpacing:'.09em',textTransform:'uppercase',marginBottom:14 }}>Brand health scores</div>
+              <ScoreBar label="Voice consistency"   score={scores.voice_match_score||profile.voice_match_score||88}  color="linear-gradient(90deg,#4D9FFF,#A78BFA)"/>
+              <ScoreBar label="Audience alignment"  score={scores.audience_fit_score||profile.audience_fit_score||85} color="linear-gradient(90deg,#34D399,#4D9FFF)"/>
+              <ScoreBar label="Visual coherence"    score={scores.visual_style_score||profile.visual_style_score||92} color="linear-gradient(90deg,#A78BFA,#FF7A40)"/>
+            </div>
 
-                {/* 2-col grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <InfoCard label="Voice" value={profile.brand_voice || profile.voice?.primary_tone} />
-                  <InfoCard label="Audience" value={profile.brand_audience || profile.audience?.primary} />
-                  {profile.positioning?.unique_angle && <InfoCard label="Unique angle" value={profile.positioning.unique_angle} />}
-                  {profile.voice?.writing_style && <InfoCard label="Writing style" value={profile.voice.writing_style} />}
-                </div>
-
-                {/* Content pillars */}
-                {(profile.content_pillars || profile.content?.themes)?.length > 0 && (
-                  <div style={{ padding: '16px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 }}>
-                    <div style={sectionLabel}>Content pillars</div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                      {(profile.content_pillars || profile.content?.themes || []).map((p: string, i: number) => (
-                        <span key={i} style={{ padding: '5px 12px', background: 'rgba(0,170,255,0.07)', border: '1px solid rgba(0,170,255,0.18)', borderRadius: 100, fontSize: 12, fontWeight: 600, color: '#00AAFF' }}>{p}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Generation instructions */}
-                {profile.generation_instructions?.copy_prompt_prefix && (
-                  <div style={{ padding: '16px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                      <span style={{ color: '#00AAFF', display: 'flex' }}>{Ic.spark}</span>
-                      <div style={sectionLabel}>Generation instructions active</div>
-                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d68f', animation: 'pulse-dot 2s infinite' }} />
-                        <span style={{ fontSize: 10, color: '#00d68f', fontWeight: 600 }}>Injected into every generation</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      {['copy', 'image', 'video', 'voice'].map(type => {
-                        const val = profile.generation_instructions?.[`${type}_prompt_prefix`]
-                        if (!val) return null
-                        return (
-                          <div key={type} style={{ padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(240,237,232,0.35)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>{type}</div>
-                            <div style={{ fontSize: 11, color: 'rgba(240,237,232,0.55)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{val}</div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+            {/* Summary */}
+            {profile.brand_summary && (
+              <div style={{ padding:'16px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,marginBottom:16 }}>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:8 }}>Brand summary</div>
+                <div style={{ fontSize:13,color:'rgba(255,255,255,0.65)',lineHeight:1.7 }}>{profile.brand_summary}</div>
               </div>
-            ) : (
-              <EmptyState
-                icon={Ic.brain}
-                title="Your brand has no intelligence yet."
-                desc="Give Nexa your brand assets and it will learn your voice, audience, visual style, and positioning. Every generation will then speak in your exact language."
-                cta="Build intelligence"
-                onCta={analyzeWithAI}
-                loading={analyzing}
-              />
+            )}
+
+            {/* Recent learnings */}
+            {learnings.length>0 && (
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:12 }}>Recent learnings</div>
+                {learnings.slice(0,6).map(l=>(
+                  <div key={l.id} className="l-row" style={{ display:'flex',gap:10,padding:'10px 12px',borderRadius:10,transition:'background .15s',marginBottom:4 }}>
+                    <span style={{ fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:4,background:'rgba(255,107,43,0.08)',border:'1px solid rgba(255,107,43,0.18)',color:'#FF7A40',flexShrink:0,height:'fit-content',textTransform:'uppercase',letterSpacing:'.04em' }}>{l.insight_type||'insight'}</span>
+                    <div style={{ fontSize:12,color:'rgba(255,255,255,0.55)',lineHeight:1.55 }}>{l.insight}</div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
 
         {/* ── VOICE ── */}
-        {activeTab === 'voice' && (
-          <div className="info-card">
-            {profile?.voice ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <InfoCard label="Primary tone" value={profile.voice.primary_tone} />
-                  <InfoCard label="Writing style" value={profile.voice.writing_style} />
-                  <InfoCard label="Sentence structure" value={profile.voice.sentence_structure} />
-                  {profile.voice.emotional_triggers?.length > 0 && (
-                    <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
-                      <div style={sectionLabel}>Emotional triggers</div>
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
-                        {profile.voice.emotional_triggers.map((t: string, i: number) => <Tag key={i} label={t} />)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {profile.voice.vocabulary?.length > 0 && (
-                  <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
-                    <div style={sectionLabel}>Brand vocabulary</div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
-                      {profile.voice.vocabulary.map((w: string, i: number) => <Tag key={i} label={w} />)}
-                    </div>
-                  </div>
-                )}
-
-                {profile.voice.forbidden?.length > 0 && (
-                  <div style={{ padding: '14px 16px', background: 'rgba(255,60,60,0.04)', border: '1px solid rgba(255,60,60,0.12)', borderRadius: 10 }}>
-                    <div style={{ ...sectionLabel, color: 'rgba(255,107,107,0.7)' }}>Never use</div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
-                      {profile.voice.forbidden.map((w: string, i: number) => (
-                        <span key={i} style={{ padding: '4px 10px', background: 'rgba(255,80,80,0.07)', border: '1px solid rgba(255,80,80,0.18)', borderRadius: 100, fontSize: 12, color: '#ff7070' }}>{w}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ padding: '1px', background: 'rgba(255,255,255,0.06)', borderRadius: 12 }}>
-                  <div style={{ background: '#0D0D14', borderRadius: 11, padding: '16px 18px' }}>
-                    <div style={sectionLabel}>Edit voice manually</div>
-                    <textarea value={brandVoice} onChange={e => setBrandVoice(e.target.value)} rows={3}
-                      placeholder="Describe your brand's voice and tone..."
-                      style={textArea} />
-                    <SaveButton saved={saved} onClick={saveFields} />
-                  </div>
-                </div>
+        {tab==='voice' && profile && (
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10,animation:'brandUp .3s ease both' }}>
+            <InfoRow label="Brand voice"       value={voice.tone||ws?.brand_voice}/>
+            <InfoRow label="Writing style"     value={voice.style}/>
+            <InfoRow label="Key phrases"       value={voice.key_phrases?.join(', ')}/>
+            <InfoRow label="Topics to avoid"   value={voice.avoid?.join(', ')}/>
+            <InfoRow label="Personality"       value={voice.personality}/>
+            <InfoRow label="Content approach"  value={voice.content_approach}/>
+            {!Object.keys(voice).length && !ws?.brand_voice && (
+              <div style={{ gridColumn:'1/-1',textAlign:'center',padding:'32px',color:'rgba(255,255,255,0.25)',fontSize:13,border:'1px dashed rgba(255,255,255,0.07)',borderRadius:12 }}>
+                Run a brand analysis to build your voice profile.
               </div>
-            ) : <EmptyState icon={Ic.voice} title="Voice profile not yet built." desc="Run intelligence analysis to extract your exact brand voice — tone, vocabulary, sentence structure, and what to never say." cta="Build intelligence" onCta={analyzeWithAI} loading={analyzing} />}
+            )}
           </div>
         )}
 
         {/* ── AUDIENCE ── */}
-        {activeTab === 'audience' && (
-          <div className="info-card">
-            {profile?.audience ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <InfoCard label="Who they are" value={profile.audience.primary} />
-                  <InfoCard label="Psychology" value={profile.audience.psychology} />
-                  <InfoCard label="How they speak" value={profile.audience.language} />
-                </div>
-                {profile.audience.pain_points?.length > 0 && (
-                  <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
-                    <div style={sectionLabel}>Pain points</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                      {profile.audience.pain_points.map((p: string, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'rgba(240,237,232,0.65)' }}>
-                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#00AAFF', flexShrink: 0, marginTop: 7 }} />{p}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {profile.audience.desires?.length > 0 && (
-                  <div style={{ padding: '14px 16px', background: 'rgba(0,214,143,0.03)', border: '1px solid rgba(0,214,143,0.1)', borderRadius: 10 }}>
-                    <div style={{ ...sectionLabel, color: 'rgba(0,214,143,0.7)' }}>What they want</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                      {profile.audience.desires.map((d: string, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'rgba(240,237,232,0.65)' }}>
-                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#00d68f', flexShrink: 0, marginTop: 7 }} />{d}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div style={{ padding: '1px', background: 'rgba(255,255,255,0.06)', borderRadius: 12 }}>
-                  <div style={{ background: '#0D0D14', borderRadius: 11, padding: '16px 18px' }}>
-                    <div style={sectionLabel}>Edit audience manually</div>
-                    <textarea value={brandAudience} onChange={e => setBrandAudience(e.target.value)} rows={4}
-                      placeholder="Who is your ideal audience? Be specific." style={textArea} />
-                    <SaveButton saved={saved} onClick={saveFields} />
-                  </div>
-                </div>
-              </div>
-            ) : <EmptyState icon={Ic.audience} title="Audience map not yet built." desc="Nexa will map your audience psychology — who they are, what drives them, their pain points and desires." cta="Build intelligence" onCta={analyzeWithAI} loading={analyzing} />}
+        {tab==='audience' && profile && (
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10,animation:'brandUp .3s ease both' }}>
+            <InfoRow label="Primary audience"    value={aud.primary||aud.demographics}/>
+            <InfoRow label="Pain points"         value={aud.pain_points?.join(', ')||aud.pain_points}/>
+            <InfoRow label="Goals & desires"     value={aud.goals?.join(', ')||aud.goals}/>
+            <InfoRow label="Psychographics"      value={aud.psychographics}/>
+            <InfoRow label="Platforms they use"  value={aud.platforms?.join(', ')}/>
+            <InfoRow label="Content they love"   value={aud.content_preferences}/>
           </div>
         )}
 
         {/* ── VISUAL ── */}
-        {activeTab === 'visual' && (
-          <div className="info-card">
-            {profile?.visual ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <InfoCard label="Aesthetic" value={profile.visual.aesthetic} />
-                <InfoCard label="Photography style" value={profile.visual.photography_style} />
-                <InfoCard label="Color mood" value={profile.visual.color_mood} />
-                <InfoCard label="Composition" value={profile.visual.composition} />
-                {profile.visual.video_style && <InfoCard label="Video style" value={profile.visual.video_style} span2={false} />}
-              </div>
-            ) : <EmptyState icon={Ic.visual} title="Visual identity not yet extracted." desc="Upload logos, product photos, or visual samples and run intelligence analysis. Nexa will inject your visual style into every image and video generation." cta="Build intelligence" onCta={analyzeWithAI} loading={analyzing} />}
-          </div>
-        )}
-
-        {/* ── POSITIONING ── */}
-        {activeTab === 'positioning' && (
-          <div className="info-card">
-            {profile?.positioning ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {profile.positioning.brand_promise && (
-                  <div style={{ padding: '18px 20px', background: 'rgba(0,170,255,0.04)', border: '1px solid rgba(0,170,255,0.12)', borderRadius: 12, position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(0,170,255,0.3),transparent)' }} />
-                    <div style={sectionLabel}>Brand promise</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#F0EDE8', lineHeight: 1.5, marginTop: 8, letterSpacing: '-0.02em' }}>{profile.positioning.brand_promise}</div>
-                  </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <InfoCard label="Unique angle" value={profile.positioning.unique_angle} />
-                  <InfoCard label="Competitor contrast" value={profile.positioning.competitor_contrast} />
-                </div>
-                {profile.positioning.authority_signals?.length > 0 && (
-                  <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10 }}>
-                    <div style={sectionLabel}>Authority signals</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                      {profile.positioning.authority_signals.map((s: string, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'rgba(240,237,232,0.65)' }}>
-                          <div style={{ color: '#00AAFF', display: 'flex', flexShrink: 0, marginTop: 2 }}>{Ic.check}</div>{s}
-                        </div>
-                      ))}
+        {tab==='visual' && profile && (
+          <div style={{ animation:'brandUp .3s ease both' }}>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10,marginBottom:16 }}>
+              <InfoRow label="Color palette"   value={visual.colors?.join(', ')||visual.color_palette}/>
+              <InfoRow label="Typography"      value={visual.typography||visual.fonts?.join(', ')}/>
+              <InfoRow label="Visual style"    value={visual.style||visual.aesthetic}/>
+              <InfoRow label="Image guidance"  value={visual.image_guidelines}/>
+            </div>
+            {assets.filter(a=>a.file_type==='logo'||a.file_type==='product_photo').length>0 && (
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:12 }}>Visual assets</div>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8 }}>
+                  {assets.filter(a=>a.file_type==='logo'||a.file_type==='product_photo').map(a=>(
+                    <div key={a.id} style={{ borderRadius:10,overflow:'hidden',border:'1px solid rgba(255,255,255,0.08)',aspectRatio:'1',background:'rgba(255,255,255,0.03)' }}>
+                      <img src={a.file_url} alt={a.file_name} style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }}/>
                     </div>
-                  </div>
-                )}
-                <div style={{ padding: '1px', background: 'rgba(255,255,255,0.06)', borderRadius: 12 }}>
-                  <div style={{ background: '#0D0D14', borderRadius: 11, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={sectionLabel}>Edit positioning</div>
-                    <div>
-                      <label style={lbl}>Brand name</label>
-                      <input value={brandName} onChange={e => setBrandName(e.target.value)} style={inpStyle} placeholder="Your brand name" />
-                    </div>
-                    <div>
-                      <label style={lbl}>Tagline</label>
-                      <input value={brandTagline} onChange={e => setBrandTagline(e.target.value)} style={inpStyle} placeholder="e.g. Create. Automate. Dominate." />
-                    </div>
-                    <div>
-                      <label style={lbl}>Website</label>
-                      <input value={brandWebsite} onChange={e => setBrandWebsite(e.target.value)} style={inpStyle} placeholder="https://yourbrand.com" />
-                    </div>
-                    <SaveButton saved={saved} onClick={saveFields} />
-                  </div>
+                  ))}
                 </div>
               </div>
-            ) : <EmptyState icon={Ic.position} title="Positioning not yet mapped." desc="Nexa will identify your unique angle, brand promise, authority signals, and how to position you against alternatives." cta="Build intelligence" onCta={analyzeWithAI} loading={analyzing} />}
+            )}
           </div>
         )}
 
         {/* ── ASSETS ── */}
-        {activeTab === 'assets' && (
-          <div className="info-card">
-            {/* Asset type selector */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-              {ASSET_TYPES.map(t => (
-                <button key={t.id} className="pill-btn" onClick={() => setUploadType(t.id)}
-                  style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: uploadType === t.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${uploadType === t.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.08)'}`, color: uploadType === t.id ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Drop zone */}
+        {tab==='assets' && (
+          <div style={{ animation:'brandUp .3s ease both' }}>
+            {/* Upload area */}
             <div
-              onDrop={e => { e.preventDefault(); setIsDragging(false); Array.from(e.dataTransfer.files).forEach(uploadFile) }}
-              onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-              onDragLeave={() => setIsDragging(false)}
-              onClick={() => fileRef.current?.click()}
-              style={{ padding: '28px', border: `1px dashed ${isDragging ? '#00AAFF' : 'rgba(255,255,255,0.1)'}`, borderRadius: 12, textAlign: 'center', cursor: 'pointer', background: isDragging ? 'rgba(0,170,255,0.04)' : 'transparent', transition: 'all .15s', marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'rgba(240,237,232,0.4)', marginBottom: 6 }}>
-                {Ic.upload}
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{uploading ? 'Uploading...' : 'Click or drag files to upload'}</span>
+              onDragOver={e=>{e.preventDefault();setDragOver(true)}}
+              onDragLeave={()=>setDragOver(false)}
+              onDrop={e=>{e.preventDefault();setDragOver(false);const f=e.dataTransfer.files[0];if(f)uploadAsset(f)}}
+              onClick={()=>fileRef.current?.click()}
+              style={{ padding:'32px',border:`1px dashed ${dragOver?'rgba(255,181,71,0.4)':'rgba(255,255,255,0.1)'}`,borderRadius:14,textAlign:'center',cursor:'pointer',background:dragOver?'rgba(255,181,71,0.04)':'rgba(255,255,255,0.02)',transition:'all .15s',marginBottom:20 }}>
+              <div style={{ display:'flex',justifyContent:'center',marginBottom:12 }}>
+                <div style={{ width:44,height:44,borderRadius:12,background:'rgba(255,181,71,0.08)',border:'1px solid rgba(255,181,71,0.2)',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFB547' }}>{Ic.upload}</div>
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(240,237,232,0.25)' }}>PDF · PNG · JPG · DOCX · MP4</div>
-              <input ref={fileRef} type="file" style={{ display: 'none' }} multiple
-                onChange={async e => { const files = Array.from(e.target.files ?? []); for (const f of files) await uploadFile(f) }} />
+              <div style={{ fontSize:14,fontWeight:700,color:'rgba(255,255,255,0.75)',marginBottom:4,fontFamily:'var(--display)',letterSpacing:'-0.02em' }}>
+                {uploading?'Uploading…':'Drop files or click to upload'}
+              </div>
+              <div style={{ fontSize:12,color:'rgba(255,255,255,0.35)' }}>Logos, posts, product photos, brand docs — anything that defines your brand</div>
+              <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" style={{ display:'none' }} onChange={e=>e.target.files?.[0]&&uploadAsset(e.target.files[0])}/>
             </div>
 
-            {/* Assets grid */}
-            {nonProfileAssets.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
-                {nonProfileAssets.map((asset: any) => (
-                  <div key={asset.id} className="asset-card" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden', transition: 'all .15s' }}>
-                    {isImage(asset.file_url) ? (
-                      <img src={asset.file_url} alt={asset.file_name} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block' }} />
-                    ) : (
-                      <div style={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)', color: 'rgba(240,237,232,0.3)' }}>
-                        {asset.type === 'brand_doc' ? Ic.file : Ic.image}
-                      </div>
-                    )}
-                    <div style={{ padding: '10px 12px' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(240,237,232,0.75)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.file_name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10, color: 'rgba(240,237,232,0.3)' }}>{ASSET_TYPES.find(t => t.id === asset.type)?.label}</span>
-                        {asset.ai_analyzed && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#00AAFF' }}>
-                            {Ic.check} AI read
-                          </span>
-                        )}
-                      </div>
-                      <button onClick={() => deleteAsset(asset.id)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%', marginTop: 8, padding: '5px', fontSize: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, color: 'rgba(240,237,232,0.3)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .12s' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,80,80,0.3)'; (e.currentTarget as HTMLElement).style.color = '#ff7070' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(240,237,232,0.3)' }}>
-                        {Ic.trash} Remove
-                      </button>
-                    </div>
-                  </div>
+            {/* Asset type selector */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:10 }}>Upload as</div>
+              <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>
+                {ASSET_TYPES.map(t=>(
+                  <button key={t} onClick={()=>setAssetType(t)}
+                    style={{ padding:'5px 13px',borderRadius:100,fontSize:12,fontWeight:600,background:assetType===t?'rgba(255,181,71,0.12)':'rgba(255,255,255,0.04)',border:`1px solid ${assetType===t?'rgba(255,181,71,0.3)':'rgba(255,255,255,0.08)'}`,color:assetType===t?'#FFB547':'rgba(255,255,255,0.4)',cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s',textTransform:'capitalize' }}>
+                    {t.replace('_',' ')}
+                  </button>
                 ))}
               </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '32px 20px', color: 'rgba(240,237,232,0.3)', fontSize: 13 }}>
-                No assets yet. Upload your brand materials above.
+            </div>
+
+            {/* Asset grid */}
+            {assets.length>0 && (
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginBottom:12 }}>{assets.length} assets</div>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:8 }}>
+                  {assets.map(a=>(
+                    <div key={a.id} className="a-card" style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,overflow:'hidden',transition:'all .15s' }}>
+                      {a.file_url&&(a.file_type==='logo'||a.file_type==='product_photo'||a.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) ? (
+                        <div style={{ height:100,background:'rgba(255,255,255,0.04)',overflow:'hidden' }}>
+                          <img src={a.file_url} alt={a.file_name} style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                        </div>
+                      ) : (
+                        <div style={{ height:60,background:'rgba(255,181,71,0.04)',display:'flex',alignItems:'center',justifyContent:'center',color:'#FFB547' }}>{Ic.file}</div>
+                      )}
+                      <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:8 }}>
+                        <div style={{ flex:1,minWidth:0 }}>
+                          <div style={{ fontSize:12,fontWeight:600,color:'rgba(255,255,255,0.75)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{a.file_name}</div>
+                          <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:1,textTransform:'capitalize' }}>{a.file_type?.replace('_',' ')||'asset'}</div>
+                        </div>
+                        <button onClick={()=>deleteAsset(a.id)} style={{ width:26,height:26,borderRadius:6,background:'transparent',border:'1px solid rgba(255,255,255,0.07)',color:'rgba(255,255,255,0.28)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .15s' }}
+                          onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,87,87,0.3)';(e.currentTarget as HTMLElement).style.color='#FF5757'}}
+                          onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.28)'}}>
+                          {Ic.trash}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {toast && (
+        <div style={{ position:'fixed',bottom:24,right:24,zIndex:9999,padding:'12px 18px',borderRadius:11,background:toast.type==='error'?'rgba(255,87,87,0.12)':'rgba(52,211,153,0.1)',border:`1px solid ${toast.type==='error'?'rgba(255,87,87,0.3)':'rgba(52,211,153,0.25)'}`,color:toast.type==='error'?'#FF5757':'#34D399',fontSize:13,fontWeight:600,backdropFilter:'blur(16px)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+          {toast.msg}
+        </div>
+      )}
     </>
   )
 }
-
-// ── Reusable sub-components ───────────────────────────────────────────────
-
-function InfoCard({ label, value, span2 = false }: { label: string; value?: string; span2?: boolean }) {
-  if (!value) return null
-  return (
-    <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, gridColumn: span2 ? 'span 2' : undefined }}>
-      <div style={sectionLabel}>{label}</div>
-      <div style={{ fontSize: 13, color: 'rgba(240,237,232,0.7)', lineHeight: 1.6, marginTop: 6 }}>{value}</div>
-    </div>
-  )
-}
-
-function Tag({ label }: { label: string }) {
-  return <span style={{ padding: '4px 10px', background: 'rgba(0,170,255,0.07)', border: '1px solid rgba(0,170,255,0.18)', borderRadius: 100, fontSize: 12, color: '#00AAFF' }}>{label}</span>
-}
-
-function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: saved ? 'rgba(0,214,143,0.1)' : '#00AAFF', border: `1px solid ${saved ? 'rgba(0,214,143,0.3)' : 'transparent'}`, borderRadius: 9, fontSize: 12, fontWeight: 700, color: saved ? '#00d68f' : '#000', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s', alignSelf: 'flex-start' }}>
-      {saved ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Saved</> : <>Save changes</>}
-    </button>
-  )
-}
-
-function EmptyState({ icon, title, desc, cta, onCta, loading }: { icon: React.ReactNode; title: string; desc: string; cta: string; onCta: () => void; loading?: boolean }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '48px 32px' }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(0,170,255,0.07)', border: '1px solid rgba(0,170,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'rgba(0,170,255,0.6)' }}>{icon}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(240,237,232,0.7)', marginBottom: 8, letterSpacing: '-0.02em' }}>{title}</div>
-      <div style={{ fontSize: 13, color: 'rgba(240,237,232,0.35)', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 20px' }}>{desc}</div>
-      <button onClick={onCta} disabled={loading}
-        style={{ padding: '10px 20px', background: '#00AAFF', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#000', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-        {loading ? 'Analyzing...' : cta}
-      </button>
-    </div>
-  )
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────
-const sectionLabel: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'rgba(240,237,232,0.35)', textTransform: 'uppercase', letterSpacing: '.07em' }
-const lbl: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: 'rgba(240,237,232,0.4)', marginBottom: 6 }
-const textArea: React.CSSProperties = { width: '100%', padding: '11px 13px', fontSize: 13, fontFamily: 'var(--sans)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#F0EDE8', outline: 'none', resize: 'vertical', lineHeight: 1.6, marginTop: 8, boxSizing: 'border-box' }
-const inpStyle: React.CSSProperties = { width: '100%', padding: '10px 13px', fontSize: 13, fontFamily: 'var(--sans)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#F0EDE8', outline: 'none', boxSizing: 'border-box' }

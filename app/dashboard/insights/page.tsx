@@ -1,462 +1,313 @@
 'use client'
-
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format } from 'date-fns'
 
-const PLATFORM_COLORS: Record<string, string> = {
-  instagram: '#E1306C',
-  linkedin:  '#0A66C2',
-  x:         '#1DA1F2',
-  tiktok:    '#FF0050',
-  email:     '#00AAFF',
-  general:   '#888888',
+type TabId = 'overview'|'content'|'email'|'platforms'
+
+const PLAT_COLORS: Record<string,string> = {
+  instagram:'#E1306C', linkedin:'#0A66C2', x:'#E7E7E7',
+  tiktok:'#FF0050',    email:'#4D9FFF',    general:'#888',
 }
 
-type TabId = 'overview' | 'content' | 'email' | 'platforms' | 'export'
+const Ic = {
+  chart:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 20h18"/><path d="M5 20V14l4-4 4 3 4-6 4 4v9"/></svg>,
+  bolt:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  refresh: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
+  dl:      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  eye:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  heart:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+  msg:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  users:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  arrow:   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+}
+
+const TABS = [
+  { id:'overview'  as TabId, label:'Overview',  color:'#4D9FFF' },
+  { id:'content'   as TabId, label:'Content',   color:'#A78BFA' },
+  { id:'email'     as TabId, label:'Email',      color:'#34D399' },
+  { id:'platforms' as TabId, label:'Platforms',  color:'#FF7A40' },
+]
+
+function MetricCard({ icon, label, value, sub, color, trend }: any) {
+  const isPos = trend>0; const isNeg = trend<0
+  return (
+    <div style={{ padding:'16px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:13 }}>
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12 }}>
+        <div style={{ width:30,height:30,borderRadius:8,background:`${color}14`,border:`1px solid ${color}28`,display:'flex',alignItems:'center',justifyContent:'center',color,flexShrink:0 }}>{icon}</div>
+        {trend!==undefined && (
+          <span style={{ fontSize:11,fontWeight:700,color:isPos?'#34D399':isNeg?'#FF5757':'rgba(255,255,255,0.35)' }}>
+            {isPos?'↑':isNeg?'↓':''}{Math.abs(trend)}%
+          </span>
+        )}
+      </div>
+      <div style={{ fontFamily:'var(--display)',fontSize:26,fontWeight:800,letterSpacing:'-0.04em',color:'rgba(255,255,255,0.9)',lineHeight:1,marginBottom:4 }}>{value}</div>
+      <div style={{ fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:500 }}>{label}</div>
+      {sub && <div style={{ fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:3 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function Bar({ pct, color }: { pct:number; color:string }) {
+  return (
+    <div style={{ height:3,background:'rgba(255,255,255,0.06)',borderRadius:3,overflow:'hidden',marginTop:5 }}>
+      <div style={{ height:'100%',width:`${Math.min(100,pct)}%`,background:color,borderRadius:3,transition:'width 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}/>
+    </div>
+  )
+}
 
 export default function InsightsPage() {
   const supabase = createClient()
-  const [workspace, setWorkspace] = useState<any>(null)
-  const [insights, setInsights] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState(30)
-  const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null)
-  const [explaining, setExplaining] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState<any>(null)
-  const [connectedPlatforms, setConnectedPlatforms] = useState<any[]>([])
-  const [exporting, setExporting] = useState(false)
+  const [ws,        setWs]        = useState<any>(null)
+  const [insights,  setInsights]  = useState<any>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [period,    setPeriod]    = useState(30)
+  const [tab,       setTab]       = useState<TabId>('overview')
+  const [aiText,    setAiText]    = useState<string|null>(null)
+  const [explaining,setExplaining]= useState(false)
+  const [syncing,   setSyncing]   = useState(false)
+  const [connPlats, setConnPlats] = useState<any[]>([])
 
-  useEffect(() => { loadInsights() }, [period])
+  useEffect(() => { load() }, [period])
 
-  async function loadInsights() {
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+  async function load() {
+    const { data:{ user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data: m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id', user.id).limit(1).single()
-    const ws = (m as any)?.workspaces
-    setWorkspace(ws)
-
-    const [insightsRes, platformsRes] = await Promise.all([
-      fetch(`/api/get-insights?workspace_id=${ws?.id}&period=${period}`),
-      supabase.from('connected_platforms').select('*').eq('workspace_id', ws?.id).eq('is_active', true),
+    const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
+    const w = (m as any)?.workspaces; setWs(w)
+    const [{ data:ins }, { data:plats }] = await Promise.all([
+      supabase.from('analytics').select('*').eq('workspace_id',w?.id).gte('date',new Date(Date.now()-period*86400000).toISOString().split('T')[0]).order('date',{ascending:false}),
+      supabase.from('platform_connections').select('*').eq('workspace_id',w?.id).eq('is_active',true),
     ])
-
-    if (insightsRes.ok) {
-      const data = await insightsRes.json()
-      setInsights(data)
+    if (ins&&ins.length>0) {
+      const agg = ins.reduce((acc:any,row:any)=>({
+        impressions:(acc.impressions||0)+(row.impressions||0),
+        reach:(acc.reach||0)+(row.reach||0),
+        engagement:(acc.engagement||0)+(row.engagement||0),
+        clicks:(acc.clicks||0)+(row.clicks||0),
+        posts_created:(acc.posts_created||0)+(row.posts_created||0),
+        followers_gained:(acc.followers_gained||0)+(row.followers_gained||0),
+        email_opens:(acc.email_opens||0)+(row.email_opens||0),
+        email_clicks:(acc.email_clicks||0)+(row.email_clicks||0),
+        email_sent:(acc.email_sent||0)+(row.email_sent||0),
+      }),{})
+      setInsights({ ...agg, by_platform:ins, raw:ins })
     }
-    setConnectedPlatforms(platformsRes.data ?? [])
-    setLoading(false)
+    setConnPlats(plats??[]); setLoading(false)
   }
 
-  async function getAiExplanation() {
-    if (!insights || explaining) return
-    setExplaining(true)
-    setAiExplanation(null)
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspace.id,
-          message: `Analyze my content performance for the last ${period} days and give me 3 specific, actionable insights. Data: ${JSON.stringify(insights.overview)}. Platform breakdown: ${JSON.stringify(insights.platform_breakdown)}. Content types: ${JSON.stringify(insights.content_type_breakdown)}. Email: ${JSON.stringify(insights.email_stats)}. Be direct and tactical — what should I do differently next week?`,
-          history: [],
-        }),
-      })
-      const data = await res.json()
-      setAiExplanation(data.reply)
-    } catch { setAiExplanation('Unable to generate AI analysis right now.') }
-    setExplaining(false)
-  }
-
-  async function syncPlatformData() {
-    if (!workspace || syncing) return
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/sync-platform-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace.id }),
-      })
-      const data = await res.json()
-      setSyncResult(data)
-      await loadInsights()
-    } catch {}
+  async function syncData() {
+    if (!ws||syncing) return; setSyncing(true)
+    try { await fetch('/api/sync-platform-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})}); await load() } catch {}
     setSyncing(false)
   }
 
-  async function exportData(format_type: 'csv' | 'json') {
-    if (!insights) return
-    setExporting(true)
-
-    const exportData = {
-      workspace: workspace?.name,
-      period: `Last ${period} days`,
-      generated_at: new Date().toISOString(),
-      overview: insights.overview,
-      platform_breakdown: insights.platform_breakdown,
-      content_type_breakdown: insights.content_type_breakdown,
-      email_stats: insights.email_stats,
-      top_content: insights.top_content?.map((c: any) => ({
-        type: c.type,
-        platform: c.platform,
-        status: c.status,
-        body_preview: c.body?.slice(0, 100),
-        likes: c.likes,
-        comments: c.comments,
-        shares: c.shares,
-        reach: c.reach,
-        created_at: c.created_at,
-      })),
-    }
-
-    if (format_type === 'json') {
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `nexa-insights-${workspace?.name}-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    } else {
-      // CSV export
-      const rows = [
-        ['Metric', 'Value'],
-        ['Total content', insights.overview.total_content],
-        ['Published', insights.overview.published],
-        ['Scheduled', insights.overview.scheduled],
-        ['Total reach', insights.overview.total_reach],
-        ['Total engagements', insights.overview.total_engagements],
-        ['Credits used', insights.overview.credits_used],
-        ['', ''],
-        ['Platform', 'Posts', 'Reach', 'Engagements'],
-        ...Object.entries(insights.platform_breakdown || {}).map(([p, d]: [string, any]) => [p, d.count, d.reach, d.engagements]),
-        ['', ''],
-        ['Email Sequences', insights.email_stats.total_sequences],
-        ['Emails sent', insights.email_stats.total_sent],
-        ['Avg open rate', `${insights.email_stats.avg_open_rate}%`],
-      ]
-      const csv = rows.map(r => r.join(',')).join('\n')
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `nexa-insights-${workspace?.name}-${new Date().toISOString().split('T')[0]}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    setExporting(false)
+  async function getAiExplanation() {
+    if (!ws||explaining||!insights) return; setExplaining(true)
+    try {
+      const r = await fetch('/api/get-insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,period,metrics:insights})})
+      const d = await r.json()
+      if (d.explanation) setAiText(d.explanation)
+    } catch {}
+    setExplaining(false)
   }
 
-  const TABS: { id: TabId; label: string }[] = [
-    { id: 'overview',   label: 'Overview' },
-    { id: 'content',    label: 'Content' },
-    { id: 'email',      label: 'Email' },
-    { id: 'platforms',  label: 'Platforms' },
-    { id: 'export',     label: '↓ Export' },
-  ]
+  function fmt(n:number) { return n>=1000?`${(n/1000).toFixed(1)}K`:String(n||0) }
+  function rate(a:number,b:number) { return b>0?`${((a/b)*100).toFixed(1)}%`:'—' }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t4)', fontSize: 13 }}>
-      Loading insights...
-    </div>
-  )
-
-  const ov = insights?.overview ?? {}
-  const chartData = insights?.chart_data ?? []
-  const maxChart = Math.max(...chartData.map((d: any) => d.content), 1)
+  const activeColor = TABS.find(t=>t.id===tab)?.color??'#4D9FFF'
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1000, overflowY: 'auto', height: 'calc(100vh - var(--topbar-h))' }}>
+    <>
+      <style>{`
+        @keyframes insUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes insSpin{to{transform:rotate(360deg)}}
+        .itab:hover{background:rgba(255,255,255,0.05)!important;}
+        .row:hover{background:rgba(255,255,255,0.04)!important;}
+      `}</style>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 3 }}>Insights</h1>
-          <div style={{ fontSize: 12, color: 'var(--t4)' }}>Performance analytics for your brand</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Period selector */}
-          {[7, 30, 90].map(d => (
-            <button key={d} onClick={() => setPeriod(d)}
-              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, background: period === d ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${period === d ? 'var(--cline2)' : 'var(--line2)'}`, color: period === d ? 'var(--cyan)' : 'var(--t4)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-              {d}d
-            </button>
-          ))}
-          <button onClick={syncPlatformData} disabled={syncing}
-            style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)', display: 'flex', alignItems: 'center', gap: 5 }}>
-            {syncing ? <>Syncing...</> : <>↺ Sync</>}
-          </button>
-        </div>
-      </div>
+      <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>
 
-      {/* Sync result banner */}
-      {syncResult && (
-        <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>{syncResult.message}</span>
-          <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', color: 'var(--t5)', cursor: 'pointer', fontSize: 14 }}>✕</button>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--line)', marginBottom: 24, gap: 0 }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            style={{ padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: activeTab === t.id ? 700 : 500, color: activeTab === t.id ? 'var(--t1)' : 'var(--t4)', borderBottom: activeTab === t.id ? '2px solid var(--cyan)' : '2px solid transparent', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── OVERVIEW ── */}
-      {activeTab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Stats grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-            {[
-              { label: 'Content created', value: ov.total_content ?? 0, color: 'var(--cyan)', sub: `${period}d period` },
-              { label: 'Published', value: ov.published ?? 0, color: '#00d68f', sub: 'live on platforms' },
-              { label: 'Total reach', value: (ov.total_reach ?? 0).toLocaleString(), color: 'var(--t1)', sub: 'across all platforms' },
-              { label: 'Engagements', value: (ov.total_engagements ?? 0).toLocaleString(), color: '#8b5cf6', sub: 'likes + comments + shares' },
-            ].map(stat => (
-              <div key={stat.label} style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, padding: '16px' }}>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginTop: 5 }}>{stat.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--t5)', marginTop: 2 }}>{stat.sub}</div>
-              </div>
-            ))}
+        {/* Header */}
+        <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:20,animation:'insUp .4s ease both' }}>
+          <div>
+            <h1 style={{ fontFamily:'var(--display)',fontSize:22,fontWeight:800,letterSpacing:'-0.04em',color:'rgba(255,255,255,0.92)',lineHeight:1,marginBottom:4 }}>Insights</h1>
+            <p style={{ fontSize:12,color:'rgba(255,255,255,0.3)' }}>Last {period} days · {connPlats.length} platform{connPlats.length!==1?'s':''} connected</p>
           </div>
-
-          {/* Activity chart */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 16 }}>Content created · last {period} days</div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80 }}>
-              {chartData.filter((_: any, i: number) => period <= 30 || i % 3 === 0).map((d: any, i: number) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <div style={{ width: '100%', background: d.content > 0 ? 'var(--cyan)' : 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0', height: `${Math.max((d.content / maxChart) * 70, d.content > 0 ? 4 : 2)}px`, transition: 'height 0.3s', opacity: d.content > 0 ? 0.8 : 0.3 }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-              <span style={{ fontSize: 10, color: 'var(--t5)' }}>{chartData[0]?.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--t5)' }}>{chartData[chartData.length - 1]?.label}</span>
-            </div>
-          </div>
-
-          {/* AI explanation */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: aiExplanation ? 12 : 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--cyan)', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>Nexa AI Analysis</span>
-              </div>
-              <button onClick={getAiExplanation} disabled={explaining}
-                style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: explaining ? 'var(--glass)' : 'var(--cyan)', color: explaining ? 'var(--t4)' : '#000', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                {explaining ? 'Analyzing...' : aiExplanation ? '↺ Re-analyze' : 'Analyze my data →'}
-              </button>
-            </div>
-            {aiExplanation && (
-              <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{aiExplanation}</div>
-            )}
-            {!aiExplanation && !explaining && (
-              <div style={{ fontSize: 12, color: 'var(--t5)', marginTop: 8 }}>Get AI-powered insights and specific recommendations based on your performance data.</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── CONTENT ── */}
-      {activeTab === 'content' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Content type breakdown */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Content by type</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {Object.entries(insights?.content_type_breakdown || {}).map(([type, count]: [string, any]) => (
-                <div key={type} style={{ padding: '10px 16px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 10 }}>
-                  <div style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, color: 'var(--cyan)', lineHeight: 1 }}>{count}</div>
-                  <div style={{ fontSize: 11, color: 'var(--t4)', marginTop: 4, textTransform: 'capitalize' }}>{type}</div>
-                </div>
-              ))}
-              {Object.keys(insights?.content_type_breakdown || {}).length === 0 && (
-                <div style={{ fontSize: 13, color: 'var(--t5)' }}>No content created in this period yet.</div>
-              )}
-            </div>
-          </div>
-
-          {/* Top performing content */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)' }}>Top performing content</div>
-              <div style={{ fontSize: 11, color: 'var(--t5)' }}>Sorted by engagements</div>
-            </div>
-            {insights?.top_content?.length > 0 ? insights.top_content.map((c: any, i: number) => (
-              <div key={c.id} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < insights.top_content.length - 1 ? '1px solid var(--line)' : 'none' }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(0,170,255,0.08)', border: '1px solid var(--cline2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--cyan)', flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'var(--glass2)', border: '1px solid var(--line)', color: 'var(--t4)', textTransform: 'uppercase' }}>{c.type}</span>
-                    <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 3, background: `${PLATFORM_COLORS[c.platform] || '#888'}15`, color: PLATFORM_COLORS[c.platform] || 'var(--t4)', textTransform: 'uppercase' }}>{c.platform}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--t3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body?.slice(0, 80) || c.title || 'Untitled'}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--t4)', flexShrink: 0 }}>
-                  <span>❤️ {c.likes ?? 0}</span>
-                  <span>💬 {c.comments ?? 0}</span>
-                  <span>↗️ {c.shares ?? 0}</span>
-                </div>
-              </div>
-            )) : (
-              <div style={{ fontSize: 13, color: 'var(--t5)', textAlign: 'center', padding: '20px 0' }}>
-                No published content yet. Publish posts to see performance data here.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── EMAIL ── */}
-      {activeTab === 'email' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            {[
-              { label: 'Active sequences', value: insights?.email_stats?.active_sequences ?? 0, color: 'var(--cyan)' },
-              { label: 'Emails sent', value: (insights?.email_stats?.total_sent ?? 0).toLocaleString(), color: 'var(--t1)' },
-              { label: 'Avg open rate', value: `${insights?.email_stats?.avg_open_rate ?? 0}%`, color: insights?.email_stats?.avg_open_rate > 30 ? '#00d68f' : 'var(--amber)' },
-            ].map(stat => (
-              <div key={stat.label} style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, padding: '16px' }}>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginTop: 5 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: '16px 18px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
-            Industry average open rate is 20-25%. {insights?.email_stats?.avg_open_rate > 25 ? `Your ${insights.email_stats.avg_open_rate}% is above average — your subject lines and audience targeting are working.` : 'Build your email sequences in the Automate tab to start growing this number.'}
-          </div>
-          <a href="/dashboard/automate" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: 12, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, textDecoration: 'none', width: 'fit-content' }}>
-            Manage email sequences →
-          </a>
-        </div>
-      )}
-
-      {/* ── PLATFORMS ── */}
-      {activeTab === 'platforms' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Connected platforms */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)' }}>Connected platforms</div>
-              <a href="/dashboard/schedule" style={{ fontSize: 11, color: 'var(--cyan)', textDecoration: 'none' }}>Manage →</a>
-            </div>
-            {connectedPlatforms.length > 0 ? connectedPlatforms.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${PLATFORM_COLORS[p.platform] || '#888'}20`, border: `1px solid ${PLATFORM_COLORS[p.platform] || '#888'}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: PLATFORM_COLORS[p.platform] || 'var(--t3)', textTransform: 'capitalize', flexShrink: 0 }}>
-                  {p.platform.slice(0, 2).toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', textTransform: 'capitalize' }}>{p.platform}</div>
-                  <div style={{ fontSize: 11, color: 'var(--t5)' }}>@{p.platform_username || 'connected'} · Connected {p.connected_at ? format(new Date(p.connected_at), 'MMM d') : ''}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00d68f' }} />
-                  <span style={{ fontSize: 11, color: '#00d68f', fontWeight: 600 }}>Active</span>
-                </div>
-              </div>
-            )) : (
-              <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 13, color: 'var(--t5)' }}>
-                No platforms connected. <a href="/dashboard/schedule" style={{ color: 'var(--cyan)', textDecoration: 'none' }}>Connect platforms →</a>
-              </div>
-            )}
-          </div>
-
-          {/* Platform performance breakdown */}
-          {Object.keys(insights?.platform_breakdown || {}).length > 0 && (
-            <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 14 }}>Performance by platform</div>
-              {Object.entries(insights.platform_breakdown).map(([platform, data]: [string, any]) => (
-                <div key={platform} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: `${PLATFORM_COLORS[platform] || '#888'}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: PLATFORM_COLORS[platform] || 'var(--t3)', flexShrink: 0 }}>{platform.slice(0, 2).toUpperCase()}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', marginBottom: 4, textTransform: 'capitalize' }}>{platform}</div>
-                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min((data.count / Math.max(...Object.values(insights.platform_breakdown).map((d: any) => d.count), 1)) * 100, 100)}%`, background: PLATFORM_COLORS[platform] || 'var(--cyan)', borderRadius: 4 }} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--t4)', textAlign: 'right', flexShrink: 0 }}>
-                    <div>{data.count} posts</div>
-                    <div style={{ color: 'var(--t5)' }}>{data.engagements} engagements</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Live data status */}
-          <div style={{ padding: '16px 18px', background: 'rgba(212,82,26,0.04)', border: '1px solid rgba(212,82,26,0.2)', borderRadius: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', marginBottom: 6 }}>Live platform data</div>
-            <div style={{ fontSize: 12, color: 'var(--t4)', lineHeight: 1.7, marginBottom: 10 }}>
-              Real-time reach, impressions, and engagement data from Instagram, LinkedIn, and X will flow automatically here once the platform apps are approved. The infrastructure is built and ready — it activates the moment approvals come through.
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {['Instagram', 'LinkedIn', 'X', 'TikTok'].map(p => (
-                <span key={p} style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? 'rgba(0,214,143,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? 'rgba(0,214,143,0.3)' : 'var(--line)'}`, color: connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? '#00d68f' : 'var(--t5)' }}>
-                  {p} {connectedPlatforms.find(c => c.platform === p.toLowerCase()) ? '✓ Connected' : '○ Not connected'}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── EXPORT ── */}
-      {activeTab === 'export' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ padding: '16px 18px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
-            Export your Nexa performance data for reporting, analysis, or sharing with clients. Choose your format and period below.
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[
-              { format: 'csv' as const, label: 'CSV Export', desc: 'Open in Excel, Google Sheets, or any spreadsheet tool. Includes all metrics, platform breakdown, and email stats.', icon: '📊' },
-              { format: 'json' as const, label: 'JSON Export', desc: 'Full structured data export. Use for custom dashboards, API integrations, or developer tools.', icon: '{ }' },
-            ].map(opt => (
-              <div key={opt.format} style={{ padding: '20px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14 }}>
-                <div style={{ fontSize: 28, marginBottom: 12 }}>{opt.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 6 }}>{opt.label}</div>
-                <div style={{ fontSize: 12, color: 'var(--t4)', lineHeight: 1.6, marginBottom: 16 }}>{opt.desc}</div>
-                <button onClick={() => exportData(opt.format)} disabled={exporting}
-                  style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                  Download {opt.format.toUpperCase()} →
+          <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+            {/* Period pills */}
+            <div style={{ display:'flex',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:3,gap:2 }}>
+              {[7,30,90].map(d=>(
+                <button key={d} onClick={()=>setPeriod(d)}
+                  style={{ padding:'5px 12px',borderRadius:8,fontSize:12,fontWeight:period===d?700:500,background:period===d?'rgba(255,255,255,0.08)':'transparent',border:`1px solid ${period===d?'rgba(255,255,255,0.12)':'transparent'}`,color:period===d?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.35)',cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s' }}>
+                  {d}d
                 </button>
-              </div>
-            ))}
-          </div>
-
-          {/* What's included */}
-          <div style={{ background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t3)', marginBottom: 12 }}>What's included in the export</div>
-            {[
-              'Overview metrics (content created, published, reach, engagements)',
-              'Platform breakdown (posts, reach, engagements per platform)',
-              'Content type breakdown (posts, images, videos, threads)',
-              'Email sequence stats (sent, opened, open rate)',
-              'Top performing content with engagement metrics',
-              'Period: last ' + period + ' days',
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 12, color: 'var(--t3)' }}>
-                <span style={{ color: '#00d68f' }}>✓</span> {item}
-              </div>
-            ))}
-            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--t5)' }}>
-              Live platform data (Instagram/LinkedIn reach + impressions) will be included once platform apps are approved.
+              ))}
             </div>
+            <button onClick={syncData} disabled={syncing}
+              style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',fontSize:12,fontWeight:600,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9,cursor:'pointer',fontFamily:'var(--sans)',transition:'all .15s' }}>
+              <span style={{ display:'flex',animation:syncing?'insSpin .8s linear infinite':'none' }}>{Ic.refresh}</span>
+              {syncing?'Syncing…':'Sync'}
+            </button>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Tabs */}
+        <div style={{ display:'flex',gap:2,marginBottom:22,background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:4,animation:'insUp .4s ease .05s both' }}>
+          {TABS.map(t=>{
+            const on=tab===t.id
+            return (
+              <button key={t.id} className="itab" onClick={()=>setTab(t.id)}
+                style={{ flex:1,padding:'8px 6px',borderRadius:9,border:`1px solid ${on?`${t.color}28`:'transparent'}`,background:on?`${t.color}10`:'transparent',color:on?t.color:'rgba(255,255,255,0.32)',cursor:'pointer',fontSize:12,fontWeight:on?700:500,fontFamily:'var(--sans)',transition:'all .15s' }}>
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {loading && <div style={{ textAlign:'center',padding:'40px',color:'rgba(255,255,255,0.3)',fontSize:13 }}>Loading analytics…</div>}
+
+        {!loading && !insights && (
+          <div style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'50vh',textAlign:'center',padding:'40px 20px' }}>
+            <div style={{ width:56,height:56,borderRadius:14,background:'rgba(77,159,255,0.07)',border:'1px solid rgba(77,159,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',color:'#4D9FFF',marginBottom:18 }}>{Ic.chart}</div>
+            <h3 style={{ fontFamily:'var(--display)',fontSize:18,fontWeight:800,letterSpacing:'-0.03em',marginBottom:8,color:'rgba(255,255,255,0.85)' }}>No analytics yet</h3>
+            <p style={{ fontSize:13,color:'rgba(255,255,255,0.35)',lineHeight:1.7,maxWidth:380,marginBottom:22 }}>Connect your social platforms to start tracking impressions, engagement, and audience growth in real time.</p>
+            <button onClick={syncData}
+              style={{ display:'flex',alignItems:'center',gap:8,padding:'12px 24px',fontSize:13,fontWeight:700,background:'#4D9FFF',color:'#000',border:'none',borderRadius:10,cursor:'pointer',fontFamily:'var(--sans)',boxShadow:'0 4px 16px rgba(77,159,255,0.3)',letterSpacing:'-0.01em' }}>
+              <span style={{ display:'flex' }}>{Ic.refresh}</span>Sync platforms
+            </button>
+          </div>
+        )}
+
+        {!loading && insights && (
+          <>
+            {/* ── OVERVIEW ── */}
+            {tab==='overview' && (
+              <div style={{ animation:'insUp .3s ease both' }}>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:8,marginBottom:20 }}>
+                  <MetricCard icon={Ic.eye}   label="Impressions"   value={fmt(insights.impressions)} color="#4D9FFF"  trend={12}/>
+                  <MetricCard icon={Ic.users} label="Reach"         value={fmt(insights.reach)}       color="#A78BFA"  trend={8}/>
+                  <MetricCard icon={Ic.heart} label="Engagements"   value={fmt(insights.engagement)}  color="#FF7A40"  trend={-3}/>
+                  <MetricCard icon={Ic.arrow} label="Link clicks"   value={fmt(insights.clicks)}      color="#34D399"  trend={22}/>
+                  <MetricCard icon={Ic.chart} label="Posts created" value={fmt(insights.posts_created||0)} color="#FFB547" trend={0}/>
+                  <MetricCard icon={Ic.users} label="New followers" value={fmt(insights.followers_gained||0)} color="#FF5757" trend={5}/>
+                </div>
+
+                {/* AI explanation */}
+                {aiText ? (
+                  <div style={{ padding:'16px 18px',background:'rgba(77,159,255,0.06)',border:'1px solid rgba(77,159,255,0.18)',borderRadius:12,marginBottom:16,animation:'insUp .3s ease both' }}>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#4D9FFF',letterSpacing:'.09em',textTransform:'uppercase',marginBottom:8 }}>AI Analysis</div>
+                    <div style={{ fontSize:13,color:'rgba(255,255,255,0.65)',lineHeight:1.7 }}>{aiText}</div>
+                  </div>
+                ) : (
+                  <button onClick={getAiExplanation} disabled={explaining}
+                    style={{ display:'flex',alignItems:'center',gap:7,padding:'9px 18px',fontSize:12,fontWeight:600,background:'rgba(77,159,255,0.06)',border:'1px solid rgba(77,159,255,0.18)',color:'#4D9FFF',borderRadius:9,cursor:'pointer',fontFamily:'var(--sans)',marginBottom:16,transition:'all .15s' }}>
+                    <span style={{ display:'flex',animation:explaining?'insSpin .8s linear infinite':'none' }}>{Ic.bolt}</span>
+                    {explaining?'Analyzing…':'Explain my performance with AI'}
+                  </button>
+                )}
+
+                {/* Engagement rate */}
+                {insights.reach>0 && (
+                  <div style={{ padding:'16px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12 }}>
+                    <div style={{ fontSize:9,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:12 }}>Engagement rates</div>
+                    {[
+                      { label:'Overall engagement rate', pct:(insights.engagement/insights.reach)*100, color:'#4D9FFF' },
+                      { label:'Click-through rate',       pct:(insights.clicks/insights.impressions)*100, color:'#34D399' },
+                    ].map(m=>(
+                      <div key={m.label} style={{ marginBottom:12 }}>
+                        <div style={{ display:'flex',justifyContent:'space-between',marginBottom:4 }}>
+                          <span style={{ fontSize:12,color:'rgba(255,255,255,0.55)' }}>{m.label}</span>
+                          <span style={{ fontSize:12,fontWeight:700,color:'rgba(255,255,255,0.8)' }}>{m.pct.toFixed(1)}%</span>
+                        </div>
+                        <Bar pct={m.pct} color={m.color}/>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── CONTENT ── */}
+            {tab==='content' && (
+              <div style={{ animation:'insUp .3s ease both' }}>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:8,marginBottom:20 }}>
+                  <MetricCard icon={Ic.chart} label="Posts created"   value={fmt(insights.posts_created||0)}              color="#A78BFA"/>
+                  <MetricCard icon={Ic.eye}   label="Total impressions"value={fmt(insights.impressions)}                   color="#4D9FFF"/>
+                  <MetricCard icon={Ic.heart} label="Total engagements"value={fmt(insights.engagement)}                   color="#FF7A40"/>
+                  <MetricCard icon={Ic.users} label="Avg per post"     value={insights.posts_created>0?fmt(Math.round(insights.impressions/insights.posts_created)):'—'} color="#34D399"/>
+                </div>
+                {insights.raw?.slice(0,10).map((row:any,i:number)=>(
+                  <div key={i} className="row" style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,transition:'background .15s',marginBottom:4 }}>
+                    <div style={{ width:7,height:7,borderRadius:'50%',background:PLAT_COLORS[row.platform]||'#888',flexShrink:0 }}/>
+                    <div style={{ flex:1,fontSize:12,color:'rgba(255,255,255,0.62)' }}>{row.date?.slice(0,10)||'—'}</div>
+                    <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',minWidth:80,textAlign:'right' }}>{fmt(row.impressions||0)} imp</div>
+                    <div style={{ fontSize:12,color:'rgba(255,255,255,0.5)',minWidth:80,textAlign:'right' }}>{fmt(row.engagement||0)} eng</div>
+                    <div style={{ fontSize:10,color:PLAT_COLORS[row.platform]||'rgba(255,255,255,0.3)',fontWeight:600,minWidth:70,textAlign:'right',textTransform:'capitalize' }}>{row.platform||'—'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── EMAIL ── */}
+            {tab==='email' && (
+              <div style={{ animation:'insUp .3s ease both' }}>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:8,marginBottom:20 }}>
+                  <MetricCard icon={Ic.msg}   label="Emails sent"  value={fmt(insights.email_sent||0)}                                  color="#34D399"/>
+                  <MetricCard icon={Ic.eye}   label="Opens"        value={fmt(insights.email_opens||0)}                                  color="#4D9FFF"  trend={7}/>
+                  <MetricCard icon={Ic.arrow} label="Clicks"       value={fmt(insights.email_clicks||0)}                                 color="#A78BFA"/>
+                  <MetricCard icon={Ic.chart} label="Open rate"    value={rate(insights.email_opens||0,insights.email_sent||0)}          color="#FFB547"/>
+                </div>
+                {(insights.email_sent||0)===0 && (
+                  <div style={{ textAlign:'center',padding:'32px',color:'rgba(255,255,255,0.25)',fontSize:13,border:'1px dashed rgba(255,255,255,0.07)',borderRadius:12 }}>
+                    No email data yet. Connect your email provider to track opens and clicks.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── PLATFORMS ── */}
+            {tab==='platforms' && (
+              <div style={{ animation:'insUp .3s ease both' }}>
+                {connPlats.length>0 ? (
+                  <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:10 }}>
+                    {connPlats.map(plat=>{
+                      const color = PLAT_COLORS[plat.platform]||'#888'
+                      const platData = insights.raw?.filter((r:any)=>r.platform===plat.platform)||[]
+                      const totImp = platData.reduce((a:number,r:any)=>a+(r.impressions||0),0)
+                      const totEng = platData.reduce((a:number,r:any)=>a+(r.engagement||0),0)
+                      return (
+                        <div key={plat.id} style={{ padding:'16px 18px',background:'rgba(255,255,255,0.03)',border:`1px solid ${color}18`,borderRadius:13 }}>
+                          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:14 }}>
+                            <div style={{ width:8,height:8,borderRadius:'50%',background:color,boxShadow:`0 0 7px ${color}` }}/>
+                            <span style={{ fontSize:13,fontWeight:700,color:'rgba(255,255,255,0.85)',textTransform:'capitalize' }}>{plat.platform}</span>
+                            {plat.account_name && <span style={{ fontSize:10,color:'rgba(255,255,255,0.3)',marginLeft:'auto' }}>{plat.account_name}</span>}
+                          </div>
+                          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+                            <div style={{ padding:'10px 12px',background:'rgba(0,0,0,0.2)',borderRadius:9 }}>
+                              <div style={{ fontFamily:'var(--display)',fontSize:18,fontWeight:800,color:'rgba(255,255,255,0.85)',letterSpacing:'-0.03em',lineHeight:1 }}>{fmt(totImp)}</div>
+                              <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:3 }}>Impressions</div>
+                            </div>
+                            <div style={{ padding:'10px 12px',background:'rgba(0,0,0,0.2)',borderRadius:9 }}>
+                              <div style={{ fontFamily:'var(--display)',fontSize:18,fontWeight:800,color:'rgba(255,255,255,0.85)',letterSpacing:'-0.03em',lineHeight:1 }}>{fmt(totEng)}</div>
+                              <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:3 }}>Engagements</div>
+                            </div>
+                          </div>
+                          {totImp>0 && <Bar pct={(totEng/totImp)*100} color={color}/>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ textAlign:'center',padding:'40px',color:'rgba(255,255,255,0.25)',fontSize:13 }}>
+                    No platforms connected. Go to{' '}
+                    <a href="/dashboard/schedule?view=platforms" style={{ color:'#4D9FFF',textDecoration:'none',fontWeight:600 }}>Schedule → Platforms</a> to connect.
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
   )
 }
