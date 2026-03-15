@@ -163,18 +163,12 @@ If the user shares a document, PDF, or content file:
         }
         
         if (learningInsights.length > 0) {
-          await supabase.from('brand_learnings').insert(learningInsights).catch(() => {})
+          try { await supabase.from('brand_learnings').insert(learningInsights) } catch {}
         }
       }
 
       // Log activity
-      await supabase.from('activity').insert({
-        workspace_id,
-        user_id: user.id,
-        type: 'brand_learned',
-        title: `Nexa learned from "${fileName}" — ${learningInsights.length} insights extracted`,
-        metadata: { file_name: fileName, learnings_count: learningInsights.length },
-      }).catch(() => {})
+      try { await supabase.from('activity').insert({ workspace_id, user_id: user.id, type: 'brand_learned', title: `Nexa learned from "${fileName}" — ${learningInsights.length} insights extracted`, metadata: { file_name: fileName, learnings_count: learningInsights.length } }) } catch {}
     }
 
     // Save to conversations
