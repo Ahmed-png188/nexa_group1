@@ -138,7 +138,7 @@ export default function DashboardHome() {
         status: data.success ? 'completed' : 'failed',
         result: data,
         items_created: data.posts?.length || data.replies?.length || 0,
-      }).catch(() => {})
+      }) } catch {}
 
       // Save brand learnings if insights agent
       if (agentId === 'insights' && data.insights) {
