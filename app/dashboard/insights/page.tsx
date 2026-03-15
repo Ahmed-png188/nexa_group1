@@ -119,10 +119,10 @@ export default function InsightsPage() {
   return (
     <>
       <style>{`
-        @keyframes insUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes insSpin{to{transform:rotate(360deg)}}
-        .itab:hover{background:rgba(255,255,255,0.05)!important;}
-        .row:hover{background:rgba(255,255,255,0.04)!important;}
+        {"@keyframes insUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}
+        {"@keyframes insSpin{to{transform:rotate(360deg)}}"}
+        {".itab:hover{background:rgba(255,255,255,0.05)!important;}"}
+        {".row:hover{background:rgba(255,255,255,0.04)!important;}"}
       `}</style>
 
       <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>

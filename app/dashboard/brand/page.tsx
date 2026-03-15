@@ -123,11 +123,11 @@ export default function BrandPage() {
   return (
     <>
       <style>{`
-        @keyframes brandUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes brandSpin{to{transform:rotate(360deg)}}
-        .btab:hover{background:rgba(255,255,255,0.05)!important;}
-        .a-card:hover{border-color:rgba(255,255,255,0.13)!important;background:rgba(255,255,255,0.05)!important;}
-        .l-row:hover{background:rgba(255,255,255,0.04)!important;}
+        {"@keyframes brandUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}
+        {"@keyframes brandSpin{to{transform:rotate(360deg)}}"}
+        {".btab:hover{background:rgba(255,255,255,0.05)!important;}"}
+        {".a-card:hover{border-color:rgba(255,255,255,0.13)!important;background:rgba(255,255,255,0.05)!important;}"}
+        {".l-row:hover{background:rgba(255,255,255,0.04)!important;}"}
       `}</style>
 
       <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>
