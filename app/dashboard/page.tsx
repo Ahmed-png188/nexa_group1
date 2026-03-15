@@ -76,16 +76,21 @@ export default function DashboardHome() {
     setProfile(p)
     setWorkspace(ws)
 
-    const [creditsRes, contentRes, activityRes, scheduledRes, convsRes, agentRunsRes, learningsRes, profileAssetRes] = await Promise.all([
+    const [creditsRes, contentRes, activityRes, scheduledRes, convsRes] = await Promise.all([
       supabase.from('credits').select('balance, lifetime_used').eq('workspace_id', ws?.id).single(),
       supabase.from('content').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(6),
       supabase.from('activity').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(8),
       supabase.from('content').select('*').eq('workspace_id', ws?.id).eq('status', 'scheduled').order('scheduled_for', { ascending: true }).limit(4),
       supabase.from('conversations').select('*').eq('workspace_id', ws?.id).order('updated_at', { ascending: false }).limit(5),
-      supabase.from('agent_runs').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(10).catch(() => ({ data: [] })),
-      supabase.from('brand_learnings').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(10).catch(() => ({ data: [] })),
-      supabase.from('brand_assets').select('analysis').eq('workspace_id', ws?.id).eq('file_name', 'nexa_brand_intelligence.json').single().catch(() => ({ data: null })),
     ])
+
+    // These tables may not exist yet — handle gracefully
+    let agentRunsRes = { data: [] as any[] }
+    let learningsRes = { data: [] as any[] }
+    let profileAssetRes = { data: null as any }
+    try { const r = await supabase.from('agent_runs').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(10); agentRunsRes = { data: r.data ?? [] } } catch {}
+    try { const r = await supabase.from('brand_learnings').select('*').eq('workspace_id', ws?.id).order('created_at', { ascending: false }).limit(10); learningsRes = { data: r.data ?? [] } } catch {}
+    try { const r = await supabase.from('brand_assets').select('analysis').eq('workspace_id', ws?.id).eq('file_name', 'nexa_brand_intelligence.json').single(); profileAssetRes = { data: r.data } } catch {}
 
     setCredits(creditsRes.data)
     setRecentContent(contentRes.data ?? [])
