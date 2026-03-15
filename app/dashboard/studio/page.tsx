@@ -486,11 +486,8 @@ export default function StudioPage() {
               </p>
             </div>
 
-            {/* Credits — small subtle, not duplicating topbar */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 11px', background:'rgba(77,159,255,0.06)', border:'1px solid rgba(77,159,255,0.15)', borderRadius:8 }}>
-              <div style={{ width:5, height:5, borderRadius:'50%', background:'#4D9FFF', animation:'studioPulse 2.5s ease-in-out infinite' }}/>
-              <span style={{ fontSize:12, fontWeight:700, color:'rgba(77,159,255,0.8)', fontFamily:'var(--display)' }}>{credits.toLocaleString()} cr</span>
-            </div>
+            {/* Credits shown in topbar — nothing here */}
+            <div/>
           </div>
 
           {/* ── Tab selector — premium feel ── */}
@@ -533,7 +530,7 @@ export default function StudioPage() {
 
           {/* ──────────── COPY TAB ──────────── */}
           {tab === 'copy' && (
-            <div style={{ maxWidth:620, animation:'studioUp .3s ease both' }}>
+            <div style={{ width:"100%", animation:'studioUp .3s ease both' }}>
 
               {/* Format grid */}
               <div style={{ marginBottom:20 }}>
@@ -591,7 +588,7 @@ export default function StudioPage() {
 
           {/* ──────────── IMAGE TAB ──────────── */}
           {tab === 'image' && (
-            <div style={{ maxWidth:620, animation:'studioUp .3s ease both' }}>
+            <div style={{ width:"100%", animation:'studioUp .3s ease both' }}>
               <ProviderBadge name="Flux" desc="Photorealistic brand imagery · ~15 seconds" color="#A78BFA"/>
 
               <div style={{ marginBottom:22 }}>
@@ -649,7 +646,7 @@ export default function StudioPage() {
 
           {/* ──────────── VIDEO TAB ──────────── */}
           {tab === 'video' && (
-            <div style={{ maxWidth:620, animation:'studioUp .3s ease both' }}>
+            <div style={{ width:"100%", animation:'studioUp .3s ease both' }}>
               <ProviderBadge name="Kling 3.0" desc="Cinematic video generation · 1–3 min to render" color="#FF7A40"/>
 
               <div style={{ marginBottom:20 }}>
@@ -771,7 +768,7 @@ export default function StudioPage() {
 
           {/* ──────────── VOICE TAB ──────────── */}
           {tab === 'voice' && (
-            <div style={{ maxWidth:620, animation:'studioUp .3s ease both' }}>
+            <div style={{ width:"100%", animation:'studioUp .3s ease both' }}>
               <ProviderBadge name="ElevenLabs" desc="Ultra-realistic AI voiceovers · 8 languages" color="#34D399"/>
 
               <div style={{ marginBottom:24 }}>
