@@ -8,40 +8,27 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user } } = try { await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id } = await request.json()
     const brand = await getBrandContext(workspace_id)
 
-    // Get content history for pattern analysis
     const { data: contentHistory } = await supabase
       .from('content')
-      .select('platform, created_at, type, metadata')
+      .select('platform, created_at, type')
       .eq('workspace_id', workspace_id)
       .order('created_at', { ascending: false })
       .limit(50)
 
-    const contentPatterns = contentHistory?.reduce((acc: any, c) => {
-      const hour = new Date(c.created_at).getHours()
-      const day = new Date(c.created_at).toLocaleDateString('en', { weekday: 'long' })
-      if (!acc[c.platform]) acc[c.platform] = { hours: [], days: [] }
-      acc[c.platform].hours.push(hour)
-      acc[c.platform].days.push(day)
-      return acc
-    }, {})
-
-    const prompt = `You are an expert social media timing strategist. Analyze this brand's audience and provide the most specific, data-backed posting time recommendations possible.
+    const prompt = `You are an expert social media timing strategist. Analyze this brand's audience and provide the most specific, data-backed posting time recommendations.
 
 ${brand?.copyContext}
 
-Audience psychology: ${brand?.profile?.audience?.psychology || brand?.workspace?.brand_audience || 'Not defined'}
-Audience primary: ${brand?.profile?.audience?.primary || 'Not defined'}
-Pain points: ${brand?.profile?.audience?.pain_points?.join(', ') || 'Not defined'}
+Audience: ${brand?.profile?.audience?.primary || brand?.workspace?.brand_audience || 'Not defined'}
+Audience psychology: ${brand?.profile?.audience?.psychology || 'Not defined'}
 
-Content history patterns: ${JSON.stringify(contentPatterns || {})}
-
-Based on the audience's psychology, profession, daily routine, and behavior patterns, provide SPECIFIC timing recommendations. Don't be generic — if this is an audience of entrepreneurs, they check Instagram at 6am. If it's corporate professionals, LinkedIn at 8am and 12pm. Think deeply about when THESE SPECIFIC people are most receptive.
+Based on the audience's psychology, profession, daily routine, and behavior patterns, provide SPECIFIC timing recommendations. Think deeply about when THESE SPECIFIC people are most receptive.
 
 Return ONLY valid JSON:
 {
@@ -49,21 +36,30 @@ Return ONLY valid JSON:
   "platforms": {
     "instagram": {
       "best_times": [
-        { "time": "7:00 AM", "day_type": "Weekdays", "reason": "specific psychological reason", "engagement_potential": "high/medium/low" }
+        { "time": "7:00 AM", "day_type": "Weekdays", "reason": "specific psychological reason", "engagement_potential": "high" }
       ],
-      "worst_times": ["times to avoid with reason"],
       "frequency": "X posts per week",
-      "content_mix": { "morning": "type of content", "midday": "type", "evening": "type" },
-      "algorithm_tip": "specific tip for this platform's current algorithm"
+      "algorithm_tip": "specific tip for this platform"
     },
-    "linkedin": { ... same structure },
-    "x": { ... same structure },
-    "tiktok": { ... same structure }
+    "linkedin": {
+      "best_times": [{ "time": "8:00 AM", "day_type": "Weekdays", "reason": "reason", "engagement_potential": "high" }],
+      "frequency": "X posts per week",
+      "algorithm_tip": "tip"
+    },
+    "x": {
+      "best_times": [{ "time": "9:00 AM", "day_type": "Daily", "reason": "reason", "engagement_potential": "medium" }],
+      "frequency": "X posts per week",
+      "algorithm_tip": "tip"
+    }
   },
   "weekly_calendar": [
-    { "day": "Monday", "slots": [
-      { "time": "7:30 AM", "platform": "instagram", "content_type": "motivational hook", "why": "Monday motivation resonates" }
-    ]}
+    { "day": "Monday", "slots": [{ "time": "7:30 AM", "platform": "instagram", "content_type": "motivational", "why": "reason" }]},
+    { "day": "Tuesday", "slots": [{ "time": "8:00 AM", "platform": "linkedin", "content_type": "insight", "why": "reason" }]},
+    { "day": "Wednesday", "slots": [{ "time": "7:00 AM", "platform": "instagram", "content_type": "educational", "why": "reason" }]},
+    { "day": "Thursday", "slots": [{ "time": "12:00 PM", "platform": "x", "content_type": "opinion", "why": "reason" }]},
+    { "day": "Friday", "slots": [{ "time": "9:00 AM", "platform": "instagram", "content_type": "story", "why": "reason" }]},
+    { "day": "Saturday", "slots": [{ "time": "10:00 AM", "platform": "instagram", "content_type": "casual", "why": "reason" }]},
+    { "day": "Sunday", "slots": [{ "time": "7:00 PM", "platform": "instagram", "content_type": "reflective", "why": "reason" }]}
   ],
   "golden_hours": "The 2-3 absolute best moments to post anything this week",
   "consistency_tip": "The single most important timing principle for this brand"
@@ -71,7 +67,7 @@ Return ONLY valid JSON:
 
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-5',
-      max_tokens: 3000,
+      max_tokens: 2500,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -97,17 +93,18 @@ Return ONLY valid JSON:
     }
 
     // Save as brand learning
-    await supabase.from('brand_learnings').insert({
+    const { error: learnErr } = await supabase.from('brand_learnings').insert({
       workspace_id,
       source: 'generation',
       source_name: 'Timing Engine',
       insight_type: 'strategy',
       insight: `Optimal posting: ${timingData.golden_hours || 'See timing analysis'}`,
       confidence: 0.9,
-    }) } catch {}
+    })
 
     await supabase.from('activity').insert({
-      workspace_id, user_id: user.id,
+      workspace_id,
+      user_id: user.id,
       type: 'timing_analyzed',
       title: 'Timing Engine generated optimal posting schedule for your audience',
     })
