@@ -8,7 +8,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = try { await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, competitors } = await request.json()
@@ -98,7 +98,7 @@ Return ONLY valid JSON:
     ]
 
     if (learnings.length > 0) {
-      await supabase.from('brand_learnings').insert(learnings).catch(() => {})
+      await supabase.from('brand_learnings').insert(learnings) } catch {}
     }
 
     // Update workspace positioning

@@ -8,7 +8,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = try { await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id } = await request.json()
@@ -104,7 +104,7 @@ Return ONLY valid JSON:
       insight_type: 'strategy',
       insight: `Optimal posting: ${timingData.golden_hours || 'See timing analysis'}`,
       confidence: 0.9,
-    }).catch(() => {})
+    }) } catch {}
 
     await supabase.from('activity').insert({
       workspace_id, user_id: user.id,
