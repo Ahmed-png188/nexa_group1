@@ -166,9 +166,10 @@ function planRenewedEmail(name: string, plan: string, credits: number) {
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  // Verify it's an internal call (from our own API routes)
+  // Verify it's an internal call (only enforced if INTERNAL_API_SECRET is actually set)
+  const internalSecret = process.env.INTERNAL_API_SECRET
   const authHeader = request.headers.get('x-internal-secret')
-  if (authHeader !== process.env.INTERNAL_API_SECRET && process.env.NODE_ENV === 'production') {
+  if (internalSecret && authHeader !== internalSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -176,6 +177,8 @@ export async function POST(request: NextRequest) {
     const { type, to, name, plan, credits } = await request.json()
 
     if (!to) return NextResponse.json({ error: 'Missing recipient' }, { status: 400 })
+
+    console.log(`[notify] type=${type} to=${to}`)
 
     let subject = ''
     let html = ''
@@ -208,10 +211,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Resend error:', error)
+      console.error('[notify] Resend error:', error)
       return NextResponse.json({ error: 'Failed to send email', detail: error }, { status: 500 })
     }
 
+    console.log(`[notify] Sent successfully id=${data?.id}`)
     return NextResponse.json({ success: true, id: data?.id })
 
   } catch (err: any) {

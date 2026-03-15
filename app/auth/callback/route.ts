@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
       const { email, user_metadata } = data.user
       const name = user_metadata?.full_name ?? email?.split('@')[0] ?? 'there'
 
+      console.log(`[callback] Firing welcome email to ${email}`)
+
       // Non-blocking — don't await so redirect is instant
       fetch(`${origin}/api/notify`, {
         method: 'POST',
@@ -24,7 +26,10 @@ export async function GET(request: NextRequest) {
           'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
         },
         body: JSON.stringify({ type: 'welcome', to: email, name }),
-      }).catch(err => console.error('Welcome email failed:', err))
+      }).then(r => console.log(`[callback] notify responded ${r.status}`))
+        .catch(err => console.error('[callback] Welcome email failed:', err))
+    } else {
+      console.log('[callback] No user in session data — email not sent')
     }
   }
 
