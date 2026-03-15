@@ -132,7 +132,7 @@ export default function DashboardHome() {
       const data = await res.json()
 
       // Save agent run to DB
-      await supabase.from('agent_runs').insert({
+      try { await supabase.from('agent_runs').insert({
         workspace_id: workspace.id,
         agent_type: agentId,
         status: data.success ? 'completed' : 'failed',
@@ -148,7 +148,7 @@ export default function DashboardHome() {
         ].flat().filter(Boolean)
 
         if (learnings.length > 0) {
-          await supabase.from('brand_learnings').insert(learnings).catch(() => {})
+          await supabase.from('brand_learnings').insert(learnings) } catch {}
         }
       }
 

@@ -138,7 +138,7 @@ Return ONLY valid JSON with this structure:
       file_name: 'nexa_brand_intelligence.json',
       ai_analyzed: true,
       analysis: brandProfile,
-    }, { onConflict: 'workspace_id,file_name' })
+    })
 
     // Log activity
     await supabase.from('activity').insert({

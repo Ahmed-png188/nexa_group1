@@ -136,7 +136,8 @@ Return ONLY JSON:
 
     } else if (agent_type === 'engagement') {
       // Engagement Agent — drafts replies to comments
-      const { comments } = await request.json().catch(() => ({ comments: [] }))
+      let comments: any[] = []
+try { const body = await request.json(); comments = body.comments ?? [] } catch {}
 
       const prompt = `You are the Engagement Agent for ${brand.brandName}. Draft authentic, brand-aligned replies to these comments/DMs.
 
