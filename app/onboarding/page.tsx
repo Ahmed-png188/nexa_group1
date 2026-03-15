@@ -97,7 +97,7 @@ export default function OnboardingPage() {
   async function handleAnalyze() {
     setStep('analyzing')
     setAnalysisProgress(0)
-    setAnalysisStage('Starting analysis...')
+    setAnalysisStage('Reading your files...')
 
     const stages = [
       { progress: 15, label: 'Reading brand assets...' },
@@ -120,11 +120,36 @@ export default function OnboardingPage() {
       }
     }, 1800)
 
+    // Convert files to base64 so Claude can read them directly
+    const filePayloads: { name: string; type: string; base64: string }[] = []
+    for (const file of files) {
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result as string
+            // Strip the data:...;base64, prefix
+            resolve(result.split(',')[1] || '')
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        filePayloads.push({ name: file.name, type: file.type, base64 })
+      } catch {
+        // Skip files that fail to read
+      }
+    }
+
     try {
       const res = await fetch('/api/analyze-brand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspaceId, website_url: brandWebsite, brand_name: brandName || workspaceName }),
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          website_url: brandWebsite,
+          brand_name: brandName || workspaceName,
+          files: filePayloads,
+        }),
       })
 
       clearInterval(progressInterval)
