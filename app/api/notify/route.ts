@@ -15,40 +15,50 @@ function baseTemplate(content: string) {
 <title>Nexa</title>
 </head>
 <body style="margin:0;padding:0;background:#08080D;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;">
-  <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#08080D;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
 
-    <!-- Logo -->
-    <div style="margin-bottom:40px;">
-      <table cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="background:#00AAFF;border-radius:6px;width:28px;height:28px;text-align:center;vertical-align:middle;">
-            <span style="color:#000;font-weight:900;font-size:14px;letter-spacing:-0.04em;">N</span>
-          </td>
-          <td style="padding-left:10px;vertical-align:middle;">
-            <span style="color:#F0EDE8;font-weight:800;font-size:16px;letter-spacing:-0.03em;">Nexa</span>
-          </td>
-        </tr>
-      </table>
-    </div>
+          <!-- Logo row -->
+          <tr>
+            <td style="padding-bottom:36px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="width:32px;height:32px;border-radius:8px;overflow:hidden;">
+                    <img src="https://www.nexaa.cc/favicon.png" width="32" height="32" alt="Nexa" style="display:block;border-radius:8px;"/>
+                  </td>
+                  <td style="padding-left:10px;vertical-align:middle;">
+                    <span style="color:#F0EDE8;font-weight:800;font-size:17px;letter-spacing:-0.03em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Nexa</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <!-- Card -->
-    <div style="background:#0D0D14;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:36px;position:relative;overflow:hidden;">
-      <!-- Cyan top line -->
-      <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 10%,rgba(0,170,255,0.35) 45%,rgba(0,170,255,0.12) 70%,transparent 90%);"></div>
-      ${content}
-    </div>
+          <!-- Card -->
+          <tr>
+            <td style="background:#0D0D14;border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:40px;border-top:2px solid #00AAFF;">
+              ${content}
+            </td>
+          </tr>
 
-    <!-- Footer -->
-    <div style="margin-top:32px;text-align:center;">
-      <p style="color:rgba(240,237,232,0.3);font-size:12px;line-height:1.6;margin:0;">
-        Nexa · The Creative Operating System<br>
-        <a href="https://nexaa.cc" style="color:rgba(240,237,232,0.3);text-decoration:none;">nexaa.cc</a>
-        &nbsp;·&nbsp;
-        <a href="mailto:hello@nexaa.cc" style="color:rgba(240,237,232,0.3);text-decoration:none;">hello@nexaa.cc</a>
-      </p>
-    </div>
+          <!-- Footer -->
+          <tr>
+            <td style="padding-top:28px;text-align:center;">
+              <p style="color:rgba(240,237,232,0.28);font-size:12px;line-height:1.7;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                Nexa · The Creative Operating System<br>
+                <a href="https://www.nexaa.cc" style="color:rgba(240,237,232,0.28);text-decoration:none;">nexaa.cc</a>
+                &nbsp;·&nbsp;
+                <a href="mailto:hello@nexaa.cc" style="color:rgba(240,237,232,0.28);text-decoration:none;">hello@nexaa.cc</a>
+              </p>
+            </td>
+          </tr>
 
-  </div>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`
 }
@@ -65,20 +75,31 @@ function welcomeEmail(name: string) {
 
     <!-- Steps -->
     <div style="margin-bottom:28px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:4px;">
       ${[
         ['01', 'Set up your workspace', 'Name your workspace and tell Nexa about your brand.'],
         ['02', 'Upload your brand DNA', 'Drop your logo, brand doc, or sample posts — Nexa reads everything and builds your Brand Intelligence Profile.'],
         ['03', 'Generate your first content', 'Let Nexa write in your exact voice, then schedule it with one click.'],
       ].map(([n, title, desc]) => `
-      <div style="display:flex;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);">
-        <div style="background:rgba(0,170,255,0.08);border:1px solid rgba(0,170,255,0.18);border-radius:7px;width:28px;height:28px;min-width:28px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:28px;">
-          <span style="color:#00AAFF;font-size:11px;font-weight:700;">${n}</span>
-        </div>
-        <div>
-          <div style="color:#F0EDE8;font-size:13px;font-weight:700;margin-bottom:3px;letter-spacing:-0.01em;">${title}</div>
-          <div style="color:rgba(240,237,232,0.45);font-size:12.5px;line-height:1.55;">${desc}</div>
-        </div>
-      </div>`).join('')}
+      <tr>
+        <td style="padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.07);padding-top:16px;" colspan="2"></td>
+      </tr>
+      <tr style="vertical-align:top;">
+        <td style="width:36px;padding-right:14px;padding-bottom:16px;vertical-align:top;">
+          <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="width:32px;height:32px;background:rgba(0,170,255,0.1);border:1px solid rgba(0,170,255,0.25);border-radius:8px;text-align:center;vertical-align:middle;">
+                <span style="color:#00AAFF;font-size:11px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${n}</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td style="vertical-align:top;padding-bottom:16px;">
+          <div style="color:#F0EDE8;font-size:14px;font-weight:700;margin-bottom:5px;letter-spacing:-0.01em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${title}</div>
+          <div style="color:rgba(240,237,232,0.5);font-size:13px;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${desc}</div>
+        </td>
+      </tr>`).join('')}
+    </table>
     </div>
 
     <!-- CTA -->
