@@ -242,3 +242,42 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .hero-card{position:relative;overflow:hidden;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r-lg);}
 .hero-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at -5% -10%,rgba(0,210,180,0.28) 0%,transparent 55%),radial-gradient(ellipse 75% 60% at 105% -5%,rgba(210,55,20,0.22) 0%,transparent 50%),radial-gradient(ellipse 60% 50% at 50% 110%,rgba(14,165,255,0.18) 0%,transparent 50%);pointer-events:none;z-index:0;}
 .hero-card>*{position:relative;z-index:1;}
+
+/* ── Page animation utilities (replaces inline <style> tags) ── */
+@keyframes pageUp   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pageSpin { to{transform:rotate(360deg)} }
+
+.anim-page-up { animation:pageUp 0.4s cubic-bezier(0.22,1,0.36,1) both }
+.anim-page-up-1 { animation:pageUp 0.4s cubic-bezier(0.22,1,0.36,1) 0.06s both }
+.anim-page-up-2 { animation:pageUp 0.4s cubic-bezier(0.22,1,0.36,1) 0.12s both }
+.anim-page-up-3 { animation:pageUp 0.4s cubic-bezier(0.22,1,0.36,1) 0.18s both }
+
+/* hover helpers */
+.hover-card:hover  { background:rgba(255,255,255,0.055)!important; border-color:rgba(255,255,255,0.13)!important; }
+.hover-row:hover   { background:rgba(255,255,255,0.04)!important; }
+.hover-tab:hover   { background:rgba(255,255,255,0.05)!important; }
+.hover-tmpl:hover  { border-color:rgba(255,255,255,0.14)!important; }
+.hover-plan:hover  { border-color:rgba(255,255,255,0.14)!important; }
+.hover-day:hover   { background:rgba(255,255,255,0.05)!important; border-color:rgba(255,255,255,0.14)!important; }
+.cal-day:hover     { background:rgba(255,255,255,0.05)!important; }
+
+/* page-specific spin classes */
+.spin { animation:pageSpin 0.8s linear infinite }
+
+/* ── All page-specific hover classes ── */
+.cl-card:hover    { background:rgba(255,255,255,0.055)!important; border-color:rgba(255,255,255,0.13)!important; }
+.seq-card:hover   { background:rgba(255,255,255,0.055)!important; border-color:rgba(255,255,255,0.13)!important; }
+.tmpl-card:hover  { border-color:rgba(255,255,255,0.14)!important; }
+.run-row:hover    { background:rgba(255,255,255,0.04)!important; }
+.itab:hover       { background:rgba(255,255,255,0.05)!important; }
+.row:hover        { background:rgba(255,255,255,0.04)!important; }
+.btab:hover       { background:rgba(255,255,255,0.05)!important; }
+.a-card:hover     { background:rgba(255,255,255,0.055)!important; border-color:rgba(255,255,255,0.13)!important; }
+.l-row:hover      { background:rgba(255,255,255,0.04)!important; }
+.stab:hover       { background:rgba(255,255,255,0.05)!important; }
+.plan-card:hover  { border-color:rgba(255,255,255,0.14)!important; }
+.s-card:hover     { background:rgba(255,255,255,0.055)!important; border-color:rgba(255,255,255,0.13)!important; }
+.day-cell:hover   { background:rgba(255,255,255,0.05)!important; border-color:rgba(255,255,255,0.14)!important; }
+.q-row:hover      { background:rgba(255,255,255,0.04)!important; }
+.draft-row:hover  { background:rgba(255,255,255,0.04)!important; }
+.rc-card:hover    { background:rgba(255,255,255,0.06)!important; border-color:rgba(255,255,255,0.12)!important; }
