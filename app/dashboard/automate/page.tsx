@@ -443,7 +443,6 @@ export default function AutomatePage() {
           </div>
         </div>
       )}
-    </div>
 
       {/* ── WEBHOOKS VIEW ── */}
       {view === 'webhooks' && (
@@ -579,7 +578,7 @@ export default function AutomatePage() {
         </div>
       )}
 
-  </div>
+    </div>
   )
 }
 
