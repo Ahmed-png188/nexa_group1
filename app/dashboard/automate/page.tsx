@@ -38,6 +38,16 @@ export default function AutomatePage() {
   const [seqAudience, setSeqAudience] = useState('')
   const [seqEmails, setSeqEmails] = useState(5)
 
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState<any[]>([])
+  const [showNewWebhook, setShowNewWebhook] = useState(false)
+  const [webhookName, setWebhookName] = useState('')
+  const [webhookTrigger, setWebhookTrigger] = useState('new_lead')
+  const [webhookAction, setWebhookAction] = useState('generate_post')
+  const [webhookPlatform, setWebhookPlatform] = useState('instagram')
+  const [savingWebhook, setSavingWebhook] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
   // Send modal
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendStep, setSendStep] = useState(1)
@@ -54,6 +64,12 @@ export default function AutomatePage() {
     setWorkspace(ws)
     const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', ws?.id).single()
     setCredits(cr?.balance ?? 0)
+
+    // Load webhooks
+    try {
+      const whRes = await fetch(`/api/webhooks?workspace_id=${ws?.id}`)
+      if (whRes.ok) { const whData = await whRes.json(); setWebhooks(whData.webhooks ?? []) }
+    } catch {}
 
     const res = await fetch(`/api/create-sequence?workspace_id=${ws?.id}`)
     if (res.ok) {
@@ -173,6 +189,21 @@ export default function AutomatePage() {
           </button>
         )}
       </div>
+
+      {/* Tab switcher */}
+      {(view === 'sequences' || view === 'webhooks') && (
+        <div style={{ display: 'flex', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 10, padding: 3, gap: 2, marginBottom: 20, width: 'fit-content' }}>
+          {[
+            { id: 'sequences', label: '📧 Email Sequences' },
+            { id: 'webhooks', label: '⚡ Webhooks' },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setView(tab.id as any)}
+              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: view === tab.id ? 'var(--glass2)' : 'transparent', color: view === tab.id ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── SEQUENCES LIST ── */}
       {view === 'sequences' && (
@@ -413,8 +444,144 @@ export default function AutomatePage() {
         </div>
       )}
     </div>
+
+      {/* ── WEBHOOKS VIEW ── */}
+      {view === 'webhooks' && (
+        <div>
+          <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 12, fontSize: 12, color: 'var(--t3)', lineHeight: 1.7 }}>
+            <strong style={{ color: 'var(--cyan)' }}>Connect Nexa to Make, Zapier, or any automation tool.</strong> When something happens in your other tools (new lead, form submission, purchase), Nexa automatically generates content, adds contacts to sequences, or sends notifications.
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: 'var(--t4)' }}>{webhooks.length} webhook{webhooks.length !== 1 ? 's' : ''} configured</div>
+            <button onClick={() => setShowNewWebhook(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+              + New webhook
+            </button>
+          </div>
+
+          {/* Webhook list */}
+          {webhooks.length > 0 ? webhooks.map((wh: any) => (
+            <div key={wh.id} style={{ marginBottom: 10, padding: '16px', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: wh.is_active ? '#00d68f' : 'var(--t5)' }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>{wh.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: 'rgba(0,170,255,0.08)', border: '1px solid var(--cline2)', color: 'var(--cyan)' }}>{wh.trigger}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: 'var(--t5)' }}>{wh.trigger_count || 0} triggers</span>
+                  <button onClick={async () => {
+                    await fetch('/api/webhooks', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: wh.id }) })
+                    setWebhooks(prev => prev.filter((w: any) => w.id !== wh.id))
+                  }} style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, background: 'transparent', border: '1px solid var(--line2)', color: 'var(--t5)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Delete</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                <span style={{ fontSize: 10, color: 'var(--t5)', flexShrink: 0 }}>Webhook URL:</span>
+                <span style={{ fontSize: 10, color: 'var(--t3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{wh.webhook_url}</span>
+                <button onClick={() => { navigator.clipboard.writeText(wh.webhook_url); setCopiedId(wh.id); setTimeout(() => setCopiedId(null), 2000) }}
+                  style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, background: copiedId === wh.id ? 'rgba(0,214,143,0.1)' : 'var(--glass2)', border: `1px solid ${copiedId === wh.id ? 'rgba(0,214,143,0.3)' : 'var(--line2)'}`, color: copiedId === wh.id ? '#00d68f' : 'var(--cyan)', cursor: 'pointer', fontFamily: 'var(--sans)', flexShrink: 0 }}>
+                  {copiedId === wh.id ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          )) : (
+            <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--glass)', border: '1px solid var(--line)', borderRadius: 14 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--t2)', marginBottom: 6 }}>No webhooks yet</div>
+              <div style={{ fontSize: 13, color: 'var(--t4)', lineHeight: 1.6, marginBottom: 16 }}>Connect Nexa to Make or Zapier to automate content creation when things happen in your other tools.</div>
+              <button onClick={() => setShowNewWebhook(true)} style={{ padding: '10px 24px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Create your first webhook →</button>
+            </div>
+          )}
+
+          {/* New webhook modal */}
+          {showNewWebhook && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--line2)', borderRadius: 16, padding: 28, width: 480, maxWidth: '90vw' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--display)', marginBottom: 20 }}>New Webhook</div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Webhook name</label>
+                  <input value={webhookName} onChange={e => setWebhookName(e.target.value)} placeholder="e.g. New lead from Typeform" style={inputStyle} />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Trigger (what sends to this webhook)</label>
+                  <select value={webhookTrigger} onChange={e => setWebhookTrigger(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="new_lead">New lead / form submission</option>
+                    <option value="new_customer">New customer / purchase</option>
+                    <option value="content_request">Content request</option>
+                    <option value="scheduled">Scheduled (cron)</option>
+                    <option value="custom">Custom event</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Action (what Nexa does)</label>
+                  <select value={webhookAction} onChange={e => setWebhookAction(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="generate_post">Generate & save a post</option>
+                    <option value="add_to_sequence">Add contact to email sequence</option>
+                    <option value="send_notification">Log notification to activity</option>
+                  </select>
+                </div>
+
+                {webhookAction === 'generate_post' && (
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={lbl}>Platform</label>
+                    <select value={webhookPlatform} onChange={e => setWebhookPlatform(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                      <option value="instagram">Instagram</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="x">X</option>
+                      <option value="tiktok">TikTok</option>
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 20, padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.7 }}>
+                  <strong style={{ color: 'var(--cyan)' }}>How it works:</strong> You'll get a unique URL. Paste it into Make or Zapier as the webhook destination. When triggered, Nexa will automatically {webhookAction === 'generate_post' ? `generate a ${webhookPlatform} post and save it as a draft` : webhookAction === 'add_to_sequence' ? 'add the contact to your email sequence' : 'log the event to your activity feed'}.
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowNewWebhook(false)} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 600, background: 'var(--glass)', color: 'var(--t3)', border: '1px solid var(--line2)', borderRadius: 9, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Cancel</button>
+                  <button
+                    onClick={async () => {
+                      if (!webhookName.trim()) return
+                      setSavingWebhook(true)
+                      try {
+                        const res = await fetch('/api/webhooks', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            workspace_id: workspace?.id,
+                            name: webhookName,
+                            trigger: webhookTrigger,
+                            actions: [{ type: webhookAction, platform: webhookPlatform }],
+                          }),
+                        })
+                        const data = await res.json()
+                        if (data.webhook) {
+                          setWebhooks(prev => [data.webhook, ...prev])
+                          setShowNewWebhook(false)
+                          setWebhookName('')
+                        }
+                      } catch {}
+                      setSavingWebhook(false)
+                    }}
+                    disabled={!webhookName.trim() || savingWebhook}
+                    style={{ flex: 2, padding: '11px', fontSize: 13, fontWeight: 700, background: webhookName.trim() ? 'var(--cyan)' : 'var(--glass)', color: webhookName.trim() ? '#000' : 'var(--t5)', border: 'none', borderRadius: 9, cursor: webhookName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'var(--sans)' }}>
+                    {savingWebhook ? 'Creating...' : 'Create webhook →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+  </div>
   )
 }
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t4)', marginBottom: 7 }
-const inp: React.CSSProperties = { width: '100%', padding: '11px 14px', fontSize: 13, fontFamily: 'var(--sans)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line2)', borderRadius: 9, color: 'var(--t1)', outline: 'none', transition: 'border-color 0.18s' }
+const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 13, fontFamily: 'var(--sans)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, color: 'var(--t1)', outline: 'none' }
