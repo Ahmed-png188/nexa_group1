@@ -156,12 +156,7 @@ function SettingsPageInner() {
 
   return (
     <>
-      <style>{`
-        {"@keyframes settSpin{to{transform:rotate(360deg)}}"}
-        {"@keyframes settUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}
-        {".stab:hover{background:rgba(255,255,255,0.05)!important;}"}
-        {".plan-card:hover{border-color:rgba(255,255,255,0.14)!important;}"}
-      `}</style>
+      <style>{`@keyframes settSpin{to{transform:rotate(360deg)}}@keyframes settUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.stab:hover{background:rgba(255,255,255,0.05)!important;}.plan-card:hover{border-color:rgba(255,255,255,0.14)!important;}`}</style>
 
       <div style={{ display:'grid',gridTemplateColumns:'200px 1fr',height:'calc(100vh - var(--topbar-h))',overflow:'hidden' }}>
 

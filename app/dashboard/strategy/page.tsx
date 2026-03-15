@@ -147,13 +147,11 @@ export default function StrategyPage() {
 
   return (
     <>
-      <style>{`
-        @keyframes stratSpin{to{transform:rotate(360deg)}}
+      <style>{`@keyframes stratSpin{to{transform:rotate(360deg)}}
         @keyframes stratUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         .stab:hover{background:rgba(255,255,255,0.05)!important;}
         .s-card:hover{border-color:rgba(255,255,255,0.13)!important;background:rgba(255,255,255,0.05)!important;}
-        .day-cell:hover{border-color:rgba(255,255,255,0.14)!important;background:rgba(255,255,255,0.05)!important;}
-      `}</style>
+        .day-cell:hover{border-color:rgba(255,255,255,0.14)!important;background:rgba(255,255,255,0.05)!important;}`}</style>
 
       <div style={{ padding:'24px 28px',overflowY:'auto',height:'calc(100vh - var(--topbar-h))' }}>
 
