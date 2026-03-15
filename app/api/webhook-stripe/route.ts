@@ -96,6 +96,30 @@ export async function POST(request: NextRequest) {
             type: 'plan_upgraded',
             title: `Upgraded to ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan`,
           })
+
+          // Send plan activation email
+          const { data: wsData } = await supabase
+            .from('workspaces').select('owner_id').eq('id', workspace_id).single()
+          if (wsData?.owner_id) {
+            const { data: userData } = await supabase.auth.admin.getUserById(wsData.owner_id)
+            if (userData?.user?.email) {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexaa.cc'
+              fetch(`${baseUrl}/api/notify`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+                },
+                body: JSON.stringify({
+                  type: 'plan_activated',
+                  to: userData.user.email,
+                  name: userData.user.user_metadata?.full_name ?? userData.user.email,
+                  plan,
+                  credits: planCredits,
+                }),
+              }).catch((err: Error) => console.error('Plan activation email failed:', err))
+            }
+          }
         }
         break
       }
@@ -151,6 +175,30 @@ export async function POST(request: NextRequest) {
             action: 'monthly_grant',
             description: `Monthly renewal — ${planCredits} credits`,
           })
+
+          // Send renewal email
+          const { data: wsOwner } = await supabase
+            .from('workspaces').select('owner_id').eq('id', workspace.id).single()
+          if (wsOwner?.owner_id) {
+            const { data: renewalUser } = await supabase.auth.admin.getUserById(wsOwner.owner_id)
+            if (renewalUser?.user?.email) {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexaa.cc'
+              fetch(`${baseUrl}/api/notify`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+                },
+                body: JSON.stringify({
+                  type: 'plan_renewed',
+                  to: renewalUser.user.email,
+                  name: renewalUser.user.user_metadata?.full_name ?? renewalUser.user.email,
+                  plan: workspace.plan,
+                  credits: planCredits,
+                }),
+              }).catch((err: Error) => console.error('Renewal email failed:', err))
+            }
+          }
         }
         break
       }
