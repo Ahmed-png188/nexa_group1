@@ -7,11 +7,11 @@ type Category = 'all' | 'video' | 'image' | 'voice' | 'outreach' | 'automation' 
 const INTEGRATIONS = [
   {
     id: 'kling',
-    name: 'Kling 3.0',
+    name: 'Kling AI',
     category: 'video',
-    desc: 'State-of-the-art video generation. Create cinematic clips from text prompts in your brand style.',
+    desc: 'State-of-the-art video generation. Create cinematic clips from text or image prompts in your brand style.',
     cost: '20 credits / clip',
-    status: 'coming_soon',
+    status: 'active',
     badge: 'Video AI',
     color: '#6366F1',
     docs: 'https://klingai.com',
@@ -22,7 +22,7 @@ const INTEGRATIONS = [
     category: 'voice',
     desc: 'Ultra-realistic AI voiceovers. Clone your voice or choose from 1000+ voices for any content.',
     cost: '8 credits / voice',
-    status: 'coming_soon',
+    status: 'active',
     badge: 'Voice AI',
     color: '#F59E0B',
     docs: 'https://elevenlabs.io',
@@ -64,9 +64,9 @@ const INTEGRATIONS = [
     id: 'make',
     name: 'Make.com',
     category: 'automation',
-    desc: 'Connect Nexa to 2000+ apps. Trigger workflows when content is published, leads come in, or agents complete tasks.',
+    desc: 'Connect Nexa to 2000+ apps. Trigger content generation, sequences, or notifications from any external tool.',
     cost: 'Free',
-    status: 'coming_soon',
+    status: 'active',
     badge: 'Automation',
     color: '#A855F7',
     docs: 'https://make.com',
@@ -75,9 +75,9 @@ const INTEGRATIONS = [
     id: 'zapier',
     name: 'Zapier',
     category: 'automation',
-    desc: 'Automate anything. Send Nexa data to your CRM, Slack, Notion, or any tool you use.',
+    desc: 'Automate anything. Trigger content generation or sequences from any Zapier-connected tool.',
     cost: 'Free',
-    status: 'coming_soon',
+    status: 'active',
     badge: 'Automation',
     color: '#FF6B35',
     docs: 'https://zapier.com',
@@ -130,20 +130,20 @@ const INTEGRATIONS = [
     id: 'tiktok',
     name: 'TikTok',
     category: 'publishing',
-    desc: 'Schedule and publish TikTok videos directly from Nexa Studio.',
+    desc: 'Schedule and publish TikTok videos directly from Nexa Studio. Pending TikTok app review.',
     cost: '1 credit / post',
-    status: 'coming_soon',
+    status: 'beta',
     badge: 'Publishing',
     color: '#FF0050',
     docs: 'https://developers.tiktok.com',
   },
   {
     id: 'flux',
-    name: 'Flux',
+    name: 'Flux (fal.ai)',
     category: 'image',
-    desc: 'Black Forest Labs image model. Exceptional quality for product photography and brand visuals.',
+    desc: 'Black Forest Labs image model via fal.ai. Exceptional quality for product photography and brand visuals.',
     cost: '5 credits / image',
-    status: 'coming_soon',
+    status: 'active',
     badge: 'Image AI',
     color: '#14B8A6',
     docs: 'https://blackforestlabs.ai',
@@ -268,13 +268,13 @@ export default function IntegrationsPage() {
                   {integration.cost}
                 </span>
                 {integration.status === 'active' ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#00d68f', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <a href={integration.category === 'automation' ? '/dashboard/automate' : integration.category === 'publishing' ? '/dashboard/schedule' : '/dashboard/studio'} style={{ fontSize: 11, fontWeight: 700, color: '#00d68f', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Connected
-                  </span>
+                    Active →
+                  </a>
                 ) : integration.status === 'beta' ? (
-                  <a href="/dashboard/schedule" style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    Configure →
+                  <a href="/dashboard/studio" style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Use in Studio →
                   </a>
                 ) : (
                   <a href={integration.docs} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t5)', textDecoration: 'none' }}>
