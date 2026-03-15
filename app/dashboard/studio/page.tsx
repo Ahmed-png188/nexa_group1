@@ -5,17 +5,33 @@ import { createClient } from '@/lib/supabase/client'
 
 type ContentType = 'post' | 'thread' | 'email' | 'caption' | 'hook' | 'bio' | 'ad' | 'story'
 type Platform = 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'email' | 'general'
-type ActiveTab = 'quick' | 'copy' | 'image' | 'video' | 'voice'
+type ActiveTab = 'copy' | 'image' | 'video' | 'voice'
+
+// ── Icons ────────────────────────────────────────────────────────────────
+const Ic = {
+  copy:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+  image:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+  video:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+  voice:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
+  copy2:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+  check:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  dl:      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  redo:    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>,
+  sched:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  animate: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+  upload:  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+  spark:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+}
 
 const CONTENT_TYPES = [
-  { id: 'post' as ContentType,    label: 'Post',    cost: 3,  desc: 'Full social post' },
-  { id: 'hook' as ContentType,    label: 'Hook',    cost: 2,  desc: 'Scroll-stopper' },
-  { id: 'thread' as ContentType,  label: 'Thread',  cost: 5,  desc: '5-7 tweet thread' },
-  { id: 'caption' as ContentType, label: 'Caption', cost: 2,  desc: 'Short caption' },
-  { id: 'email' as ContentType,   label: 'Email',   cost: 5,  desc: 'Full email' },
-  { id: 'story' as ContentType,   label: 'Story',   cost: 2,  desc: 'Story format' },
-  { id: 'ad' as ContentType,      label: 'Ad Copy', cost: 5,  desc: 'Headline + CTA' },
-  { id: 'bio' as ContentType,     label: 'Bio',     cost: 2,  desc: 'Profile bio' },
+  { id: 'post' as ContentType,    label: 'Post',      cost: 3,  desc: 'Full social post' },
+  { id: 'hook' as ContentType,    label: 'Hook',      cost: 2,  desc: 'Scroll-stopper opening line' },
+  { id: 'thread' as ContentType,  label: 'Thread',    cost: 5,  desc: '5–7 tweet thread' },
+  { id: 'caption' as ContentType, label: 'Caption',   cost: 2,  desc: 'Short visual caption' },
+  { id: 'email' as ContentType,   label: 'Email',     cost: 5,  desc: 'Full email copy' },
+  { id: 'story' as ContentType,   label: 'Story',     cost: 2,  desc: 'Story format' },
+  { id: 'ad' as ContentType,      label: 'Ad Copy',   cost: 5,  desc: 'Headline + CTA' },
+  { id: 'bio' as ContentType,     label: 'Bio',       cost: 2,  desc: 'Profile bio' },
 ]
 
 const PLATFORMS = [
@@ -28,34 +44,34 @@ const PLATFORMS = [
 ]
 
 const IMAGE_STYLES = [
-  { id: 'photorealistic',             label: 'Photo' },
-  { id: 'cinematic',                  label: 'Cinematic' },
+  { id: 'photorealistic',                 label: 'Photorealistic' },
+  { id: 'cinematic',                      label: 'Cinematic' },
   { id: 'minimal clean white background', label: 'Minimal' },
-  { id: 'dark moody premium',         label: 'Dark & Premium' },
-  { id: 'vibrant colorful',           label: 'Vibrant' },
-  { id: 'flat design illustration',   label: 'Illustration' },
+  { id: 'dark moody premium',             label: 'Dark & Premium' },
+  { id: 'vibrant colorful',               label: 'Vibrant' },
+  { id: 'flat design illustration',       label: 'Illustration' },
 ]
 
 const ASPECT_RATIOS = [
   { id: '1:1',  label: '1:1',  desc: 'Square' },
   { id: '4:5',  label: '4:5',  desc: 'Portrait' },
-  { id: '16:9', label: '16:9', desc: 'Landscape' },
+  { id: '16:9', label: '16:9', desc: 'Wide' },
   { id: '9:16', label: '9:16', desc: 'Story' },
 ]
 
 const VIDEO_STYLES = [
-  { id: 'cinematic',           label: 'Cinematic' },
-  { id: 'documentary',         label: 'Documentary' },
-  { id: 'commercial brand',    label: 'Brand Ad' },
-  { id: 'social media trending', label: 'Social' },
-  { id: 'minimalist aesthetic', label: 'Minimal' },
-  { id: 'dramatic moody',      label: 'Dramatic' },
+  { id: 'cinematic',              label: 'Cinematic' },
+  { id: 'documentary',            label: 'Documentary' },
+  { id: 'commercial brand',       label: 'Brand Ad' },
+  { id: 'social media trending',  label: 'Social' },
+  { id: 'minimalist aesthetic',   label: 'Minimal' },
+  { id: 'dramatic moody',         label: 'Dramatic' },
 ]
 
 const VIDEO_MODES = [
-  { id: 'text',  label: 'Text to Video',   desc: 'Generate from prompt' },
-  { id: 'image', label: 'Image to Video',  desc: 'Animate your image' },
-  { id: 'frame', label: 'Start → End',     desc: 'Control first & last frame' },
+  { id: 'text',  label: 'Text to Video',  desc: 'Generate from a description' },
+  { id: 'image', label: 'Image to Video', desc: 'Animate a still image' },
+  { id: 'frame', label: 'Start → End',    desc: 'Control first and last frame' },
 ]
 
 const VOICES = [
@@ -69,25 +85,26 @@ const VOICES = [
   { id: 'elli',   name: 'Elli',   desc: 'Emotional · Female' },
 ]
 
-const PROMPT_IDEAS = [
-  "Why most brands fail at content marketing",
-  "Share a contrarian take on social media",
-  "The #1 mistake my customers make",
-  "What nobody talks about in my industry",
-  "The transformation my product creates",
-  "Why I started this brand",
+// Brand-specific prompt angles — not generic, psychologically framed
+const PROMPT_ANGLES = [
+  'The belief that separates people who win from people who stay stuck',
+  'What your audience is getting wrong about this industry',
+  'The uncomfortable truth behind a common misconception',
+  'Why doing less produces better results in your space',
+  'The signal that separates amateurs from professionals',
+  'What nobody talks about because it makes the wrong people uncomfortable',
 ]
 
 export default function StudioPage() {
   const supabase = createClient()
   const [workspace, setWorkspace] = useState<any>(null)
   const [credits, setCredits] = useState(0)
-  const [activeTab, setActiveTab] = useState<ActiveTab>('quick')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('copy')
   const startFrameRef = useRef<HTMLInputElement>(null)
   const endFrameRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
 
-  // Copy state
+  // Copy
   const [contentType, setContentType] = useState<ContentType>('post')
   const [platform, setPlatform] = useState<Platform>('instagram')
   const [prompt, setPrompt] = useState('')
@@ -99,7 +116,7 @@ export default function StudioPage() {
   const [scheduled, setScheduled] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Image state
+  // Image
   const [imagePrompt, setImagePrompt] = useState('')
   const [imageStyle, setImageStyle] = useState('photorealistic')
   const [aspectRatio, setAspectRatio] = useState('1:1')
@@ -107,7 +124,7 @@ export default function StudioPage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
 
-  // Video state
+  // Video
   const [videoPrompt, setVideoPrompt] = useState('')
   const [videoStyle, setVideoStyle] = useState('cinematic')
   const [videoDuration, setVideoDuration] = useState(5)
@@ -122,7 +139,7 @@ export default function StudioPage() {
   const [videoError, setVideoError] = useState<string | null>(null)
   const [videoProgress, setVideoProgress] = useState(0)
 
-  // Voice state
+  // Voice
   const [voiceText, setVoiceText] = useState('')
   const [selectedVoice, setSelectedVoice] = useState('rachel')
   const [stability, setStability] = useState(0.5)
@@ -130,22 +147,6 @@ export default function StudioPage() {
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
 
-  // Quick generate state — step-by-step flow
-  const [quickPrompt, setQuickPrompt] = useState('')
-  const [quickPlatform, setQuickPlatform] = useState<Platform>('instagram')
-  const [quickStep, setQuickStep] = useState<'input' | 'copy' | 'media' | 'voice' | 'done'>('input')
-  const [quickCopy, setQuickCopy] = useState<string | null>(null)
-  const [quickCopyId, setQuickCopyId] = useState<string | null>(null)
-  const [quickMedia, setQuickMedia] = useState<{ type: 'image' | 'video'; url: string; id?: string } | null>(null)
-  const [quickVoice, setQuickVoice] = useState<{ url: string; id?: string } | null>(null)
-  const [quickVoiceId, setQuickVoiceId] = useState<string>('rachel')
-  const [quickGenerating, setQuickGenerating] = useState<string | null>(null)
-  const [quickError, setQuickError] = useState<string | null>(null)
-  const [quickScheduled, setQuickScheduled] = useState(false)
-  const [quickMediaChoice, setQuickMediaChoice] = useState<'image' | 'video' | null>(null)
-  const [quickAddVoice, setQuickAddVoice] = useState(false)
-
-  // Recent content
   const [recentContent, setRecentContent] = useState<any[]>([])
 
   useEffect(() => { loadWorkspace() }, [])
@@ -159,7 +160,7 @@ export default function StudioPage() {
     const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', ws?.id).single()
     setCredits(cr?.balance ?? 0)
     loadRecentContent(ws?.id)
-    supabase.channel('studio-content')
+    supabase.channel('studio')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content', filter: `workspace_id=eq.${ws?.id}` }, () => loadRecentContent(ws?.id))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'credits', filter: `workspace_id=eq.${ws?.id}` }, (p: any) => { if (p.new?.balance !== undefined) setCredits(p.new.balance) })
       .subscribe()
@@ -171,98 +172,21 @@ export default function StudioPage() {
     setRecentContent(data ?? [])
   }
 
-  // ── QUICK GENERATE — step by step ──
-  async function quickGenerateCopy() {
-    if (!quickPrompt.trim()) return
-    setQuickGenerating('copy'); setQuickError(null)
-    try {
-      const res = await fetch('/api/generate-content', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace?.id, type: 'post', platform: quickPlatform, prompt: quickPrompt }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setQuickError(data.message ?? data.error ?? 'Failed'); setQuickGenerating(null); return }
-      setQuickCopy(data.content); setQuickCopyId(data.content_id); setQuickStep('media')
-    } catch { setQuickError('Something went wrong.') }
-    setQuickGenerating(null)
-  }
-
-  async function quickGenerateImage() {
-    setQuickGenerating('image'); setQuickError(null)
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace?.id, prompt: quickPrompt, style: 'photorealistic', aspect_ratio: '1:1' }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setQuickError(data.message ?? data.error ?? 'Failed'); setQuickGenerating(null); return }
-      setQuickMedia({ type: 'image', url: data.image_url, id: data.content_id })
-      setQuickStep('voice')
-    } catch { setQuickError('Something went wrong.') }
-    setQuickGenerating(null)
-  }
-
-  async function quickGenerateVideo() {
-    setQuickGenerating('video'); setQuickError(null)
-    try {
-      const res = await fetch('/api/generate-video', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace?.id, prompt: quickPrompt, style: 'cinematic', duration: 5, aspect_ratio: '9:16' }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setQuickError(data.message ?? data.error ?? 'Failed'); setQuickGenerating(null); return }
-      setQuickMedia({ type: 'video', url: data.video_url, id: data.content_id })
-      setQuickStep('voice')
-    } catch { setQuickError('Something went wrong.') }
-    setQuickGenerating(null)
-  }
-
-  async function quickGenerateVoice() {
-    if (!quickCopy) return
-    setQuickGenerating('voice'); setQuickError(null)
-    try {
-      const res = await fetch('/api/generate-voice', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspace?.id, text: quickCopy, voice_id: quickVoiceId, stability: 0.5 }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setQuickError(data.message ?? data.error ?? 'Failed'); setQuickGenerating(null); return }
-      setQuickVoice({ url: data.audio_url, id: data.content_id })
-      setQuickStep('done')
-    } catch { setQuickError('Something went wrong.') }
-    setQuickGenerating(null)
-  }
-
-  async function quickSchedule() {
-    if (!quickCopyId) return
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(9, 0, 0, 0)
-    await supabase.from('content').update({ status: 'scheduled', scheduled_for: tomorrow.toISOString(), platform: quickPlatform }).eq('id', quickCopyId)
-    setQuickScheduled(true); setQuickStep('done')
-  }
-
-  function quickReset() {
-    setQuickStep('input'); setQuickCopy(null); setQuickCopyId(null)
-    setQuickMedia(null); setQuickVoice(null); setQuickScheduled(false)
-    setQuickMediaChoice(null); setQuickAddVoice(false); setQuickError(null)
-  }
-
-  // ── COPY ──
   async function generateCopy() {
     if (!prompt.trim() || generating) return
-    setGenerating(true); setResult(null); setError(null); setScheduled(false)
+    setGenerating(true); setResult(null); setError(null); setScheduled(false); setCopied(false)
     try {
       const res = await fetch('/api/generate-content', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspace_id: workspace?.id, type: contentType, platform, prompt: prompt.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(res.status === 402 ? data.message : (data.error ?? 'Failed')); return }
+      if (!res.ok) { setError(res.status === 402 ? data.message : (data.error ?? 'Generation failed')); return }
       setResult(data.content); setResultId(data.content_id); setCreditsUsed(data.credits_used)
-    } catch { setError('Something went wrong.') }
+    } catch { setError('Something went wrong. Try again.') }
     setGenerating(false)
   }
 
-  // ── IMAGE ──
   async function generateImage() {
     if (!imagePrompt.trim() || generatingImage) return
     setGeneratingImage(true); setGeneratedImage(null); setImageError(null)
@@ -272,36 +196,29 @@ export default function StudioPage() {
         body: JSON.stringify({ workspace_id: workspace?.id, prompt: imagePrompt.trim(), style: imageStyle, aspect_ratio: aspectRatio }),
       })
       const data = await res.json()
-      if (!res.ok) { setImageError(res.status === 402 ? data.message : (data.error ?? 'Failed')); return }
+      if (!res.ok) { setImageError(res.status === 402 ? data.message : (data.error ?? 'Generation failed')); return }
       setGeneratedImage(data.image_url)
     } catch { setImageError('Something went wrong.') }
     setGeneratingImage(false)
   }
 
-  // ── VIDEO ──
   async function generateVideo() {
     if (!videoPrompt.trim() || generatingVideo) return
     setGeneratingVideo(true); setGeneratedVideo(null); setVideoError(null); setVideoProgress(0)
-    const interval = setInterval(() => setVideoProgress(p => p < 85 ? p + Math.random() * 6 : p), 5000)
+    const interval = setInterval(() => setVideoProgress(p => p < 88 ? +(p + Math.random() * 5).toFixed(1) : p), 4000)
     try {
       const body: any = { workspace_id: workspace?.id, prompt: videoPrompt.trim(), style: videoStyle, duration: videoDuration, aspect_ratio: videoAspect, motion_strength: motionStrength }
       if (videoMode === 'image' && videoImageUrl) body.image_url = videoImageUrl
       if (videoMode === 'frame') { body.start_frame_url = startFrameUrl; body.end_frame_url = endFrameUrl }
-
-      const res = await fetch('/api/generate-video', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+      const res = await fetch('/api/generate-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       clearInterval(interval)
-      if (!res.ok) { setVideoError(res.status === 402 ? data.message : (data.error ?? 'Failed')); return }
-      setVideoProgress(100)
-      setGeneratedVideo(data.video_url)
+      if (!res.ok) { setVideoError(res.status === 402 ? data.message : (data.error ?? 'Generation failed')); return }
+      setVideoProgress(100); setGeneratedVideo(data.video_url)
     } catch { clearInterval(interval); setVideoError('Something went wrong.') }
     setGeneratingVideo(false)
   }
 
-  // ── VOICE ──
   async function generateVoice() {
     if (!voiceText.trim() || generatingVoice) return
     setGeneratingVoice(true); setGeneratedAudio(null); setVoiceError(null)
@@ -311,7 +228,7 @@ export default function StudioPage() {
         body: JSON.stringify({ workspace_id: workspace?.id, text: voiceText.trim(), voice_id: selectedVoice, stability }),
       })
       const data = await res.json()
-      if (!res.ok) { setVoiceError(res.status === 402 ? data.message : (data.error ?? 'Failed')); return }
+      if (!res.ok) { setVoiceError(res.status === 402 ? data.message : (data.error ?? 'Generation failed')); return }
       setGeneratedAudio(data.audio_url)
     } catch { setVoiceError('Something went wrong.') }
     setGeneratingVoice(false)
@@ -329,7 +246,6 @@ export default function StudioPage() {
     setScheduled(true)
   }
 
-  // Handle file upload for image/video modes
   function handleFileUpload(file: File, setter: (url: string) => void) {
     const reader = new FileReader()
     reader.onload = e => setter(e.target?.result as string)
@@ -339,650 +255,514 @@ export default function StudioPage() {
   const selectedType = CONTENT_TYPES.find(t => t.id === contentType)!
 
   const TABS = [
-    { id: 'quick' as ActiveTab, label: 'Quick', icon: '⚡' },
-    { id: 'copy'  as ActiveTab, label: 'Copy',  icon: '✍️' },
-    { id: 'image' as ActiveTab, label: 'Image · 5cr', icon: '🖼' },
-    { id: 'video' as ActiveTab, label: 'Video · 20cr', icon: '🎬' },
-    { id: 'voice' as ActiveTab, label: 'Voice · 8cr',  icon: '🎙' },
+    { id: 'copy'  as ActiveTab, label: 'Copy',  icon: Ic.copy,  sub: 'Write' },
+    { id: 'image' as ActiveTab, label: 'Image', icon: Ic.image, sub: '5 cr · Flux' },
+    { id: 'video' as ActiveTab, label: 'Video', icon: Ic.video, sub: '20 cr · Kling' },
+    { id: 'voice' as ActiveTab, label: 'Voice', icon: Ic.voice, sub: '8 cr · ElevenLabs' },
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', height: 'calc(100vh - var(--topbar-h))', overflow: 'hidden' }}>
+    <>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes pulse-dot { 0%,100% { opacity:1 } 50% { opacity:0.35 } }
+        @keyframes fadeUp { from { opacity:0;transform:translateY(10px) } to { opacity:1;transform:translateY(0) } }
+        @keyframes shimmer { 0% { background-position: -200% center } 100% { background-position: 200% center } }
+        .studio-tab:hover { background: rgba(255,255,255,0.04) !important; color: rgba(240,237,232,0.8) !important }
+        .pill:hover { border-color: rgba(0,170,255,0.3) !important; color: rgba(240,237,232,0.8) !important }
+        .action-btn:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.18) !important; color: #F0EDE8 !important }
+        .type-btn:hover { border-color: rgba(0,170,255,0.25) !important; background: rgba(0,170,255,0.04) !important }
+        .recent-item:hover { background: rgba(255,255,255,0.05) !important; border-color: rgba(255,255,255,0.12) !important }
+        .gen-btn { transition: all .2s }
+        .gen-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px) }
+        .gen-btn:active:not(:disabled) { transform: translateY(0) }
+        .result-area { animation: fadeUp 0.35s ease both }
+        textarea:focus { border-color: rgba(0,170,255,0.4) !important; outline: none }
+        input[type="range"] { accent-color: #00AAFF }
+      `}</style>
 
-      {/* ── Left ── */}
-      <div style={{ padding: '24px 28px', overflowY: 'auto', borderRight: '1px solid var(--line)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', height: 'calc(100vh - 52px)', overflow: 'hidden' }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 4 }}>Studio</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--t4)' }}>
-            <span>Generate content in your brand voice</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--cyan)', fontWeight: 600 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--cyan)', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-              {credits.toLocaleString()} credits
-            </span>
+        {/* ── LEFT: Studio canvas ── */}
+        <div style={{ padding: '28px 32px', overflowY: 'auto', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <div>
+              <h1 style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 800, letterSpacing: '-0.04em', color: '#F0EDE8', marginBottom: 3 }}>Studio</h1>
+              <p style={{ fontSize: 12, color: 'rgba(240,237,232,0.35)' }}>
+                {workspace?.brand_voice ? `Writing as: ${workspace.brand_voice.slice(0, 50)}...` : 'Your brand voice powers every generation'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(0,170,255,0.06)', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 8 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#00AAFF', animation: 'pulse-dot 2s infinite' }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#00AAFF' }}>{credits.toLocaleString()}</span>
+              <span style={{ fontSize: 11, color: 'rgba(0,170,255,0.6)' }}>credits</span>
+            </div>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 10, padding: 3, gap: 2, marginBottom: 22, width: 'fit-content' }}>
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 8, border: 'none', background: activeTab === tab.id ? 'var(--glass2)' : 'transparent', color: activeTab === tab.id ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)', transition: 'all .15s' }}>
-              <span style={{ fontSize: 11 }}>{tab.icon}</span> {tab.label}
-            </button>
-          ))}
-        </div>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 28 }}>
+            {TABS.map(tab => (
+              <button key={tab.id} className="studio-tab" onClick={() => setActiveTab(tab.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: `2px solid ${activeTab === tab.id ? '#00AAFF' : 'transparent'}`, color: activeTab === tab.id ? '#F0EDE8' : 'rgba(240,237,232,0.38)', cursor: 'pointer', fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400, fontFamily: 'var(--sans)', transition: 'all .15s', marginBottom: -1 }}>
+                <span style={{ color: activeTab === tab.id ? '#00AAFF' : 'inherit', display: 'flex' }}>{tab.icon}</span>
+                {tab.label}
+                <span style={{ fontSize: 10, color: activeTab === tab.id ? 'rgba(0,170,255,0.6)' : 'rgba(240,237,232,0.2)', marginLeft: 2 }}>{tab.sub}</span>
+              </button>
+            ))}
+          </div>
 
-        {/* ── QUICK TAB ── */}
-        {activeTab === 'quick' && (
-          <>
-            {/* Step indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 24 }}>
-              {[
-                { id: 'input', label: '1. Idea', },
-                { id: 'copy',  label: '2. Copy', },
-                { id: 'media', label: '3. Media', },
-                { id: 'voice', label: '4. Voice', },
-                { id: 'done',  label: '5. Publish', },
-              ].map((s, i) => {
-                const steps = ['input','copy','media','voice','done']
-                const currentIdx = steps.indexOf(quickStep)
-                const stepIdx = steps.indexOf(s.id)
-                const done = stepIdx < currentIdx
-                const active = stepIdx === currentIdx
-                return (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: done ? 'var(--cyan)' : active ? 'rgba(0,170,255,0.15)' : 'var(--glass)', border: `1px solid ${done || active ? 'var(--cline2)' : 'var(--line2)'}`, color: done ? '#000' : active ? 'var(--cyan)' : 'var(--t5)' }}>
-                        {done ? '✓' : i + 1}
-                      </div>
-                      <span style={{ fontSize: 9, fontWeight: 600, color: active ? 'var(--cyan)' : done ? 'var(--t3)' : 'var(--t5)', whiteSpace: 'nowrap' as const }}>{s.label}</span>
-                    </div>
-                    {i < 4 && <div style={{ flex: 1, height: 1, background: done ? 'var(--cline2)' : 'var(--line)', margin: '0 4px', marginBottom: 14 }} />}
-                  </div>
-                )
-              })}
-            </div>
-
-            {quickError && <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--red)' }}>{quickError}</div>}
-
-            {/* ── STEP 1: INPUT ── */}
-            {quickStep === 'input' && (
-              <>
-                <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Platform</label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {PLATFORMS.map(p => (
-                      <button key={p.id} onClick={() => setQuickPlatform(p.id)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: quickPlatform === p.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${quickPlatform === p.id ? 'var(--cline2)' : 'var(--line2)'}`, color: quickPlatform === p.id ? 'var(--cyan)' : 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={lbl}>What do you want to create?</label>
-                  <textarea value={quickPrompt} onChange={e => setQuickPrompt(e.target.value)}
-                    placeholder="e.g. Why most brands fail at content marketing — and what to do instead"
-                    rows={5} style={{ ...textareaStyle }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-                  />
-                </div>
-                <div style={{ marginBottom: 18, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                  {PROMPT_IDEAS.map((idea, i) => (
-                    <button key={i} onClick={() => setQuickPrompt(idea)} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{idea}</button>
-                  ))}
-                </div>
-                <button onClick={quickGenerateCopy} disabled={!quickPrompt.trim() || quickGenerating === 'copy'}
-                  style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: quickPrompt.trim() ? 'var(--cyan)' : 'var(--glass)', color: quickPrompt.trim() ? '#000' : 'var(--t5)', border: 'none', borderRadius: 11, cursor: quickPrompt.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  {quickGenerating === 'copy' ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating copy...</> : 'Generate copy · 3 credits →'}
-                </button>
-              </>
-            )}
-
-            {/* ── STEP 2: COPY RESULT ── */}
-            {quickStep === 'copy' && quickCopy && (
-              <>
-                <div style={{ marginBottom: 14, padding: '16px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)' }}>✓ Copy generated</span>
-                    <button onClick={() => copyToClipboard(quickCopy!)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Copy</button>
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--t1)', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>{quickCopy}</div>
-                </div>
-                <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600, color: 'var(--t3)' }}>What do you want to add?</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                  {[
-                    { type: 'image' as const, label: 'Add Image', desc: '5 credits', icon: '🖼', cost: '5cr' },
-                    { type: 'video' as const, label: 'Add Video', desc: '20 credits · ~2 min', icon: '🎬', cost: '20cr' },
-                  ].map(opt => (
-                    <button key={opt.type} onClick={() => { setQuickMediaChoice(opt.type); setQuickStep('media') }}
-                      style={{ padding: '16px 12px', borderRadius: 12, background: 'var(--glass)', border: '1px solid var(--line2)', cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const, transition: 'all .15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cline2)'; e.currentTarget.style.background = 'rgba(0,170,255,0.04)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.background = 'var(--glass)' }}>
-                      <div style={{ fontSize: 18, marginBottom: 6 }}>{opt.icon}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 3 }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--t5)' }}>{opt.desc}</div>
+          {/* ── COPY TAB ── */}
+          {activeTab === 'copy' && (
+            <div style={{ maxWidth: 640 }}>
+              {/* Format */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Format</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                  {CONTENT_TYPES.map(type => (
+                    <button key={type.id} className="type-btn" onClick={() => setContentType(type.id)}
+                      style={{ padding: '10px 8px', borderRadius: 9, background: contentType === type.id ? 'rgba(0,170,255,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${contentType === type.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left', transition: 'all .15s' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: contentType === type.id ? '#00AAFF' : 'rgba(240,237,232,0.75)', marginBottom: 2 }}>{type.label}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(240,237,232,0.3)' }}>{type.cost} cr</div>
                     </button>
                   ))}
                 </div>
-                <button onClick={quickSchedule}
-                  style={{ width: '100%', padding: '12px', fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)', background: 'transparent', color: 'var(--t4)', border: '1px solid var(--line2)', borderRadius: 10, cursor: 'pointer' }}>
-                  Skip media → Schedule copy only
-                </button>
-              </>
-            )}
+              </div>
 
-            {/* ── STEP 3: MEDIA ── */}
-            {quickStep === 'media' && (
-              <>
-                {/* Show copy above */}
-                {quickCopy && (
-                  <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
-                    {quickCopy}
-                  </div>
-                )}
-
-                {!quickMedia && (
-                  <>
-                    <div style={{ marginBottom: 14, fontSize: 13, fontWeight: 600, color: 'var(--t3)' }}>
-                      {quickMediaChoice === 'image' ? 'Generating image from your prompt...' : 'Generating video from your prompt...'}
-                    </div>
-                    <button
-                      onClick={quickMediaChoice === 'image' ? quickGenerateImage : quickGenerateVideo}
-                      disabled={!!quickGenerating}
-                      style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      {quickGenerating ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />{quickMediaChoice === 'video' ? 'Generating video (~2 min)...' : 'Generating image...'}</> : `Generate ${quickMediaChoice} · ${quickMediaChoice === 'image' ? '5' : '20'} credits →`}
+              {/* Platform */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Platform</label>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {PLATFORMS.map(p => (
+                    <button key={p.id} className="pill" onClick={() => setPlatform(p.id)}
+                      style={{ padding: '5px 13px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: platform === p.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${platform === p.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.08)'}`, color: platform === p.id ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                      {p.label}
                     </button>
-                  </>
-                )}
-
-                {quickMedia && (
-                  <>
-                    <div style={{ marginBottom: 12, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--cline2)', position: 'relative' }}>
-                      {quickMedia.type === 'image' ? (
-                        <img src={quickMedia.url} alt="Generated" style={{ width: '100%', display: 'block', maxHeight: 300, objectFit: 'cover' }} />
-                      ) : (
-                        <video src={quickMedia.url} controls style={{ width: '100%', display: 'block', maxHeight: 300 }} />
-                      )}
-                      <div style={{ position: 'absolute', top: 8, left: 8, padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(0,170,255,0.9)', color: '#000' }}>✓ {quickMedia.type === 'image' ? 'Image' : 'Video'} ready</div>
-                      <a href={quickMedia.url} download style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(0,0,0,0.7)', color: '#fff', textDecoration: 'none' }}>Download</a>
-                    </div>
-                    <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600, color: 'var(--t3)' }}>Want to add a voiceover?</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                      <button onClick={() => { setQuickAddVoice(true); setQuickStep('voice') }}
-                        style={{ padding: '14px 10px', borderRadius: 12, background: 'var(--glass)', border: '1px solid var(--line2)', cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--cline2)'; e.currentTarget.style.background = 'rgba(0,170,255,0.04)' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line2)'; e.currentTarget.style.background = 'var(--glass)' }}>
-                        <div style={{ fontSize: 16, marginBottom: 5 }}>🎙</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 2 }}>Add Voiceover</div>
-                        <div style={{ fontSize: 11, color: 'var(--t5)' }}>8 credits</div>
-                      </button>
-                      <button onClick={quickSchedule}
-                        style={{ padding: '14px 10px', borderRadius: 12, background: 'var(--cyan)', border: 'none', cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}>
-                        <div style={{ fontSize: 16, marginBottom: 5 }}>📅</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#000', marginBottom: 2 }}>Skip & Schedule</div>
-                        <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.6)' }}>Tomorrow 9am</div>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* ── STEP 4: VOICE ── */}
-            {quickStep === 'voice' && (
-              <>
-                {quickCopy && (
-                  <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
-                    {quickCopy}
-                  </div>
-                )}
-                <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Choose voice</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
-                    {VOICES.map(v => (
-                      <button key={v.id} onClick={() => setQuickVoiceId(v.id)} style={{ padding: '10px 8px', borderRadius: 10, background: quickVoiceId === v.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${quickVoiceId === v.id ? 'var(--cline2)' : 'var(--line2)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: quickVoiceId === v.id ? 'var(--cyan)' : 'var(--t2)', marginBottom: 2 }}>{v.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--t5)' }}>{v.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {!quickVoice ? (
-                  <button onClick={quickGenerateVoice} disabled={!!quickGenerating}
-                    style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    {quickGenerating === 'voice' ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating voiceover...</> : 'Generate voiceover · 8 credits →'}
-                  </button>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: 12, padding: '14px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--cline2)', borderRadius: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', marginBottom: 8 }}>✓ Voiceover ready</div>
-                      <audio src={quickVoice.url} controls style={{ width: '100%' }} />
-                    </div>
-                    <button onClick={quickSchedule}
-                      style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 11, cursor: 'pointer' }}>
-                      Schedule everything · Tomorrow 9am →
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* ── STEP 5: DONE ── */}
-            {quickStep === 'done' && (
-              <div style={{ textAlign: 'center', padding: '32px 20px' }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>🎉</div>
-                <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--display)', color: 'var(--t1)', marginBottom: 8, letterSpacing: '-0.03em' }}>Content scheduled</div>
-                <div style={{ fontSize: 13, color: 'var(--t4)', lineHeight: 1.7, marginBottom: 24 }}>
-                  Your content piece is scheduled for tomorrow at 9am.<br />Nexa will publish it automatically.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, maxWidth: 300, margin: '0 auto' }}>
-                  {quickCopy && (
-                    <div style={{ padding: '10px 14px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--line)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', textAlign: 'left' as const, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{quickCopy}</div>
-                  )}
-                  {quickMedia && quickMedia.type === 'image' && (
-                    <img src={quickMedia.url} alt="" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
-                  )}
-                  {quickVoice && (
-                    <audio src={quickVoice.url} controls style={{ width: '100%' }} />
-                  )}
-                </div>
-                <button onClick={quickReset} style={{ marginTop: 24, padding: '12px 32px', fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)', background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
-                  Create another piece →
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── COPY TAB ── */}
-        {activeTab === 'copy' && (
-          <>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Content type</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
-                {CONTENT_TYPES.map(type => (
-                  <button key={type.id} onClick={() => setContentType(type.id)} style={{ padding: '10px 8px', borderRadius: 10, background: contentType === type.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${contentType === type.id ? 'var(--cline2)' : 'var(--line2)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: contentType === type.id ? 'var(--cyan)' : 'var(--t2)', marginBottom: 2 }}>{type.label}</div>
-                    <div style={{ fontSize: 10, color: contentType === type.id ? 'rgba(0,170,255,0.7)' : 'var(--t5)' }}>{type.cost} cr</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Platform</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {PLATFORMS.map(p => (
-                  <button key={p.id} onClick={() => setPlatform(p.id)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: platform === p.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${platform === p.id ? 'var(--cline2)' : 'var(--line2)'}`, color: platform === p.id ? 'var(--cyan)' : 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <label style={{ ...lbl, marginBottom: 0 }}>What do you want to say?</label>
-                <span style={{ fontSize: 11, color: 'var(--t5)' }}>{selectedType.desc}</span>
-              </div>
-              <textarea value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generateCopy() }}
-                placeholder={`Tell Nexa what to write...\n\nExamples:\n• ${PROMPT_IDEAS[0]}\n• ${PROMPT_IDEAS[2]}`}
-                rows={5} style={{ ...textareaStyle }}
-                onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                <span style={{ fontSize: 11, color: 'var(--t5)' }}>⌘+Enter to generate</span>
-                <span style={{ fontSize: 11, color: 'var(--t5)' }}>{selectedType.cost} credits</span>
-              </div>
-            </div>
-            <div style={{ marginBottom: 18, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {PROMPT_IDEAS.slice(0, 4).map((idea, i) => (
-                <button key={i} onClick={() => setPrompt(idea)} style={{ padding: '5px 11px', borderRadius: 100, fontSize: 11, background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{idea}</button>
-              ))}
-            </div>
-            <button onClick={generateCopy} disabled={!prompt.trim() || generating} style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: prompt.trim() ? 'var(--cyan)' : 'var(--glass)', color: prompt.trim() ? '#000' : 'var(--t5)', border: `1px solid ${prompt.trim() ? 'transparent' : 'var(--line2)'}`, borderRadius: 11, cursor: prompt.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {generating ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating...</> : `Generate ${selectedType.label} · ${selectedType.cost} credits`}
-            </button>
-            {error && <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--red)' }}>{error}</div>}
-            {result && (
-              <div style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--cyan)' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)' }}>Generated {selectedType.label}</span>
-                    <span style={{ fontSize: 10, color: 'var(--t5)' }}>· {creditsUsed} cr</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => copyToClipboard(result!)} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: copied ? 'rgba(0,214,143,0.08)' : 'var(--glass)', border: `1px solid ${copied ? 'rgba(0,214,143,0.2)' : 'var(--line2)'}`, color: copied ? '#00d68f' : 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{copied ? '✓ Copied' : 'Copy'}</button>
-                    <button onClick={generateCopy} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Redo</button>
-                    <button onClick={scheduleContent} disabled={scheduled} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: scheduled ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${scheduled ? 'var(--cline2)' : 'var(--line2)'}`, color: scheduled ? 'var(--cyan)' : 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{scheduled ? '✓ Scheduled' : 'Schedule'}</button>
-                  </div>
-                </div>
-                <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--line2)', borderRadius: 12, fontSize: 13.5, color: 'var(--t1)', lineHeight: 1.75, whiteSpace: 'pre-wrap' as const }}>{result}</div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── IMAGE TAB ── */}
-        {activeTab === 'image' && (
-          <>
-            <div style={{ marginBottom: 18, padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6 }}>
-              <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>Flux</span> · Photorealistic brand imagery. Generates in ~15 seconds. 5 credits per image.
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Describe your image</label>
-              <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generateImage() }}
-                placeholder="A confident entrepreneur at a sleek dark desk, cinematic lighting, premium brand photography..."
-                rows={4} style={{ ...textareaStyle }}
-                onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-              />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Style</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {IMAGE_STYLES.map(s => (
-                  <button key={s.id} onClick={() => setImageStyle(s.id)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: imageStyle === s.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${imageStyle === s.id ? 'var(--cline2)' : 'var(--line2)'}`, color: imageStyle === s.id ? 'var(--cyan)' : 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{s.label}</button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Aspect ratio</label>
-              <div style={{ display: 'flex', gap: 7 }}>
-                {ASPECT_RATIOS.map(r => (
-                  <button key={r.id} onClick={() => setAspectRatio(r.id)} style={{ flex: 1, padding: '10px 6px', borderRadius: 9, background: aspectRatio === r.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${aspectRatio === r.id ? 'var(--cline2)' : 'var(--line2)'}`, color: aspectRatio === r.id ? 'var(--cyan)' : 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'center' as const }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>{r.label}</div>
-                    <div style={{ fontSize: 10, opacity: 0.6 }}>{r.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button onClick={generateImage} disabled={!imagePrompt.trim() || generatingImage} style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: imagePrompt.trim() ? 'var(--cyan)' : 'var(--glass)', color: imagePrompt.trim() ? '#000' : 'var(--t5)', border: `1px solid ${imagePrompt.trim() ? 'transparent' : 'var(--line2)'}`, borderRadius: 11, cursor: imagePrompt.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {generatingImage ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating image...</> : 'Generate image · 5 credits'}
-            </button>
-            {imageError && <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--red)' }}>{imageError}</div>}
-            {generatedImage && (
-              <div style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)' }}>Generated image · 5 cr</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <a href={generatedImage} download={`nexa-${Date.now()}.jpg`} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', textDecoration: 'none', fontFamily: 'var(--sans)' }}>Download</a>
-                    <button onClick={() => { setActiveTab('video'); setVideoMode('image'); setVideoImageUrl(generatedImage!) }} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--cglow2)', border: '1px solid var(--cline2)', color: 'var(--cyan)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Animate →</button>
-                    <button onClick={generateImage} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Redo</button>
-                  </div>
-                </div>
-                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line2)' }}>
-                  <img src={generatedImage} alt="Generated" style={{ width: '100%', display: 'block', maxHeight: 480, objectFit: 'cover' }} />
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── VIDEO TAB ── */}
-        {activeTab === 'video' && (
-          <>
-            <div style={{ marginBottom: 16, padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6 }}>
-              <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>Kling 3.0</span> · Cinematic video generation. Takes 1–3 minutes. 20 credits per clip.
-            </div>
-
-            {/* Video mode */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Mode</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
-                {VIDEO_MODES.map(m => (
-                  <button key={m.id} onClick={() => setVideoMode(m.id as any)} style={{ padding: '10px 8px', borderRadius: 10, background: videoMode === m.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${videoMode === m.id ? 'var(--cline2)' : 'var(--line2)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: videoMode === m.id ? 'var(--cyan)' : 'var(--t2)', marginBottom: 2 }}>{m.label}</div>
-                    <div style={{ fontSize: 10, color: 'var(--t5)' }}>{m.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Image upload for image2video */}
-            {videoMode === 'image' && (
-              <div style={{ marginBottom: 18 }}>
-                <label style={lbl}>Source image</label>
-                {videoImageUrl ? (
-                  <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--cline2)', marginBottom: 8 }}>
-                    <img src={videoImageUrl} alt="Source" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block' }} />
-                    <button onClick={() => setVideoImageUrl('')} style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', borderRadius: 6, fontSize: 11, background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', cursor: 'pointer' }}>✕ Remove</button>
-                  </div>
-                ) : (
-                  <div onClick={() => imageRef.current?.click()} style={{ padding: '24px', border: '1px dashed var(--line2)', borderRadius: 10, textAlign: 'center', cursor: 'pointer', fontSize: 13, color: 'var(--t4)' }}>
-                    Click to upload image
-                    <input ref={imageRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], setVideoImageUrl)} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Start + end frame */}
-            {videoMode === 'frame' && (
-              <div style={{ marginBottom: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {[
-                  { label: 'Start frame', url: startFrameUrl, setter: setStartFrameUrl, ref: startFrameRef },
-                  { label: 'End frame',   url: endFrameUrl,   setter: setEndFrameUrl,   ref: endFrameRef },
-                ].map(frame => (
-                  <div key={frame.label}>
-                    <label style={lbl}>{frame.label}</label>
-                    {frame.url ? (
-                      <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--cline2)' }}>
-                        <img src={frame.url} alt={frame.label} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
-                        <button onClick={() => frame.setter('')} style={{ position: 'absolute', top: 6, right: 6, padding: '3px 7px', borderRadius: 5, fontSize: 10, background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
-                      </div>
-                    ) : (
-                      <div onClick={() => frame.ref.current?.click()} style={{ height: 120, border: '1px dashed var(--line2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, color: 'var(--t5)' }}>
-                        Upload
-                        <input ref={frame.ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], frame.setter)} />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Prompt */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Describe your video</label>
-              <textarea value={videoPrompt} onChange={e => setVideoPrompt(e.target.value)}
-                placeholder="A confident entrepreneur walking through a glass office building at golden hour, cinematic motion..."
-                rows={4} style={{ ...textareaStyle }}
-                onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-              />
-            </div>
-
-            {/* Style */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Style</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {VIDEO_STYLES.map(s => (
-                  <button key={s.id} onClick={() => setVideoStyle(s.id)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: videoStyle === s.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${videoStyle === s.id ? 'var(--cline2)' : 'var(--line2)'}`, color: videoStyle === s.id ? 'var(--cyan)' : 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>{s.label}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Duration + Aspect */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-              <div>
-                <label style={lbl}>Duration</label>
-                <div style={{ display: 'flex', gap: 7 }}>
-                  {[5, 10].map(d => (
-                    <button key={d} onClick={() => setVideoDuration(d)} style={{ flex: 1, padding: '10px', borderRadius: 9, background: videoDuration === d ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${videoDuration === d ? 'var(--cline2)' : 'var(--line2)'}`, color: videoDuration === d ? 'var(--cyan)' : 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 700 }}>{d}s</button>
                   ))}
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Aspect ratio</label>
-                <div style={{ display: 'flex', gap: 7 }}>
-                  {['16:9', '9:16', '1:1'].map(r => (
-                    <button key={r} onClick={() => setVideoAspect(r)} style={{ flex: 1, padding: '10px', borderRadius: 9, background: videoAspect === r ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${videoAspect === r ? 'var(--cline2)' : 'var(--line2)'}`, color: videoAspect === r ? 'var(--cyan)' : 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)', fontSize: 11, fontWeight: 700 }}>{r}</button>
-                  ))}
+
+              {/* Prompt */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>What should Nexa write?</label>
+                  <span style={{ fontSize: 11, color: 'rgba(240,237,232,0.25)' }}>⌘+Enter to generate</span>
                 </div>
+                <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generateCopy() }}
+                  placeholder={`Describe the angle, idea, or topic.\n\nBe specific — "Why perfectionism is costing your audience engagement" performs better than "a tip about content."`}
+                  rows={5} style={tArea} />
               </div>
-            </div>
 
-            {/* Motion strength */}
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <label style={{ ...lbl, marginBottom: 0 }}>Motion strength</label>
-                <span style={{ fontSize: 11, color: 'var(--t4)' }}>{Math.round(motionStrength * 100)}% — {motionStrength < 0.3 ? 'Subtle' : motionStrength > 0.7 ? 'Dynamic' : 'Balanced'}</span>
+              {/* Prompt angles */}
+              <div style={{ marginBottom: 20, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {PROMPT_ANGLES.slice(0, 4).map((angle, i) => (
+                  <button key={i} className="pill" onClick={() => setPrompt(angle)}
+                    style={{ padding: '4px 11px', borderRadius: 100, fontSize: 11, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                    {angle.length > 48 ? angle.slice(0, 48) + '...' : angle}
+                  </button>
+                ))}
               </div>
-              <input type="range" min="0" max="1" step="0.05" value={motionStrength} onChange={e => setMotionStrength(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--cyan)' }} />
-            </div>
 
-            <button onClick={generateVideo} disabled={!videoPrompt.trim() || generatingVideo} style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: videoPrompt.trim() ? 'var(--cyan)' : 'var(--glass)', color: videoPrompt.trim() ? '#000' : 'var(--t5)', border: `1px solid ${videoPrompt.trim() ? 'transparent' : 'var(--line2)'}`, borderRadius: 11, cursor: videoPrompt.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {generatingVideo ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating video (~2 min)...</> : 'Generate video · 20 credits'}
-            </button>
+              {/* Generate */}
+              <button onClick={generateCopy} disabled={!prompt.trim() || generating} className="gen-btn"
+                style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--display)', background: prompt.trim() ? '#00AAFF' : 'rgba(255,255,255,0.04)', color: prompt.trim() ? '#000' : 'rgba(240,237,232,0.25)', border: `1px solid ${prompt.trim() ? 'transparent' : 'rgba(255,255,255,0.07)'}`, borderRadius: 11, cursor: prompt.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, letterSpacing: '-0.01em' }}>
+                {generating
+                  ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.25)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Writing in your brand voice...</>
+                  : <><span style={{ display: 'flex' }}>{Ic.spark}</span>Write {selectedType.label} · {selectedType.cost} credits</>
+                }
+              </button>
 
-            {generatingVideo && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: 'var(--t4)' }}>
-                  <span>Kling is rendering your clip...</span>
-                  <span>{Math.round(videoProgress)}%</span>
-                </div>
-                <div style={{ height: 3, background: 'var(--glass)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${videoProgress}%`, background: 'linear-gradient(90deg, rgba(0,110,255,0.8), var(--cyan))', borderRadius: 3, transition: 'width 0.8s ease' }} />
-                </div>
-              </div>
-            )}
+              {error && <ErrorCard message={error} />}
 
-            {videoError && <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--red)' }}>{videoError}</div>}
-
-            {generatedVideo && (
-              <div style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)' }}>Generated video · 20 cr</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <a href={generatedVideo} download={`nexa-video-${Date.now()}.mp4`} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', textDecoration: 'none', fontFamily: 'var(--sans)' }}>Download</a>
-                    <button onClick={generateVideo} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Redo</button>
-                  </div>
-                </div>
-                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line2)', background: 'rgba(0,0,0,0.3)' }}>
-                  <video src={generatedVideo} controls style={{ width: '100%', display: 'block', maxHeight: 400 }} />
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── VOICE TAB ── */}
-        {activeTab === 'voice' && (
-          <>
-            <div style={{ marginBottom: 16, padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 10, fontSize: 12, color: 'var(--t3)', lineHeight: 1.6 }}>
-              <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>ElevenLabs</span> · Ultra-realistic AI voiceovers in 8 languages. 8 credits per generation.
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <label style={{ ...lbl, marginBottom: 0 }}>Your script</label>
-                <span style={{ fontSize: 11, color: 'var(--t5)' }}>{voiceText.length}/5000</span>
-              </div>
-              <textarea value={voiceText} onChange={e => setVoiceText(e.target.value.slice(0, 5000))}
-                placeholder="Paste your script here. Works great with the copy you generate in the Copy tab..."
-                rows={6} style={{ ...textareaStyle }}
-                onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-              />
               {result && (
-                <button onClick={() => setVoiceText(result)} style={{ marginTop: 6, padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--cglow2)', border: '1px solid var(--cline2)', color: 'var(--cyan)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                  ← Use last generated copy
-                </button>
+                <div className="result-area" style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#00AAFF' }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(240,237,232,0.7)' }}>{selectedType.label} · {creditsUsed} cr used</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <ActionBtn icon={copied ? Ic.check : Ic.copy2} label={copied ? 'Copied' : 'Copy'} active={copied} onClick={() => copyToClipboard(result!)} />
+                      <ActionBtn icon={Ic.redo} label="Redo" onClick={generateCopy} />
+                      <ActionBtn icon={Ic.voice} label="Narrate" onClick={() => { setVoiceText(result!); setActiveTab('voice') }} />
+                      <ActionBtn icon={scheduled ? Ic.check : Ic.sched} label={scheduled ? 'Scheduled' : 'Schedule'} active={scheduled} onClick={scheduleContent} />
+                    </div>
+                  </div>
+                  <div style={{ padding: '18px 20px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 14, color: '#F0EDE8', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{result}</div>
+                </div>
               )}
             </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={lbl}>Voice</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
-                {VOICES.map(v => (
-                  <button key={v.id} onClick={() => setSelectedVoice(v.id)} style={{ padding: '10px 8px', borderRadius: 10, background: selectedVoice === v.id ? 'rgba(0,170,255,0.08)' : 'var(--glass)', border: `1px solid ${selectedVoice === v.id ? 'var(--cline2)' : 'var(--line2)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left' as const }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: selectedVoice === v.id ? 'var(--cyan)' : 'var(--t2)', marginBottom: 2 }}>{v.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--t5)' }}>{v.desc}</div>
-                  </button>
-                ))}
+          )}
+
+          {/* ── IMAGE TAB ── */}
+          {activeTab === 'image' && (
+            <div style={{ maxWidth: 640 }}>
+              <ProviderBadge name="Flux" desc="Photorealistic brand imagery · ~15 seconds · 5 credits" />
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Describe your image</label>
+                <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) generateImage() }}
+                  placeholder={`Be specific. "A focused founder at a dark oak desk, morning light through tall windows, premium editorial photography" generates far better than "a business person working".`}
+                  rows={4} style={tArea} />
               </div>
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <label style={{ ...lbl, marginBottom: 0 }}>Stability</label>
-                <span style={{ fontSize: 11, color: 'var(--t4)' }}>{Math.round(stability * 100)}% — {stability < 0.4 ? 'More expressive' : stability > 0.7 ? 'More consistent' : 'Balanced'}</span>
-              </div>
-              <input type="range" min="0" max="1" step="0.05" value={stability} onChange={e => setStability(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--cyan)' }} />
-            </div>
-            <button onClick={generateVoice} disabled={!voiceText.trim() || generatingVoice} style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', background: voiceText.trim() ? 'var(--cyan)' : 'var(--glass)', color: voiceText.trim() ? '#000' : 'var(--t5)', border: `1px solid ${voiceText.trim() ? 'transparent' : 'var(--line2)'}`, borderRadius: 11, cursor: voiceText.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {generatingVoice ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />Generating voiceover...</> : 'Generate voiceover · 8 credits'}
-            </button>
-            {voiceError && <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 10, fontSize: 13, color: 'var(--red)' }}>{voiceError}</div>}
-            {generatedAudio && (
-              <div style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)' }}>Generated voiceover · 8 cr</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <a href={generatedAudio} download={`nexa-voice-${Date.now()}.mp3`} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', textDecoration: 'none', fontFamily: 'var(--sans)' }}>Download</a>
-                    <button onClick={generateVoice} style={{ padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'var(--glass)', border: '1px solid var(--line2)', color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>Redo</button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
+                <div>
+                  <label style={lbl}>Visual style</label>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {IMAGE_STYLES.map(s => (
+                      <button key={s.id} className="pill" onClick={() => setImageStyle(s.id)}
+                        style={{ padding: '5px 11px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: imageStyle === s.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${imageStyle === s.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, color: imageStyle === s.id ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                        {s.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--line2)', borderRadius: 12 }}>
-                  <audio src={generatedAudio} controls style={{ width: '100%' }} />
+                <div>
+                  <label style={lbl}>Format</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 5 }}>
+                    {ASPECT_RATIOS.map(r => (
+                      <button key={r.id} className="type-btn" onClick={() => setAspectRatio(r.id)}
+                        style={{ padding: '8px 6px', borderRadius: 8, background: aspectRatio === r.id ? 'rgba(0,170,255,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${aspectRatio === r.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, color: aspectRatio === r.id ? '#00AAFF' : 'rgba(240,237,232,0.45)', cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'center', transition: 'all .15s' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700 }}>{r.label}</div>
+                        <div style={{ fontSize: 10, opacity: 0.55 }}>{r.desc}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      {/* ── Right: Recent content ── */}
-      <div style={{ overflowY: 'auto', padding: '24px 20px', background: 'rgba(8,8,13,0.5)', borderLeft: '1px solid var(--line)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t4)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 12 }}>Recent · auto-updates</div>
-        {recentContent.length > 0 ? recentContent.map(item => (
-          <div key={item.id} style={{ marginBottom: 8, background: 'var(--glass)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer' }}
-            onClick={() => {
-              if (item.type === 'image' && item.image_url) { setActiveTab('image'); setGeneratedImage(item.image_url) }
-              else if (item.type === 'video' && item.video_url) { setActiveTab('video'); setGeneratedVideo(item.video_url) }
-              else if (item.type === 'voice' && item.voice_url) { setActiveTab('voice'); setGeneratedAudio(item.voice_url) }
-              else if (item.body) { setActiveTab('copy'); setResult(item.body); setResultId(item.id) }
-            }}
-          >
-            {item.image_url && <img src={item.image_url} alt="" style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }} />}
-            {item.type === 'video' && (
-              <div style={{ width: '100%', height: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--cyan)" stroke="none"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" fill="none" stroke="var(--cyan)" strokeWidth="1.5"/></svg>
-              </div>
-            )}
-            {item.type === 'voice' && (
-              <div style={{ width: '100%', height: 40, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                {[3,5,7,5,3,6,4,6,3].map((h, i) => <div key={i} style={{ width: 2, height: h * 3, background: 'var(--cyan)', borderRadius: 2, opacity: 0.7 }} />)}
-              </div>
-            )}
-            <div style={{ padding: '9px 11px' }}>
-              <div style={{ display: 'flex', gap: 5, marginBottom: 4 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'var(--cglow2)', border: '1px solid var(--cline2)', color: 'var(--cyan)', textTransform: 'uppercase' as const }}>{item.type}</span>
-                <span style={{ fontSize: 9, color: 'var(--t5)', marginLeft: 'auto' }}>{item.credits_used}cr</span>
-              </div>
-              {item.body && <div style={{ fontSize: 11.5, color: 'var(--t3)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{item.body}</div>}
-              {/* Download button */}
-              {(item.image_url || item.video_url || item.voice_url) && (
-                <a
-                  href={item.image_url ?? item.video_url ?? item.voice_url}
-                  download
-                  onClick={e => e.stopPropagation()}
-                  style={{ display: 'inline-block', marginTop: 5, fontSize: 10, fontWeight: 600, color: 'var(--cyan)', textDecoration: 'none' }}
-                >
-                  Download ↓
-                </a>
+              <GenButton active={!!imagePrompt.trim()} loading={generatingImage} onClick={generateImage}
+                label="Generate image · 5 credits" loadingLabel="Generating with Flux..." icon={Ic.image} />
+
+              {imageError && <ErrorCard message={imageError} />}
+
+              {generatedImage && (
+                <div className="result-area" style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(240,237,232,0.7)' }}>Image · 5 cr used</span>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <ActionBtn icon={Ic.animate} label="Animate →" onClick={() => { setActiveTab('video'); setVideoMode('image'); setVideoImageUrl(generatedImage!) }} />
+                      <a href={generatedImage} download={`nexa-${Date.now()}.jpg`} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,237,232,0.6)', textDecoration: 'none' }}>
+                        {Ic.dl} Download
+                      </a>
+                      <ActionBtn icon={Ic.redo} label="Redo" onClick={generateImage} />
+                    </div>
+                  </div>
+                  <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.09)' }}>
+                    <img src={generatedImage} alt="Generated" style={{ width: '100%', display: 'block', maxHeight: 500, objectFit: 'cover' }} />
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )) : (
-          <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--t5)', fontSize: 12, lineHeight: 1.7 }}>
-            Content you generate will appear here automatically.
-          </div>
-        )}
+          )}
+
+          {/* ── VIDEO TAB ── */}
+          {activeTab === 'video' && (
+            <div style={{ maxWidth: 640 }}>
+              <ProviderBadge name="Kling 3.0" desc="Cinematic video generation · 1–3 minutes to render · 20 credits" />
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={lbl}>Mode</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+                  {VIDEO_MODES.map(m => (
+                    <button key={m.id} className="type-btn" onClick={() => setVideoMode(m.id as any)}
+                      style={{ padding: '10px 8px', borderRadius: 9, background: videoMode === m.id ? 'rgba(0,170,255,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${videoMode === m.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left', transition: 'all .15s' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: videoMode === m.id ? '#00AAFF' : 'rgba(240,237,232,0.75)', marginBottom: 3 }}>{m.label}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(240,237,232,0.3)' }}>{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image upload for image2video */}
+              {videoMode === 'image' && (
+                <div style={{ marginBottom: 18 }}>
+                  <label style={lbl}>Source image</label>
+                  {videoImageUrl ? (
+                    <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(0,170,255,0.2)' }}>
+                      <img src={videoImageUrl} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
+                      <button onClick={() => setVideoImageUrl('')} style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', borderRadius: 6, fontSize: 11, background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', cursor: 'pointer' }}>Remove</button>
+                    </div>
+                  ) : (
+                    <div onClick={() => imageRef.current?.click()} style={{ padding: '24px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 10, textAlign: 'center', cursor: 'pointer', color: 'rgba(240,237,232,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      {Ic.upload}<span style={{ fontSize: 13 }}>Upload image to animate</span>
+                      <input ref={imageRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], setVideoImageUrl)} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Start + end frames */}
+              {videoMode === 'frame' && (
+                <div style={{ marginBottom: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    { label: 'Start frame', url: startFrameUrl, setter: setStartFrameUrl, ref: startFrameRef },
+                    { label: 'End frame',   url: endFrameUrl,   setter: setEndFrameUrl,   ref: endFrameRef },
+                  ].map(frame => (
+                    <div key={frame.label}>
+                      <label style={lbl}>{frame.label}</label>
+                      {frame.url ? (
+                        <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,170,255,0.2)' }}>
+                          <img src={frame.url} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                          <button onClick={() => frame.setter('')} style={{ position: 'absolute', top: 6, right: 6, padding: '3px 7px', borderRadius: 5, fontSize: 10, background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', cursor: 'pointer' }}>✕</button>
+                        </div>
+                      ) : (
+                        <div onClick={() => frame.ref.current?.click()} style={{ height: 120, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(240,237,232,0.3)', gap: 6, fontSize: 12 }}>
+                          {Ic.upload} Upload
+                          <input ref={frame.ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], frame.setter)} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={lbl}>Describe the scene</label>
+                <textarea value={videoPrompt} onChange={e => setVideoPrompt(e.target.value)}
+                  placeholder="A founder walking into a glass building at golden hour, confidence in every step, cinematic lens flare, premium brand feel..."
+                  rows={4} style={tArea} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+                <div>
+                  <label style={lbl}>Style</label>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {VIDEO_STYLES.map(s => (
+                      <button key={s.id} className="pill" onClick={() => setVideoStyle(s.id)}
+                        style={{ padding: '5px 11px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: videoStyle === s.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${videoStyle === s.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, color: videoStyle === s.id ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label style={lbl}>Duration & format</label>
+                  <div style={{ display: 'flex', gap: 5, marginBottom: 7 }}>
+                    {[5, 10].map(d => (
+                      <button key={d} className="pill" onClick={() => setVideoDuration(d)}
+                        style={{ padding: '5px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, background: videoDuration === d ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${videoDuration === d ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, color: videoDuration === d ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                        {d}s
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    {['16:9', '9:16', '1:1'].map(r => (
+                      <button key={r} className="pill" onClick={() => setVideoAspect(r)}
+                        style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: videoAspect === r ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${videoAspect === r ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, color: videoAspect === r ? '#00AAFF' : 'rgba(240,237,232,0.4)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Motion intensity</label>
+                  <span style={{ fontSize: 11, color: 'rgba(240,237,232,0.35)' }}>{motionStrength < 0.35 ? 'Subtle' : motionStrength > 0.65 ? 'Dynamic' : 'Balanced'} · {Math.round(motionStrength * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value={motionStrength} onChange={e => setMotionStrength(parseFloat(e.target.value))} style={{ width: '100%' }} />
+              </div>
+
+              <GenButton active={!!videoPrompt.trim()} loading={generatingVideo} onClick={generateVideo}
+                label="Generate video · 20 credits" loadingLabel="Kling is rendering your clip..." icon={Ic.video} />
+
+              {generatingVideo && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11, color: 'rgba(240,237,232,0.35)' }}>
+                    <span>Rendering takes 1–3 minutes. Sit tight.</span>
+                    <span>{Math.round(videoProgress)}%</span>
+                  </div>
+                  <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${videoProgress}%`, background: 'linear-gradient(90deg,rgba(0,110,255,0.9),#00AAFF)', borderRadius: 3, transition: 'width 1s ease' }} />
+                  </div>
+                </div>
+              )}
+
+              {videoError && <ErrorCard message={videoError} />}
+
+              {generatedVideo && (
+                <div className="result-area" style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(240,237,232,0.7)' }}>Video · 20 cr used</span>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <a href={generatedVideo} download={`nexa-${Date.now()}.mp4`} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,237,232,0.6)', textDecoration: 'none' }}>
+                        {Ic.dl} Download
+                      </a>
+                      <ActionBtn icon={Ic.redo} label="Redo" onClick={generateVideo} />
+                    </div>
+                  </div>
+                  <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.09)', background: '#000' }}>
+                    <video src={generatedVideo} controls style={{ width: '100%', display: 'block', maxHeight: 440 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── VOICE TAB ── */}
+          {activeTab === 'voice' && (
+            <div style={{ maxWidth: 640 }}>
+              <ProviderBadge name="ElevenLabs" desc="Ultra-realistic AI voiceovers · 8 languages · 8 credits per generation" />
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Script</label>
+                  <span style={{ fontSize: 11, color: 'rgba(240,237,232,0.25)' }}>{voiceText.length}/5000</span>
+                </div>
+                <textarea value={voiceText} onChange={e => setVoiceText(e.target.value.slice(0, 5000))}
+                  placeholder="Paste your script. Works best with copy generated in the Copy tab — it's already written in your brand voice."
+                  rows={6} style={tArea} />
+                {result && (
+                  <button onClick={() => setVoiceText(result)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(0,170,255,0.07)', border: '1px solid rgba(0,170,255,0.18)', color: '#00AAFF', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                    {Ic.copy2} Use last generated copy
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Voice</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                  {VOICES.map(v => (
+                    <button key={v.id} className="type-btn" onClick={() => setSelectedVoice(v.id)}
+                      style={{ padding: '10px 8px', borderRadius: 9, background: selectedVoice === v.id ? 'rgba(0,170,255,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${selectedVoice === v.id ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`, cursor: 'pointer', fontFamily: 'var(--sans)', textAlign: 'left', transition: 'all .15s' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: selectedVoice === v.id ? '#00AAFF' : 'rgba(240,237,232,0.75)', marginBottom: 2 }}>{v.name}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(240,237,232,0.3)' }}>{v.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Stability</label>
+                  <span style={{ fontSize: 11, color: 'rgba(240,237,232,0.35)' }}>{stability < 0.4 ? 'Expressive' : stability > 0.7 ? 'Consistent' : 'Balanced'} · {Math.round(stability * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value={stability} onChange={e => setStability(parseFloat(e.target.value))} style={{ width: '100%' }} />
+              </div>
+
+              <GenButton active={!!voiceText.trim()} loading={generatingVoice} onClick={generateVoice}
+                label="Generate voiceover · 8 credits" loadingLabel="Generating with ElevenLabs..." icon={Ic.voice} />
+
+              {voiceError && <ErrorCard message={voiceError} />}
+
+              {generatedAudio && (
+                <div className="result-area" style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(240,237,232,0.7)' }}>Voiceover · 8 cr used</span>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <a href={generatedAudio} download={`nexa-voice-${Date.now()}.mp3`} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,237,232,0.6)', textDecoration: 'none' }}>
+                        {Ic.dl} Download
+                      </a>
+                      <ActionBtn icon={Ic.redo} label="Redo" onClick={generateVoice} />
+                    </div>
+                  </div>
+                  <div style={{ padding: '16px 18px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+                    <audio src={generatedAudio} controls style={{ width: '100%' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT: Recent content ── */}
+        <div style={{ overflowY: 'auto', padding: '24px 16px', background: 'rgba(8,8,12,0.6)', borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(240,237,232,0.28)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Recent · live</div>
+          {recentContent.length > 0 ? recentContent.map(item => (
+            <div key={item.id} className="recent-item"
+              style={{ marginBottom: 7, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, overflow: 'hidden', cursor: 'pointer', transition: 'all .15s' }}
+              onClick={() => {
+                if (item.type === 'image' && item.image_url) { setActiveTab('image'); setGeneratedImage(item.image_url) }
+                else if (item.type === 'video' && item.video_url) { setActiveTab('video'); setGeneratedVideo(item.video_url) }
+                else if (item.type === 'voice' && item.voice_url) { setActiveTab('voice'); setGeneratedAudio(item.voice_url) }
+                else if (item.body) { setActiveTab('copy'); setResult(item.body); setResultId(item.id) }
+              }}
+            >
+              {item.image_url && <img src={item.image_url} alt="" style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }} />}
+              {item.type === 'video' && (
+                <div style={{ width: '100%', height: 50, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00AAFF' }}>
+                  {Ic.video}
+                </div>
+              )}
+              {item.type === 'voice' && (
+                <div style={{ width: '100%', height: 38, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                  {[3, 5, 7, 5, 8, 5, 3, 6, 4].map((h, i) => (
+                    <div key={i} style={{ width: 2, height: h * 2.5, background: '#00AAFF', borderRadius: 2, opacity: 0.7 }} />
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: '9px 11px' }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 5 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: 'rgba(0,170,255,0.08)', border: '1px solid rgba(0,170,255,0.18)', color: '#00AAFF', textTransform: 'uppercase' }}>{item.type}</span>
+                  {item.platform && <span style={{ fontSize: 9, color: 'rgba(240,237,232,0.3)' }}>{item.platform}</span>}
+                  <span style={{ fontSize: 9, color: 'rgba(240,237,232,0.2)', marginLeft: 'auto' }}>{item.credits_used}cr</span>
+                </div>
+                {item.body && (
+                  <div style={{ fontSize: 11, color: 'rgba(240,237,232,0.55)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {item.body}
+                  </div>
+                )}
+              </div>
+            </div>
+          )) : (
+            <div style={{ textAlign: 'center', padding: '32px 12px', color: 'rgba(240,237,232,0.22)', fontSize: 12, lineHeight: 1.7 }}>
+              Everything you create appears here automatically.
+            </div>
+          )}
+        </div>
+
       </div>
+    </>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────
+
+function ProviderBadge({ name, desc }: { name: string; desc: string }) {
+  return (
+    <div style={{ marginBottom: 20, padding: '10px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid rgba(0,170,255,0.12)', borderRadius: 9, fontSize: 12, color: 'rgba(240,237,232,0.5)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontWeight: 700, color: '#00AAFF' }}>{name}</span>
+      <span style={{ color: 'rgba(255,255,255,0.12)' }}>·</span>
+      {desc}
     </div>
   )
 }
 
-const lbl: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t4)', marginBottom: 7, letterSpacing: '0.01em' }
-const textareaStyle: React.CSSProperties = { width: '100%', padding: '13px 14px', fontSize: 13.5, fontFamily: 'var(--sans)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 12, color: 'var(--t1)', outline: 'none', resize: 'vertical' as const, lineHeight: 1.6, transition: 'border-color .18s' }
+function GenButton({ active, loading, onClick, label, loadingLabel, icon }: { active: boolean; loading: boolean; onClick: () => void; label: string; loadingLabel: string; icon: React.ReactNode }) {
+  return (
+    <button onClick={onClick} disabled={!active || loading} className="gen-btn"
+      style={{ width: '100%', padding: '13px', fontSize: 14, fontWeight: 700, fontFamily: 'var(--display)', background: active ? '#00AAFF' : 'rgba(255,255,255,0.04)', color: active ? '#000' : 'rgba(240,237,232,0.2)', border: `1px solid ${active ? 'transparent' : 'rgba(255,255,255,0.07)'}`, borderRadius: 11, cursor: active ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, letterSpacing: '-0.01em' }}>
+      {loading
+        ? <><div style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.25)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />{loadingLabel}</>
+        : <><span style={{ display: 'flex' }}>{icon}</span>{label}</>
+      }
+    </button>
+  )
+}
+
+function ActionBtn({ icon, label, onClick, active = false }: { icon: React.ReactNode; label: string; onClick: () => void; active?: boolean }) {
+  return (
+    <button onClick={onClick} className="action-btn"
+      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: active ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${active ? 'rgba(0,170,255,0.2)' : 'rgba(255,255,255,0.09)'}`, color: active ? '#00AAFF' : 'rgba(240,237,232,0.55)', cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s' }}>
+      <span style={{ display: 'flex' }}>{icon}</span>{label}
+    </button>
+  )
+}
+
+function ErrorCard({ message }: { message: string }) {
+  return (
+    <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(255,80,80,0.06)', border: '1px solid rgba(255,80,80,0.18)', borderRadius: 10, fontSize: 13, color: '#ff7070' }}>
+      {message}
+    </div>
+  )
+}
+
+const lbl: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: 'rgba(240,237,232,0.4)', marginBottom: 8, letterSpacing: '0.02em', textTransform: 'uppercase' }
+const tArea: React.CSSProperties = { width: '100%', padding: '13px 14px', fontSize: 13.5, fontFamily: 'var(--sans)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 11, color: '#F0EDE8', outline: 'none', resize: 'vertical', lineHeight: 1.65, transition: 'border-color .18s', boxSizing: 'border-box' }
