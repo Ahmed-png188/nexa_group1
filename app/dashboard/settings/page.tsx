@@ -8,29 +8,29 @@ type Tab = 'profile'|'workspace'|'billing'|'password'
 
 const PLANS = [
   {
-    id:'spark',    name:'Spark',    price:0,   credits:50,
+    id:'spark',  name:'Spark',  price:39,  credits:500,
     color:'rgba(255,255,255,0.45)',
-    desc:'Try Nexa for free',
-    features:['50 credits/mo','Copy generation','1 platform connection','Basic analytics'],
+    desc:'For creators getting started',
+    features:['500 credits/mo','Copy generation','Brand Brain','Analytics'],
   },
   {
-    id:'grow',     name:'Grow',     price:19,  credits:500,
+    id:'grow',   name:'Grow',   price:89,  credits:1500,
     color:'#4D9FFF',
     desc:'For creators building in public',
-    features:['500 credits/mo','Image generation','Brand Brain','Full analytics','All platforms'],
+    features:['1,500 credits/mo','Image generation','All platforms','Full analytics'],
   },
   {
-    id:'scale',    name:'Scale',    price:49,  credits:2000,
+    id:'scale',  name:'Scale',  price:179, credits:5000,
     color:'#A78BFA',
     desc:'For serious personal brands',
     popular: true,
-    features:['2,000 credits/mo','Video & voice generation','Automation sequences','Competitor analysis','Strategy engine'],
+    features:['5,000 credits/mo','Video & voice generation','Automation sequences','Competitor analysis'],
   },
   {
-    id:'dominate', name:'Dominate', price:99,  credits:5000,
+    id:'agency', name:'Agency', price:349, credits:15000,
     color:'#FF7A40',
-    desc:'For agencies and power users',
-    features:['5,000 credits/mo','Agency mode','Client workspaces','All AI models','Priority support'],
+    desc:'For agencies and teams',
+    features:['15,000 credits/mo','Agency mode','Client workspaces','All AI models','Priority support'],
   },
 ]
 

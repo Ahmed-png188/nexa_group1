@@ -55,7 +55,7 @@ export default function AgencyPage() {
     if (!user) return
     const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
     const w = (m as any)?.workspaces; setWs(w)
-    setIsAgency(w?.plan==='dominate'||w?.is_agency||false)
+    setIsAgency(w?.plan==='agency'||w?.is_agency||false)
     const [{ data:cl },{ data:inv }] = await Promise.all([
       supabase.from('agency_clients').select('*, client_workspaces(*)').eq('agency_workspace_id',w?.id).order('created_at',{ascending:false}),
       supabase.from('agency_invites').select('*').eq('agency_workspace_id',w?.id).eq('status','pending').order('created_at',{ascending:false}),
@@ -127,7 +127,7 @@ export default function AgencyPage() {
             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 36px rgba(77,159,255,0.5)'}}
             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 28px rgba(77,159,255,0.4)'}}>
             <span style={{ display:'flex' }}>{Ic.bolt}</span>
-            Upgrade to Dominate
+            Upgrade to Agency
           </Link>
         </div>
       </div>
