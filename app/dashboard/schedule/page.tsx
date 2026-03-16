@@ -81,7 +81,7 @@ function Inner() {
     const [{ data:s },{ data:d },{ data:p }] = await Promise.all([
       supabase.from('content').select('*').eq('workspace_id',w?.id).eq('status','scheduled').order('scheduled_for',{ascending:true}),
       supabase.from('content').select('*').eq('workspace_id',w?.id).eq('status','draft').order('created_at',{ascending:false}).limit(20),
-      supabase.from('platform_connections').select('*').eq('workspace_id',w?.id).eq('is_active',true),
+      supabase.from('connected_platforms').select('*').eq('workspace_id',w?.id).eq('is_active',true),
     ])
     setPosts(s??[]); setDrafts(d??[]); setConnPlats(p??[]); setLoading(false)
     supabase.channel('sched-rt')

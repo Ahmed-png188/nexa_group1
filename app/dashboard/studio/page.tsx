@@ -261,10 +261,11 @@ export default function StudioPage() {
   const endRef    = useRef<HTMLInputElement>(null)
   const imgRef    = useRef<HTMLInputElement>(null)
 
-  const [ws,       setWs]       = useState<any>(null)
-  const [tab,      setTab]      = useState<Tab>('copy')
-  const [recent,   setRecent]   = useState<any[]>([])
-  const [mounted,  setMounted]  = useState(false)
+  const [ws,         setWs]         = useState<any>(null)
+  const [tab,        setTab]        = useState<Tab>('copy')
+  const [recent,     setRecent]     = useState<any[]>([])
+  const [mounted,    setMounted]    = useState(false)
+  const [todayAngle, setTodayAngle] = useState<{angle:string;platform:string;type:string;hook:string;pillar:string}|null>(null)
 
   // copy
   const [fmt,      setFmt]      = useState<ContentType>('post')
@@ -318,9 +319,43 @@ export default function StudioPage() {
     const w = (m as any)?.workspaces
     setWs(w)
     loadRecent(w?.id)
+    loadTodayStrategy(w?.id)
     supabase.channel('studio-rt')
       .on('postgres_changes', { event:'*', schema:'public', table:'content', filter:`workspace_id=eq.${w?.id}` }, () => loadRecent(w?.id))
       .subscribe()
+  }
+
+  async function loadTodayStrategy(wsId: string) {
+    if (!wsId) return
+    try {
+      const { data: plan } = await supabase
+        .from('strategy_plans')
+        .select('content_pillars, platform_strategy, insights, daily_plan')
+        .eq('workspace_id', wsId)
+        .eq('status', 'active')
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (!plan) return
+
+      // Find today's recommended angle from the plan
+      const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+      const todayKey = days[new Date().getDay()]
+      const todayPlan = plan.platform_strategy?.[todayKey]
+
+      // Get a top angle from insights
+      const topAngle = plan.insights?.top_angles?.[0]
+
+      if (todayPlan || topAngle) {
+        setTodayAngle({
+          angle:    topAngle?.angle || todayPlan?.angle || 'Build authority through contrast',
+          platform: todayPlan?.platform || 'linkedin',
+          type:     todayPlan?.type || 'post',
+          hook:     topAngle?.example_hook || '',
+          pillar:   plan.content_pillars?.[0]?.name || '',
+        })
+      }
+    } catch {}
   }
 
   async function loadRecent(id: string) {
@@ -427,6 +462,39 @@ export default function StudioPage() {
               : 'Every output is written in your brand voice. Train Brand Brain to make it sharper.'}
           </p>
         </div>
+
+        {/* ── Strategy nudge — today's recommended angle ── */}
+        {todayAngle && tab === 'copy' && (
+          <div
+            onClick={() => {
+              setPrompt(todayAngle.hook || todayAngle.angle)
+              if (todayAngle.platform) setPlat(todayAngle.platform as any)
+            }}
+            style={{ marginBottom:20, padding:'12px 16px', background:'linear-gradient(135deg, rgba(77,159,255,0.08) 0%, rgba(77,159,255,0.04) 100%)', border:'1px solid rgba(77,159,255,0.2)', borderRadius:13, cursor:'pointer', transition:'all 0.15s', animation:'pageUp 0.4s ease 0.1s both' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background='linear-gradient(135deg, rgba(77,159,255,0.13) 0%, rgba(77,159,255,0.07) 100%)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.32)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background='linear-gradient(135deg, rgba(77,159,255,0.08) 0%, rgba(77,159,255,0.04) 100%)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.2)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                <div style={{ width:5, height:5, borderRadius:'50%', background:'#4D9FFF' }}/>
+                <span style={{ fontSize:9, fontWeight:700, color:'#4D9FFF', letterSpacing:'0.09em', textTransform:'uppercase' }}>
+                  Strategy · Today's angle
+                </span>
+                {todayAngle.pillar && (
+                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.28)', fontWeight:500 }}>· {todayAngle.pillar}</span>
+                )}
+              </div>
+              <span style={{ fontSize:10, color:'rgba(77,159,255,0.55)' }}>Click to use →</span>
+            </div>
+            <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.82)', letterSpacing:'-0.01em', lineHeight:1.5 }}>
+              {todayAngle.angle}
+            </div>
+            {todayAngle.hook && (
+              <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.42)', marginTop:5, lineHeight:1.55, fontStyle:'italic' }}>
+                Hook: "{todayAngle.hook}"
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab switcher */}
         <div style={{

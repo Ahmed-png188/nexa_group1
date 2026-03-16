@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getBrandContext } from '@/lib/brand-context'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-// Credit costs per action
 const CREDIT_COSTS: Record<string, number> = {
-  post: 3,
-  thread: 5,
-  email: 5,
-  caption: 2,
-  hook: 2,
-  bio: 2,
-  ad: 5,
-  story: 2,
-  full_piece: 10,
+  post: 3, thread: 5, email: 5, caption: 2, hook: 2,
+  bio: 2, ad: 5, story: 2, full_piece: 10,
 }
 
 export async function POST(request: NextRequest) {
@@ -25,14 +18,11 @@ export async function POST(request: NextRequest) {
 
     const { workspace_id, type, platform, prompt, tone_override } = await request.json()
 
-    // Fetch workspace brand context
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('id', workspace_id)
-      .single()
+    // ── Get FULL brand context (deep profile, not just workspace fields) ──
+    const brand = await getBrandContext(workspace_id)
+    if (!brand) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
-    if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+    const { workspace, profile } = brand
 
     // Check and deduct credits
     const creditCost = CREDIT_COSTS[type] ?? 3
@@ -53,40 +43,68 @@ export async function POST(request: NextRequest) {
 
     // Platform-specific formatting guidance
     const platformGuide: Record<string, string> = {
-      instagram: 'Instagram caption: Hook in first line, line breaks for readability, 3-5 relevant hashtags at end, max 300 words',
-      linkedin: 'LinkedIn post: Bold hook, short paragraphs, no hashtag spam, professional but human, 150-300 words',
-      x: 'X/Twitter post: Under 280 characters, punchy, no hashtags unless essential, conversational',
-      email: 'Email: Subject line first (labeled "Subject:"), then body. Personal, direct, one clear CTA',
-      tiktok: 'TikTok caption: Very short, energetic, 2-3 hashtags max, hook people to watch',
-      general: 'Clear, engaging, on-brand copy',
+      instagram: 'Hook in first line. Line breaks for readability. 3-5 relevant hashtags at end. Max 300 words.',
+      linkedin:  'Bold hook. Short paragraphs. No hashtag spam. Professional but human. 150-300 words.',
+      x:         'Under 280 characters. Punchy. No hashtags unless essential. Conversational.',
+      email:     'Subject line first (labeled "Subject:"), then body. Personal, direct, one clear CTA.',
+      tiktok:    'Very short, energetic. 2-3 hashtags max. Hook people to watch.',
+      general:   'Clear, engaging, on-brand copy.',
     }
 
     const contentTypes: Record<string, string> = {
-      post: 'a complete social media post',
-      thread: 'a 5-7 tweet thread with each tweet numbered and separated by ---',
-      email: 'a complete email with subject line and body',
-      caption: 'a punchy caption',
-      hook: 'just a strong opening hook (1-2 lines)',
-      bio: 'a compelling bio (2-3 sentences)',
-      ad: 'ad copy with headline, body, and CTA',
-      story: 'a short story-format post (3-4 paragraphs)',
+      post:       'a complete social media post',
+      thread:     'a 5-7 tweet thread with each tweet numbered and separated by ---',
+      email:      'a complete email with subject line and body',
+      caption:    'a punchy caption',
+      hook:       'just a strong opening hook (1-2 lines)',
+      bio:        'a compelling bio (2-3 sentences)',
+      ad:         'ad copy with headline, body, and CTA',
+      story:      'a short story-format post (3-4 paragraphs)',
       full_piece: 'a complete, long-form content piece',
     }
 
-    const systemPrompt = `You are the content writer for ${workspace.name ?? 'this brand'}.
+    // ── Build the deep brand system prompt ──
+    const deepBrandContext = profile ? `
+## Brand Intelligence Profile (Deep — trained from brand assets)
+Voice tone: ${profile.voice?.primary_tone || workspace.brand_voice || 'confident and direct'}
+Writing style: ${profile.voice?.writing_style || 'clear, direct, no filler'}
+Vocabulary to USE: ${profile.voice?.vocabulary?.join(', ') || ''}
+Words/phrases FORBIDDEN: ${profile.voice?.forbidden?.join(', ') || 'none specified'}
+Sentence structure: ${profile.voice?.sentence_structure || 'declarative, punchy'}
+Emotional triggers: ${profile.voice?.emotional_triggers?.join(', ') || ''}
+Audience: ${profile.audience?.primary || workspace.brand_audience}
+Audience psychology: ${profile.audience?.psychology || ''}
+Audience pain points: ${profile.audience?.pain_points?.join(', ') || ''}
+Audience desires: ${profile.audience?.desires?.join(', ') || ''}
+Brand positioning: ${profile.positioning?.unique_angle || ''}
+Brand promise: ${profile.positioning?.brand_promise || ''}
+Hook styles that work: ${profile.content?.hooks?.join(', ') || ''}
+CTA style: ${profile.content?.cta_style || ''}
+${profile.generation_instructions?.copy_prompt_prefix || ''}
+` : `
+## Brand (Basic)
+Voice: ${workspace.brand_voice || 'confident and direct'}
+Audience: ${workspace.brand_audience || 'ambitious professionals'}
+Tone: ${tone_override || workspace.brand_tone || 'confident, direct, premium'}
+`
 
-Brand voice: ${workspace.brand_voice ?? 'Confident, direct, and outcome-focused'}
-Brand audience: ${workspace.brand_audience ?? 'Ambitious professionals who want real results'}
-Tone: ${tone_override ?? workspace.brand_tone ?? 'confident, direct, premium'}
+    const systemPrompt = `You are the content writer for ${brand.brandName}.
+
+${deepBrandContext}
 
 Platform: ${platform ?? 'general'}
 Format guide: ${platformGuide[platform ?? 'general']}
 
-Write ${contentTypes[type] ?? 'content'} that sounds EXACTLY like this brand. 
-Do NOT add any labels, explanations, or meta-commentary.
-Return ONLY the content itself — nothing else.
-Make it feel human, specific, and psychologically compelling.
-Never start with "I" as the first word.`
+Write ${contentTypes[type] ?? 'content'} that sounds EXACTLY like this brand — like the founder wrote it themselves.
+
+CRITICAL RULES:
+- Use the vocabulary listed above. Avoid the forbidden words/phrases.
+- Match the hook style that works for this brand.
+- Speak directly to the audience psychology — their pain points and desires.
+- Do NOT add any labels, explanations, or meta-commentary.
+- Return ONLY the content itself — nothing else.
+- Make it feel human, specific, and psychologically compelling.
+- Never start with "I" as the first word.`
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',

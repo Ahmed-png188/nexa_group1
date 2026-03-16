@@ -237,7 +237,7 @@ export default function InsightsPage() {
     const cutoff = new Date(Date.now() - period * 86400000).toISOString().split('T')[0]
     const [{ data:ins },{ data:plats }] = await Promise.all([
       supabase.from('analytics').select('*').eq('workspace_id',w?.id).gte('date',cutoff).order('date',{ascending:true}),
-      supabase.from('platform_connections').select('*').eq('workspace_id',w?.id).eq('is_active',true),
+      supabase.from('connected_platforms').select('*').eq('workspace_id',w?.id).eq('is_active',true),
     ])
     const rows = ins ?? []
     setRaw(rows); setConnPlats(plats??[])
