@@ -87,7 +87,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   const [chatLoading, setChatLoading] = useState(false)
   const [files,       setFiles]       = useState<any[]>([])
   const [uploading,   setUploading]   = useState(false)
-  const [ddOpen,      setDdOpen]      = useState(false)
+  const [pillOpen,    setPillOpen]    = useState(false)
   const [notifOpen,   setNotifOpen]   = useState(false)
   const [notifs,      setNotifs]      = useState<any[]>([])
   const [unread,      setUnread]      = useState(0)
@@ -102,7 +102,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('[data-dd]')) { setDdOpen(false); setNotifOpen(false) }
+      if (!(e.target as HTMLElement).closest('[data-dd]')) { setPillOpen(false); setNotifOpen(false) }
     }
     document.addEventListener('mousedown', fn)
     return () => document.removeEventListener('mousedown', fn)
@@ -228,48 +228,15 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             </div>
           </Link>
 
-          {/* Avatar + dropdown */}
-          <div style={{ position:'relative' }} data-dd>
+          {/* Avatar — links to settings profile */}
+          <Link href="/dashboard/settings?tab=profile" style={{ textDecoration:'none' }}>
             <div
-              onClick={() => setDdOpen(o => !o)}
               style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'var(--display)', transition:'opacity 0.15s' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity='0.85'}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity='0.8'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity='1'}>
               {initial}
             </div>
-
-            {ddOpen && (
-              <div style={{ position:'absolute', bottom:'calc(100% + 10px)', left:0, background:'rgba(10,10,18,0.98)', border:`1px solid ${BORDER}`, borderRadius:14, padding:5, minWidth:215, zIndex:500, backdropFilter:'blur(24px)', boxShadow:'0 24px 64px rgba(0,0,0,0.85)', animation:'pageUp 0.15s ease both' }}>
-                {/* User header */}
-                <div style={{ padding:'10px 12px 12px', borderBottom:`1px solid ${BORDER}`, marginBottom:4, display:'flex', alignItems:'center', gap:9 }}>
-                  <div style={{ width:30, height:30, borderRadius:9, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>{initial}</div>
-                  <div>
-                    <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.88)', fontFamily:'var(--display)', lineHeight:1 }}>{user?.full_name||'User'}</div>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:3 }}>{user?.email}</div>
-                  </div>
-                </div>
-                {[
-                  { l:'Profile',   h:'/dashboard/settings?tab=profile',   i:Ic.user    },
-                  { l:'Workspace', h:'/dashboard/settings?tab=workspace', i:Ic.settings },
-                  { l:'Billing',   h:'/dashboard/settings?tab=billing',   i:Ic.billing  },
-                ].map(x => (
-                  <a key={x.l} href={x.h} onClick={() => setDdOpen(false)}
-                    style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', borderRadius:9, fontSize:13, color:'rgba(255,255,255,0.55)', textDecoration:'none', transition:'all 0.12s' }}
-                    onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.88)' }}
-                    onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.background='transparent'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.55)' }}>
-                    <span style={{ color:'rgba(255,255,255,0.28)', display:'flex' }}>{x.i}</span>{x.l}
-                  </a>
-                ))}
-                <div style={{ height:1, background:BORDER, margin:'4px 0' }}/>
-                <button onClick={signOut}
-                  style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', borderRadius:9, fontSize:13, color:'rgba(255,87,87,0.8)', background:'transparent', border:'none', cursor:'pointer', width:'100%', textAlign:'left', fontFamily:'var(--sans)', transition:'background 0.12s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background='rgba(255,87,87,0.08)')}
-                  onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
-                  <span style={{ display:'flex' }}>{Ic.signout}</span>Sign out
-                </button>
-              </div>
-            )}
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -302,26 +269,66 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             </span>
           </div>
 
-          {/* Center: search */}
-          <div style={{ flex:1, maxWidth:380, position:'relative' }}>
-            <div style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.22)', display:'flex', pointerEvents:'none' }}>
+          {/* Center: search with live suggestions */}
+          <div style={{ flex:1, maxWidth:380, position:'relative' }} data-dd>
+            <div style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.22)', display:'flex', pointerEvents:'none', zIndex:1 }}>
               {Ic.search}
             </div>
             <input
-              placeholder="Search anything…"
+              placeholder="Search pages, tools…"
               value={searchQ}
-              onChange={e => setSearchQ(e.target.value)}
+              onChange={e => { setSearchQ(e.target.value); setSearchOpen(e.target.value.length > 0) }}
+              onFocus={e => { e.target.style.borderColor='rgba(77,159,255,0.3)'; e.target.style.background='rgba(77,159,255,0.04)'; if(searchQ) setSearchOpen(true) }}
+              onBlur={e => { e.target.style.borderColor=BORDER; e.target.style.background='rgba(255,255,255,0.04)'; setTimeout(()=>setSearchOpen(false), 150) }}
               onKeyDown={e => {
-                if (e.key === 'Enter' && searchQ.trim()) {
-                  const q = encodeURIComponent(searchQ.trim())
-                  window.location.href = `/dashboard/studio?q=${q}`
-                }
-                if (e.key === 'Escape') { setSearchQ(''); (e.target as HTMLInputElement).blur() }
+                if (e.key === 'Escape') { setSearchQ(''); setSearchOpen(false); (e.target as HTMLInputElement).blur() }
               }}
               style={{ width:'100%', padding:'8px 14px 8px 36px', background:'rgba(255,255,255,0.04)', border:`1px solid ${BORDER}`, borderRadius:10, color:'rgba(255,255,255,0.75)', fontSize:13, fontFamily:'var(--sans)', outline:'none', transition:'all 0.18s', boxSizing:'border-box' as const }}
-              onFocus={e => { e.target.style.borderColor='rgba(77,159,255,0.3)'; e.target.style.background='rgba(77,159,255,0.04)' }}
-              onBlur={e => { e.target.style.borderColor=BORDER; e.target.style.background='rgba(255,255,255,0.04)' }}
             />
+            {/* Live suggestions dropdown */}
+            {searchOpen && searchQ.length > 0 && (() => {
+              const ALL_PAGES = [
+                { label:'Home',        href:'/dashboard',              desc:'Overview, agents, activity',        color:'#4D9FFF' },
+                { label:'Studio',      href:'/dashboard/studio',       desc:'Write copy, images, video, voice',  color:'#A78BFA' },
+                { label:'Brand Brain', href:'/dashboard/brand',        desc:'Voice, audience, visual identity',  color:'#34D399' },
+                { label:'Strategy',    href:'/dashboard/strategy',     desc:'Pillars, angles, 30-day plan',      color:'#FFB547' },
+                { label:'Schedule',    href:'/dashboard/schedule',     desc:'Calendar, queue, platforms',        color:'#4D9FFF' },
+                { label:'Automate',    href:'/dashboard/automate',     desc:'Email sequences, automations',      color:'#FF5757' },
+                { label:'Insights',    href:'/dashboard/insights',     desc:'Analytics, charts, performance',    color:'#38BFFF' },
+                { label:'Agency',      href:'/dashboard/agency',       desc:'Client workspaces, retainers',      color:'#FF7A40' },
+                { label:'Settings',    href:'/dashboard/settings',     desc:'Profile, workspace, billing',       color:'rgba(255,255,255,0.5)' },
+                { label:'Billing',     href:'/dashboard/settings?tab=billing',   desc:'Plans, credits, upgrades', color:'#4D9FFF' },
+                { label:'Profile',     href:'/dashboard/settings?tab=profile',   desc:'Name, email, bio',         color:'rgba(255,255,255,0.5)' },
+                { label:'Workspace',   href:'/dashboard/settings?tab=workspace', desc:'Brand voice, audience',    color:'#A78BFA' },
+              ]
+              const q = searchQ.toLowerCase()
+              const results = ALL_PAGES.filter(p => 
+                p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)
+              ).slice(0, 6)
+              if (!results.length) return null
+              return (
+                <div style={{ position:'absolute', top:'calc(100% + 8px)', left:0, right:0, background:'rgba(10,10,18,0.98)', border:`1px solid ${BORDER}`, borderRadius:14, overflow:'hidden', zIndex:9999, backdropFilter:'blur(24px)', boxShadow:'0 16px 48px rgba(0,0,0,0.7)' }}>
+                  <div style={{ padding:'8px 14px 6px', fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.25)', letterSpacing:'0.09em', textTransform:'uppercase' }}>
+                    Pages
+                  </div>
+                  {results.map(r => (
+                    <a key={r.href} href={r.href}
+                      onClick={() => { setSearchQ(''); setSearchOpen(false) }}
+                      style={{ display:'flex', alignItems:'center', gap:11, padding:'10px 14px', textDecoration:'none', transition:'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
+                      <div style={{ width:28, height:28, borderRadius:8, background:`${r.color}14`, border:`1px solid ${r.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <div style={{ width:6, height:6, borderRadius:'50%', background:r.color }}/>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.88)', letterSpacing:'-0.01em' }}>{r.label}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', marginTop:1 }}>{r.desc}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Right: credits + notifications + chat toggle + user */}
@@ -400,10 +407,10 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             {/* User pill — self-contained with its own dropdown */}
             <div style={{ position:'relative' }} data-dd>
               <div
-                onClick={() => { setDdOpen(o => !o); setNotifOpen(false) }}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', background:ddOpen?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.04)', border:`1px solid ${ddOpen?'rgba(255,255,255,0.14)':BORDER}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s' }}
-                onMouseEnter={e => { if(!ddOpen){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)'} }}
-                onMouseLeave={e => { if(!ddOpen){(e.currentTarget as HTMLElement).style.borderColor=BORDER;(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'} }}>
+                onClick={() => { setPillOpen(o => !o); setNotifOpen(false) }}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', background:pillOpen?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.04)', border:`1px solid ${pillOpen?'rgba(255,255,255,0.14)':BORDER}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s' }}
+                onMouseEnter={e => { if(!pillOpen){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)'} }}
+                onMouseLeave={e => { if(!pillOpen){(e.currentTarget as HTMLElement).style.borderColor=BORDER;(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'} }}>
                 <div style={{ width:26, height:26, borderRadius:8, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>
                   {initial}
                 </div>
@@ -411,10 +418,10 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                   <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.78)', letterSpacing:'-0.01em' }}>{firstName}</div>
                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.32)', marginTop:2, textTransform:'capitalize' }}>{workspace?.plan||'spark'}</div>
                 </div>
-                <span style={{ color:'rgba(255,255,255,0.22)', display:'flex', transform:ddOpen?'rotate(180deg)':'none', transition:'transform 0.15s' }}>{Ic.chevron}</span>
+                <span style={{ color:'rgba(255,255,255,0.22)', display:'flex', transform:pillOpen?'rotate(180deg)':'none', transition:'transform 0.15s' }}>{Ic.chevron}</span>
               </div>
 
-              {ddOpen && (
+              {pillOpen && (
                 <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, background:'rgba(10,10,18,0.98)', border:`1px solid ${BORDER}`, borderRadius:14, padding:5, minWidth:220, zIndex:9999, backdropFilter:'blur(24px)', boxShadow:'0 24px 64px rgba(0,0,0,0.85)', animation:'pageUp 0.15s ease both' }}>
                   <div style={{ padding:'10px 12px 12px', borderBottom:`1px solid ${BORDER}`, marginBottom:4, display:'flex', alignItems:'center', gap:9 }}>
                     <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>{initial}</div>
@@ -428,7 +435,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                     { l:'Workspace', h:'/dashboard/settings?tab=workspace', i:Ic.settings },
                     { l:'Billing',   h:'/dashboard/settings?tab=billing',   i:Ic.billing  },
                   ].map(x => (
-                    <a key={x.l} href={x.h} onClick={() => setDdOpen(false)}
+                    <a key={x.l} href={x.h} onClick={() => setPillOpen(false)}
                       style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 12px', borderRadius:9, fontSize:13, color:'rgba(255,255,255,0.55)', textDecoration:'none', transition:'all 0.12s' }}
                       onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.9)'}}
                       onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.55)'}}>
