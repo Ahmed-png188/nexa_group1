@@ -92,6 +92,8 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   const [notifs,      setNotifs]      = useState<any[]>([])
   const [unread,      setUnread]      = useState(0)
   const [hoverId,     setHoverId]     = useState<string|null>(null)
+  const [searchQ,     setSearchQ]     = useState('')
+  const [searchOpen,  setSearchOpen]  = useState(false)
 
   const activeId   = NAV.find(n => n.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(n.href))?.id ?? 'home'
   const activeItem = NAV.find(n => n.id === activeId)
@@ -284,8 +286,8 @@ export default function DashboardShell({ user, workspace, credits: init, childre
           borderBottom:`1px solid ${BORDER}`,
           flexShrink:0,
           background:SURFACE,
-          zIndex:10, gap:14,
-          position:'relative', overflow:'hidden',
+          zIndex:200, gap:14,
+          position:'relative', overflow:'visible',
         }}>
           {/* Atmospheric wash — very subtle, matches the hero on Home */}
           <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 140% 400% at -5% 50%, rgba(77,159,255,0.07) 0%, transparent 55%), radial-gradient(ellipse 90% 400% at 105% 50%, rgba(255,87,30,0.06) 0%, transparent 50%)', pointerEvents:'none' }}/>
@@ -307,6 +309,15 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             </div>
             <input
               placeholder="Search anything…"
+              value={searchQ}
+              onChange={e => setSearchQ(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && searchQ.trim()) {
+                  const q = encodeURIComponent(searchQ.trim())
+                  window.location.href = `/dashboard/studio?q=${q}`
+                }
+                if (e.key === 'Escape') { setSearchQ(''); (e.target as HTMLInputElement).blur() }
+              }}
               style={{ width:'100%', padding:'8px 14px 8px 36px', background:'rgba(255,255,255,0.04)', border:`1px solid ${BORDER}`, borderRadius:10, color:'rgba(255,255,255,0.75)', fontSize:13, fontFamily:'var(--sans)', outline:'none', transition:'all 0.18s', boxSizing:'border-box' as const }}
               onFocus={e => { e.target.style.borderColor='rgba(77,159,255,0.3)'; e.target.style.background='rgba(77,159,255,0.04)' }}
               onBlur={e => { e.target.style.borderColor=BORDER; e.target.style.background='rgba(255,255,255,0.04)' }}
@@ -386,21 +397,53 @@ export default function DashboardShell({ user, workspace, credits: init, childre
               {Ic.chat}
             </button>
 
-            {/* User pill */}
-            <div
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', background:'rgba(255,255,255,0.04)', border:`1px solid ${BORDER}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s', marginLeft:2 }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor=BORDER; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
-              onClick={() => setDdOpen(o => !o)}
-              data-dd>
-              <div style={{ width:26, height:26, borderRadius:8, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>
-                {initial}
+            {/* User pill — self-contained with its own dropdown */}
+            <div style={{ position:'relative' }} data-dd>
+              <div
+                onClick={() => { setDdOpen(o => !o); setNotifOpen(false) }}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', background:ddOpen?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.04)', border:`1px solid ${ddOpen?'rgba(255,255,255,0.14)':BORDER}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s' }}
+                onMouseEnter={e => { if(!ddOpen){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)'} }}
+                onMouseLeave={e => { if(!ddOpen){(e.currentTarget as HTMLElement).style.borderColor=BORDER;(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'} }}>
+                <div style={{ width:26, height:26, borderRadius:8, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>
+                  {initial}
+                </div>
+                <div style={{ lineHeight:1 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.78)', letterSpacing:'-0.01em' }}>{firstName}</div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.32)', marginTop:2, textTransform:'capitalize' }}>{workspace?.plan||'spark'}</div>
+                </div>
+                <span style={{ color:'rgba(255,255,255,0.22)', display:'flex', transform:ddOpen?'rotate(180deg)':'none', transition:'transform 0.15s' }}>{Ic.chevron}</span>
               </div>
-              <div style={{ lineHeight:1 }}>
-                <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.78)', letterSpacing:'-0.01em' }}>{firstName}</div>
-                <div style={{ fontSize:9, color:'rgba(255,255,255,0.32)', marginTop:2, textTransform:'capitalize' }}>{workspace?.plan||'spark'}</div>
-              </div>
-              <span style={{ color:'rgba(255,255,255,0.22)', display:'flex' }}>{Ic.chevron}</span>
+
+              {ddOpen && (
+                <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, background:'rgba(10,10,18,0.98)', border:`1px solid ${BORDER}`, borderRadius:14, padding:5, minWidth:220, zIndex:9999, backdropFilter:'blur(24px)', boxShadow:'0 24px 64px rgba(0,0,0,0.85)', animation:'pageUp 0.15s ease both' }}>
+                  <div style={{ padding:'10px 12px 12px', borderBottom:`1px solid ${BORDER}`, marginBottom:4, display:'flex', alignItems:'center', gap:9 }}>
+                    <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>{initial}</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.88)', fontFamily:'var(--display)', lineHeight:1 }}>{user?.full_name||'User'}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{user?.email}</div>
+                    </div>
+                  </div>
+                  {[
+                    { l:'Profile',   h:'/dashboard/settings?tab=profile',   i:Ic.user    },
+                    { l:'Workspace', h:'/dashboard/settings?tab=workspace', i:Ic.settings },
+                    { l:'Billing',   h:'/dashboard/settings?tab=billing',   i:Ic.billing  },
+                  ].map(x => (
+                    <a key={x.l} href={x.h} onClick={() => setDdOpen(false)}
+                      style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 12px', borderRadius:9, fontSize:13, color:'rgba(255,255,255,0.55)', textDecoration:'none', transition:'all 0.12s' }}
+                      onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.9)'}}
+                      onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.55)'}}>
+                      <span style={{ color:'rgba(255,255,255,0.28)', display:'flex' }}>{x.i}</span>{x.l}
+                    </a>
+                  ))}
+                  <div style={{ height:1, background:BORDER, margin:'4px 0' }}/>
+                  <button onClick={signOut}
+                    style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 12px', borderRadius:9, fontSize:13, color:'rgba(255,87,87,0.8)', background:'transparent', border:'none', cursor:'pointer', width:'100%', textAlign:'left', fontFamily:'var(--sans)', transition:'background 0.12s' }}
+                    onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,87,87,0.08)')}
+                    onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                    <span style={{ display:'flex' }}>{Ic.signout}</span>Sign out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
