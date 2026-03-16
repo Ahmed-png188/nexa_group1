@@ -346,7 +346,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             {/* Notification bell */}
             <div style={{ position:'relative' }} data-dd>
               <button
-                onClick={() => { setNotifOpen(o => !o); setDdOpen(false) }}
+                onClick={() => { setNotifOpen(o => !o); setPillOpen(false) }}
                 style={{ width:34, height:34, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', background:notifOpen?'rgba(255,255,255,0.07)':'transparent', border:`1px solid ${notifOpen?'rgba(255,255,255,0.12)':'transparent'}`, color:notifOpen?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.38)', cursor:'pointer', transition:'all 0.15s', position:'relative' }}
                 onMouseEnter={e => { if(!notifOpen){ (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.7)' }}}
                 onMouseLeave={e => { if(!notifOpen){ (e.currentTarget as HTMLElement).style.background='transparent'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.38)' }}}>
