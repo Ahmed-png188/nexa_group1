@@ -50,12 +50,13 @@ function ScoreRing({ score, color, label, size=80 }: { score:number; color:strin
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
       <div style={{ position:'relative', width:size, height:size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="6"/>
+          <circle cx={size/2} cy={size/2} r={r+4} fill="none" stroke={color} strokeWidth="1" opacity="0.08"/>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6"/>
           <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="6"
             strokeDasharray={`${dash} ${circ}`}
             strokeDashoffset={circ/4}
             strokeLinecap="round"
-            style={{ transition:'stroke-dasharray 1.4s cubic-bezier(0.34,1.56,0.64,1)', filter:`drop-shadow(0 0 5px ${color}70)` }}/>
+            style={{ transition:'stroke-dasharray 1.4s cubic-bezier(0.34,1.56,0.64,1)', filter:`drop-shadow(0 0 8px ${color}80)` }}/>
         </svg>
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
           <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
@@ -72,13 +73,16 @@ function InfoBlock({ label, value, accent = '#A78BFA', tags }: { label:string; v
   return (
     <div style={{
       padding:'16px 18px',
-      background:'rgba(255,255,255,0.025)',
-      border:'1px solid rgba(255,255,255,0.08)',
-      borderLeft:`2px solid ${accent}55`,
-      borderRadius:13,
+      background:'linear-gradient(145deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.012) 100%)',
+      border:'1px solid rgba(255,255,255,0.09)',
+      borderRadius:14,
+      position:'relative',
+      overflow:'hidden',
+      transition:'all 0.18s',
     }}>
-      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:8 }}>{label}</div>
-      {value && <div style={{ fontSize:13, color:'rgba(255,255,255,0.72)', lineHeight:1.72 }}>{value}</div>}
+      <div style={{ position:'absolute', top:0, left:0, width:32, height:2, background:accent, borderRadius:'14px 0 0 0', opacity:0.7 }}/>
+      <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:9 }}>{label}</div>
+      {value && <div style={{ fontSize:13, color:'rgba(255,255,255,0.72)', lineHeight:1.75 }}>{value}</div>}
       {tags && tags.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:value?10:0 }}>
           {tags.map((t,i) => (
@@ -148,10 +152,45 @@ export default function BrandPage() {
   async function analyze() {
     if (!ws||analyzing) return; setAnalyzing(true)
     try {
-      const r = await fetch('/api/analyze-brand',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})})
+      // Convert image assets to base64 so Claude can visually analyze them
+      const filePayloads: {name:string;type:string;base64:string}[] = []
+      const imageAssets = assets.filter(a =>
+        a.file_url && !a.file_url.startsWith('internal://') && !a.file_url.startsWith('uploaded://')
+      ).slice(0, 5) // max 5 images
+
+      for (const asset of imageAssets) {
+        try {
+          const res = await fetch(asset.file_url)
+          if (res.ok) {
+            const blob = await res.blob()
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve((reader.result as string).split(',')[1])
+              reader.readAsDataURL(blob)
+            })
+            filePayloads.push({
+              name: asset.file_name || 'asset',
+              type: blob.type || 'image/jpeg',
+              base64,
+            })
+          }
+        } catch {} // skip assets that can't be fetched
+      }
+
+      const r = await fetch('/api/analyze-brand',{
+        method:'POST',
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          workspace_id:ws.id,
+          files: filePayloads,
+          brand_name: ws.brand_name || ws.name,
+          website_url: ws.brand_website,
+        })
+      })
       const d = await r.json()
-      if (d.success) { setProfile(d.profile); toast_('Brand Brain updated and active') }
-      else toast_(d.error||'Analysis failed', false)
+      if (d.success) { setProfile(d.profile); toast_('Brand Brain updated — every output now sounds sharper') }
+      else toast_(d.error||'Analysis failed — try again', false)
     } catch { toast_('Something went wrong', false) }
     setAnalyzing(false)
   }
@@ -162,12 +201,12 @@ export default function BrandPage() {
       const ext  = file.name.split('.').pop()
       const path = `${ws.id}/${assetType}/${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('brand-assets').upload(path, file)
-      if (error) { toast_('Upload failed', false); return }
+      if (error) { toast_('Upload failed — check your file and try again', false); return }
       const { data:{ publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(path)
-      await supabase.from('brand_assets').insert({ workspace_id:ws.id, file_name:file.name, file_type:assetType, file_url:publicUrl, file_size:file.size })
+      await supabase.from('brand_assets').insert({ workspace_id:ws.id, file_name:file.name, type:assetType, file_url:publicUrl, file_size:file.size })
       toast_('Asset uploaded — add more or run analysis')
       load()
-    } catch { toast_('Upload failed', false) }
+    } catch { toast_('Upload failed — check your file and try again', false) }
     setUploading(false)
   }
 
@@ -177,9 +216,9 @@ export default function BrandPage() {
   }
 
   /* ─── Derived data ─── */
-  const voice  = profile?.voice_profile  || {}
-  const aud    = profile?.audience_profile || {}
-  const visual = profile?.visual_identity || {}
+  const voice  = profile?.voice_profile  || profile?.voice  || {}
+  const aud    = profile?.audience_profile || profile?.audience  || {}
+  const visual = profile?.visual_identity || profile?.visual  || {}
   const scores = profile?.brand_scores   || {}
 
   const voiceScore    = scores.voice_match_score  || profile?.voice_match_score  || 88
@@ -188,17 +227,24 @@ export default function BrandPage() {
   const overallScore  = Math.round((voiceScore + audienceScore + visualScore) / 3)
 
   // Parse voice traits from profile
+  // Voice traits: use real data if present, otherwise derive from profile scores
   const voiceTraits = [
-    { label:'Directness',     value: voice.directness     || 78, color:'#4D9FFF' },
-    { label:'Authority',      value: voice.authority      || 85, color:'#A78BFA' },
-    { label:'Warmth',         value: voice.warmth         || 62, color:'#34D399' },
-    { label:'Provocation',    value: voice.provocation    || 70, color:'#FF7A40' },
-    { label:'Storytelling',   value: voice.storytelling   || 55, color:'#FFB547' },
+    { label:'Directness',   value: voice.directness   || scores.voice_match_score  || voiceScore,  color:'#4D9FFF' },
+    { label:'Authority',    value: voice.authority    || scores.audience_fit_score || audienceScore, color:'#A78BFA' },
+    { label:'Warmth',       value: voice.warmth       || 62, color:'#34D399' },
+    { label:'Provocation',  value: voice.provocation  || Math.round(voiceScore * 0.82), color:'#FF7A40' },
+    { label:'Storytelling', value: voice.storytelling || Math.round(voiceScore * 0.65), color:'#FFB547' },
   ]
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'rgba(255,255,255,0.28)', fontSize:13 }}>
-      Loading Brand Brain…
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:18 }}>
+      <div style={{ position:'relative', width:56, height:56 }}>
+        <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(52,211,153,0.15)', animation:'pulse-ring 2s ease-out infinite' }}/>
+        <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.2)', display:'flex', alignItems:'center', justifyContent:'center', animation:'glow-breathe 2.5s ease-in-out infinite' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="1.8" strokeLinecap="round"><path d="M12 2a5 5 0 0 1 5 5c0 2.76-2.24 5-5 5S7 9.76 7 7a5 5 0 0 1 5-5z"/><path d="M3 19c0-3.31 4.03-6 9-6s9 2.69 9 6"/></svg>
+        </div>
+      </div>
+      <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600 }}>Activating Brand Brain</div>
     </div>
   )
 
@@ -236,7 +282,7 @@ export default function BrandPage() {
           {/* What happens after training */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, maxWidth:580, margin:'0 auto 36px', textAlign:'left' }}>
             {[
-              { color:'#4D9FFF', icon:Ic.mic,    title:'Voice locked in', desc:'Every generation sounds exactly like you wrote it' },
+              { color:'#4D9FFF', icon:Ic.mic,    title:'Voice calibrated', desc:'Every output now sounds like you wrote it' },
               { color:'#34D399', icon:Ic.users,  title:'Audience known',  desc:'Nexa writes to your specific people, not the general internet' },
               { color:'#A78BFA', icon:Ic.eye,    title:'Style captured',  desc:'Visual and aesthetic direction guides image generation' },
             ].map(f => (
@@ -450,12 +496,12 @@ export default function BrandPage() {
 
           {/* Voice details */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px,1fr))', gap:10 }}>
-            <InfoBlock label="Brand tone"         value={voice.tone||ws?.brand_voice}          accent="#4D9FFF"/>
-            <InfoBlock label="Writing style"      value={voice.style}                          accent="#4D9FFF"/>
-            <InfoBlock label="Personality traits" value={voice.personality}                    accent="#4D9FFF"/>
-            <InfoBlock label="Content approach"   value={voice.content_approach}               accent="#4D9FFF"/>
-            <InfoBlock label="Signature phrases"  tags={voice.key_phrases||[]}                 accent="#4D9FFF"/>
-            <InfoBlock label="Topics to avoid"    tags={voice.avoid||[]}                       accent="#FF5757"/>
+            <InfoBlock label="Brand tone"         value={voice.primary_tone||voice.tone||ws?.brand_voice}          accent="#4D9FFF"/>
+            <InfoBlock label="Writing style"      value={voice.writing_style||voice.style}     accent="#4D9FFF"/>
+            <InfoBlock label="Personality traits" value={voice.personality||voice.sentence_structure}  accent="#4D9FFF"/>
+            <InfoBlock label="Content approach"   value={voice.content_approach||voice.cta_style}  accent="#4D9FFF"/>
+            <InfoBlock label="Signature phrases"  tags={voice.key_phrases||voice.vocabulary||[]}  accent="#4D9FFF"/>
+            <InfoBlock label="Topics to avoid"    tags={voice.avoid||voice.forbidden||[]}      accent="#FF5757"/>
           </div>
 
           {/* Tone examples */}
@@ -500,9 +546,9 @@ export default function BrandPage() {
 
           {/* Audience details grid */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px,1fr))', gap:10, marginBottom:14 }}>
-            <InfoBlock label="Primary audience"   value={aud.primary||aud.demographics}                          accent="#34D399"/>
-            <InfoBlock label="Psychographics"     value={aud.psychographics}                                     accent="#34D399"/>
-            <InfoBlock label="Pain points"        tags={Array.isArray(aud.pain_points)?aud.pain_points:[aud.pain_points].filter(Boolean)} accent="#FF5757"/>
+            <InfoBlock label="Primary audience"   value={aud.primary||aud.demographics||""}                          accent="#34D399"/>
+            <InfoBlock label="Psychographics"     value={aud.psychographics||aud.psychology||""}                                     accent="#34D399"/>
+            <InfoBlock label="Pain points"        tags={Array.isArray(aud.pain_points)?aud.pain_points:Array.isArray(aud.pain_points)?aud.pain_points:[aud.pain_points].filter(Boolean)} accent="#FF5757"/>
             <InfoBlock label="Goals & desires"    tags={Array.isArray(aud.goals)?aud.goals:[aud.goals].filter(Boolean)}                    accent="#34D399"/>
             <InfoBlock label="Content they love"  value={aud.content_preferences}                                accent="#34D399"/>
             <InfoBlock label="Platforms they use" tags={Array.isArray(aud.platforms)?aud.platforms:[]}           accent="#4D9FFF"/>
@@ -531,7 +577,7 @@ export default function BrandPage() {
                 Color palette
               </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
-                {(visual.colors||[visual.color_palette]).flat().filter(Boolean).map((c: string, i: number) => {
+                {([...(visual.colors||[]), visual.color_palette, visual.color_mood].filter(Boolean)).map((c: string, i: number) => {
                   const isHex = c.startsWith('#')
                   return (
                     <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
@@ -549,20 +595,20 @@ export default function BrandPage() {
 
           {/* Visual details */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px,1fr))', gap:10, marginBottom:14 }}>
-            <InfoBlock label="Visual style"     value={visual.style||visual.aesthetic}                    accent="#FF7A40"/>
-            <InfoBlock label="Typography"       value={visual.typography||visual.fonts?.join(', ')}       accent="#FF7A40"/>
-            <InfoBlock label="Image direction"  value={visual.image_guidelines}                           accent="#FF7A40"/>
-            <InfoBlock label="Visual keywords"  tags={visual.keywords||[]}                                accent="#FF7A40"/>
+            <InfoBlock label="Visual style"     value={visual.aesthetic||visual.style||""}                    accent="#FF7A40"/>
+            <InfoBlock label="Typography"       value={visual.typography||visual.fonts?.join(', ')||""}       accent="#FF7A40"/>
+            <InfoBlock label="Image direction"  value={visual.image_guidelines||visual.photography_style||""}                           accent="#FF7A40"/>
+            <InfoBlock label="Visual keywords"  tags={visual.keywords||visual.video_style?[visual.video_style]:[]}                                accent="#FF7A40"/>
           </div>
 
           {/* Visual assets preview */}
-          {assets.filter(a=>a.file_type==='logo'||a.file_type==='product_photo').length > 0 && (
+          {assets.filter(a=>a.type==='logo'||a.type==='product_photo').length > 0 && (
             <div style={{ padding:'18px 20px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16 }}>
               <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:14 }}>
                 Visual references
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px,1fr))', gap:8 }}>
-                {assets.filter(a=>a.file_type==='logo'||a.file_type==='product_photo').map(a => (
+                {assets.filter(a=>a.type==='logo'||a.type==='product_photo').map(a => (
                   <div key={a.id} style={{ borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,0.09)', aspectRatio:'1', background:'rgba(255,255,255,0.03)' }}>
                     <img src={a.file_url} alt={a.file_name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                   </div>
@@ -635,8 +681,8 @@ export default function BrandPage() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px,1fr))', gap:9 }}>
                 {assets.map(a => {
-                  const isImg = a.file_url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || ['logo','product_photo','sample_post'].includes(a.file_type)
-                  const typeColor = ASSET_TYPES.find(t=>t.id===a.file_type)?.color||'#888'
+                  const isImg = a.file_url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || ['logo','product_photo','sample_post'].includes(a.type)
+                  const typeColor = ASSET_TYPES.find(t=>t.id===a.type)?.color||'#888'
                   return (
                     <div key={a.id}
                       style={{ background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, overflow:'hidden', transition:'all 0.15s' }}
@@ -659,7 +705,7 @@ export default function BrandPage() {
                             {a.file_name}
                           </div>
                           <div style={{ fontSize:10, color:typeColor, marginTop:2, textTransform:'capitalize', fontWeight:600 }}>
-                            {a.file_type?.replace('_',' ')||'asset'}
+                            {a.type?.replace('_',' ')||'asset'}
                           </div>
                         </div>
                         <button onClick={() => del(a.id)}

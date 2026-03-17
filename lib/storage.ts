@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 
 /**
- * Downloads a file from a URL and uploads it to Supabase Storage
- * Returns a permanent public URL
+ * Persists a file to Supabase Storage and returns a permanent public URL.
+ *
+ * Accepts either:
+ *  - a URL string  → downloads the file first, then uploads (image / video)
+ *  - an ArrayBuffer → uploads the binary directly (ElevenLabs voice MP3)
  */
 export async function persistFile(
-  url: string,
+  source: string | ArrayBuffer,
   workspaceId: string,
   type: 'image' | 'video' | 'voice',
   contentId?: string
@@ -13,28 +16,33 @@ export async function persistFile(
   const supabase = createClient()
 
   try {
-    // Download the file
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`)
+    let buffer: ArrayBuffer
+    let contentType: string
 
-    const buffer = await res.arrayBuffer()
-    const contentType = res.headers.get('content-type') ?? getMimeType(type)
+    if (typeof source === 'string') {
+      // URL path — download first
+      const res = await fetch(source)
+      if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`)
+      buffer      = await res.arrayBuffer()
+      contentType = res.headers.get('content-type') ?? getMimeType(type)
+    } else {
+      // Already have the binary (e.g. ElevenLabs MP3)
+      buffer      = source
+      contentType = getMimeType(type)
+    }
 
     // Build storage path
-    const ext = getExtension(type)
+    const ext      = getExtension(type)
     const filename = `${workspaceId}/${type}s/${contentId ?? Date.now()}.${ext}`
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('generated-content')
-      .upload(filename, buffer, {
-        contentType,
-        upsert: true,
-      })
+      .upload(filename, buffer, { contentType, upsert: true })
 
     if (error) throw error
 
-    // Get public URL
+    // Return permanent public URL
     const { data: urlData } = supabase.storage
       .from('generated-content')
       .getPublicUrl(filename)
@@ -43,8 +51,8 @@ export async function persistFile(
 
   } catch (err) {
     console.error('Failed to persist file:', err)
-    // Return original URL as fallback
-    return url
+    // Return original URL as fallback (only meaningful when source is a string)
+    return typeof source === 'string' ? source : ''
   }
 }
 

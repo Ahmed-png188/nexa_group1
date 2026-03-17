@@ -18,6 +18,21 @@ export async function POST(request: NextRequest) {
 
     const { workspace_id, type, platform, prompt, tone_override } = await request.json()
 
+    // ── Rate limit: max 20 copy generations per hour per workspace ──
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('content')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspace_id)
+      .not('type', 'in', '(image,video,voice)')
+      .gte('created_at', oneHourAgo)
+    if ((recentCount ?? 0) >= 20) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        message: 'Maximum 20 copy generations per hour. Please wait before generating more.',
+      }, { status: 429 })
+    }
+
     // ── Get FULL brand context (deep profile, not just workspace fields) ──
     const brand = await getBrandContext(workspace_id)
     if (!brand) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })

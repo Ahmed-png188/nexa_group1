@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
+import { getBrandContext } from '@/lib/brand-context'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +11,29 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, prompt, style, aspect_ratio = '1:1', model = 'flux-pro' } = await request.json()
+
+    // ── Plan gate ──
+    const gateError = await checkPlanAccess(workspace_id, 'image_generation')
+    if (gateError) return gateError
+
+    // ── Rate limit: max 10 image generations per hour per workspace ──
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('content')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspace_id)
+      .eq('type', 'image')
+      .gte('created_at', oneHourAgo)
+    if ((recentCount ?? 0) >= 10) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        message: 'Maximum 10 image generations per hour. Please wait before generating more.',
+      }, { status: 429 })
+    }
+
+    if (!process.env.FAL_KEY) {
+      return NextResponse.json({ error: 'Image generation not configured', message: 'FAL_KEY not set. Add your Fal.ai API key to environment variables.' }, { status: 503 })
+    }
 
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
@@ -25,9 +50,15 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
+    // Inject brand visual context into every image prompt
+    const brand = await getBrandContext(workspace_id)
+    const brandVisual = brand?.imageContext || ''
+    const brandPrefix = brand?.profile?.visual?.aesthetic
+      ? `${brand.profile.visual.aesthetic}, ${brand.profile.visual.photography_style || 'professional photography'}, `
+      : ''
     const enhancedPrompt = style
-      ? `${prompt}, ${style} style, professional quality, brand photography`
-      : `${prompt}, professional quality, clean composition, brand photography`
+      ? `${brandPrefix}${prompt}, ${style} style, professional quality, brand photography`
+      : `${brandPrefix}${prompt}, professional quality, clean composition, brand photography`
 
     const falResponse = await fetch('https://fal.run/fal-ai/flux/dev', {
       method: 'POST',

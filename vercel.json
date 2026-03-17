@@ -2,7 +2,15 @@
   "crons": [
     {
       "path": "/api/publish-queue",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/run-sequences",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/reset-credits",
+      "schedule": "0 0 1 * *"
     }
   ]
 }

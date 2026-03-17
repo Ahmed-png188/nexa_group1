@@ -142,6 +142,7 @@ function SettingsInner() {
   const [user,      setUser]      = useState<any>(null)
   const [ws,        setWs]        = useState<any>(null)
   const [credits,   setCredits]   = useState<any>(null)
+  const [highlightPlan, setHighlightPlan] = useState<string|null>(null)
   const [loading,   setLoading]   = useState(true)
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
@@ -158,10 +159,22 @@ function SettingsInner() {
   const [newPw,      setNewPw]      = useState('')
   const [confPw,     setConfPw]     = useState('')
   const [pwErr,      setPwErr]      = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting,   setDeleting]   = useState(false)
 
   function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),4000) }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { 
+    load()
+    // Handle Stripe redirect success
+    const success = searchParams.get('success')
+    const plan    = searchParams.get('plan')
+    if (success === 'true') {
+      if (plan) toast_(`You're now on the ${plan.charAt(0).toUpperCase()+plan.slice(1)} plan! Credits have been added.`)
+      else toast_('Payment successful — credits added to your account')
+      setTab('billing')
+    }
+  }, [])
   useEffect(() => { const t=searchParams.get('tab') as Tab; if(t)setTab(t) }, [searchParams])
 
   async function load() {
@@ -203,12 +216,33 @@ function SettingsInner() {
   }
 
   async function checkout(planId:string) {
-    const r = await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan_id:planId,workspace_id:ws?.id})})
+    const r = await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:planId,workspace_id:ws?.id})})
     const d = await r.json()
     if (d.url) router.push(d.url)
   }
 
   async function signOut() { await supabase.auth.signOut(); router.push('/') }
+
+  async function deleteAccount() {
+    if (!deleteConfirm) { setDeleteConfirm(true); return }
+    setDeleting(true)
+    try {
+      // Delete workspace data first
+      if (ws?.id) {
+        await supabase.from('content').delete().eq('workspace_id', ws.id)
+        await supabase.from('credits').delete().eq('workspace_id', ws.id)
+        await supabase.from('workspace_members').delete().eq('workspace_id', ws.id)
+        await supabase.from('workspaces').delete().eq('id', ws.id)
+      }
+      // Sign out (admin deleteUser requires service role; client-side we sign out)
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch {
+      toast_('Failed to delete account. Please contact support.', false)
+      setDeleting(false)
+      setDeleteConfirm(false)
+    }
+  }
 
   if (loading) return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.28)',fontSize:13 }}>Loading…</div>
 
@@ -350,6 +384,22 @@ function SettingsInner() {
                 <div>
                   <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:6 }}>Current plan</div>
                   <div style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:planColor, textTransform:'capitalize' }}>{currentPlan}</div>
+                  {ws?.plan_status==='trialing' && (
+                    <div style={{ marginTop:10, padding:'10px 14px', background:'rgba(255,181,71,0.07)', border:'1px solid rgba(255,181,71,0.2)', borderRadius:10 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#FFB547', marginBottom:3 }}>Trial active</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.55 }}>
+                        You're on a 7-day free trial. Upgrade before it ends to keep your Brand Brain, content, and automations running.
+                      </div>
+                    </div>
+                  )}
+                  {ws?.plan_status==='past_due' && (
+                    <div style={{ marginTop:10, padding:'10px 14px', background:'rgba(255,80,80,0.07)', border:'1px solid rgba(255,80,80,0.2)', borderRadius:10 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#FF5757', marginBottom:3 }}>Payment failed</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.55 }}>
+                        Your last payment failed. Update your payment method to avoid losing access.
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
                 <div>
@@ -414,7 +464,7 @@ function SettingsInner() {
                       </div>
 
                       {!isCurrent && plan.price > 0 && (
-                        <button onClick={() => checkout(plan.id)}
+                        <button onClick={() => { if(plan.id !== currentPlan) checkout(plan.id) }}
                           style={{ width:'100%', padding:'10px', fontSize:12, fontWeight:700, background:plan.color, color:'#000', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', boxShadow:`0 4px 14px ${plan.color}35`, letterSpacing:'-0.01em' }}>
                           Upgrade to {plan.name}
                         </button>
@@ -450,6 +500,32 @@ function SettingsInner() {
                 </div>
               )}
               <SaveBtn onClick={savePassword} saving={saving} saved={saved} disabled={!newPw||!confPw}/>
+
+              {/* Delete account */}
+              <div style={{ marginTop:40, paddingTop:28, borderTop:'1px solid rgba(255,87,87,0.12)' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,87,87,0.8)', marginBottom:6 }}>Danger zone</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', marginBottom:16, lineHeight:1.55 }}>
+                  Permanently delete your account and all workspace data. This cannot be undone.
+                </div>
+                {deleteConfirm && (
+                  <div style={{ padding:'12px 16px', background:'rgba(255,87,87,0.07)', border:'1px solid rgba(255,87,87,0.2)', borderRadius:10, fontSize:12, color:'rgba(255,87,87,0.9)', marginBottom:12, lineHeight:1.55 }}>
+                    <strong>Are you sure?</strong> This will permanently delete your workspace and all data.
+                  </div>
+                )}
+                <button
+                  onClick={deleteAccount}
+                  disabled={deleting}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'rgba(255,87,87,0.08)', border:'1px solid rgba(255,87,87,0.22)', borderRadius:10, color:'rgba(255,87,87,0.85)', fontSize:13, fontWeight:600, cursor:deleting?'not-allowed':'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', opacity:deleting?0.6:1 }}
+                  onMouseEnter={e=>{if(!deleting)(e.currentTarget as HTMLElement).style.background='rgba(255,87,87,0.14)'}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,87,87,0.08)'}}>
+                  {deleting ? 'Deleting...' : deleteConfirm ? 'Yes, delete my account' : 'Delete account'}
+                </button>
+                {deleteConfirm && !deleting && (
+                  <button onClick={()=>setDeleteConfirm(false)} style={{ marginTop:8, background:'none', border:'none', color:'rgba(255,255,255,0.35)', fontSize:12, cursor:'pointer', padding:0 }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

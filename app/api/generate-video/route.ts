@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { createHmac } from 'crypto'
+import { getBrandContext } from '@/lib/brand-context'
 
 function base64url(input: string): string {
   return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
@@ -32,6 +34,29 @@ export async function POST(request: NextRequest) {
       motion_strength = 0.5,
     } = await request.json()
 
+    // ── Plan gate ──
+    const gateError = await checkPlanAccess(workspace_id, 'video_generation')
+    if (gateError) return gateError
+
+    // ── Rate limit: max 10 video generations per hour per workspace ──
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('content')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspace_id)
+      .eq('type', 'video')
+      .gte('created_at', oneHourAgo)
+    if ((recentCount ?? 0) >= 10) {
+      return NextResponse.json({
+        error: 'Rate limit exceeded',
+        message: 'Maximum 10 video generations per hour. Please wait before generating more.',
+      }, { status: 429 })
+    }
+
+    if (!process.env.KLING_ACCESS_KEY || !process.env.KLING_SECRET_KEY) {
+      return NextResponse.json({ error: 'Video generation not configured', message: 'KLING_ACCESS_KEY and KLING_SECRET_KEY not set. Add your Kling AI credentials to environment variables.' }, { status: 503 })
+    }
+
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
       p_amount: 20,
@@ -49,10 +74,14 @@ export async function POST(request: NextRequest) {
 
     const token = getKlingToken()
 
+    // Get brand video context
+    const brand = await getBrandContext(workspace_id)
+    const brandVideo = brand?.videoContext ? `${brand.videoContext}, ` : ''
+
     // Determine endpoint and body based on mode
     let endpoint: string
     const body: any = {
-      prompt: `${prompt}, ${style} style, high quality, professional`,
+      prompt: `${brandVideo}${prompt}, ${style} style, high quality, professional`,
       negative_prompt: 'blurry, low quality, distorted, watermark, text',
       cfg_scale: motion_strength,
       duration,

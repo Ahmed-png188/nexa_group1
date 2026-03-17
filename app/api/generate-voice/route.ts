@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 
@@ -21,6 +22,15 @@ export async function POST(request: NextRequest) {
 
     const { workspace_id, text, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
     if (!text?.trim()) return NextResponse.json({ error: 'Text is required' }, { status: 400 })
+
+    
+    // ── Plan gate ──
+    const gateError = await checkPlanAccess(workspace_id, 'voice_generation')
+    if (gateError) return gateError
+
+    if (!process.env.ELEVENLABS_API_KEY) {
+      return NextResponse.json({ error: 'Voice generation not configured', message: 'ELEVENLABS_API_KEY not set. Add your ElevenLabs API key to environment variables.' }, { status: 503 })
+    }
 
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
@@ -65,23 +75,11 @@ export async function POST(request: NextRequest) {
       throw new Error(`ElevenLabs error: ${errText}`)
     }
 
-    // Save audio to Supabase Storage (not base64 — permanent file)
+    // Save ElevenLabs binary MP3 directly to Supabase Storage → permanent public URL
     const audioBuffer = await res.arrayBuffer()
-    const filename = `${workspace_id}/voices/${Date.now()}.mp3`
+    const audioUrl    = await persistFile(audioBuffer, workspace_id, 'voice')
 
-    const { error: uploadError } = await supabase.storage
-      .from('generated-content')
-      .upload(filename, audioBuffer, { contentType: 'audio/mpeg', upsert: true })
-
-    let audioUrl: string
-    if (uploadError) {
-      // Fallback to base64 if storage fails
-      const base64 = Buffer.from(audioBuffer).toString('base64')
-      audioUrl = `data:audio/mpeg;base64,${base64}`
-    } else {
-      const { data: urlData } = supabase.storage.from('generated-content').getPublicUrl(filename)
-      audioUrl = urlData.publicUrl
-    }
+    if (!audioUrl) throw new Error('Failed to save audio to storage')
 
     // Save to content table
     const { data: savedContent } = await supabase.from('content').insert({
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
       type: 'voice',
       platform: 'general',
       status: 'draft',
-      voice_url: audioUrl,
+      audio_url: audioUrl,
       body: text,
       credits_used: 8,
       ai_model: 'elevenlabs-multilingual-v2',
