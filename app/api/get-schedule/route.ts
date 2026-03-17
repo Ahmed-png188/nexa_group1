@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest) {
     const month = parseInt(searchParams.get('month') ?? (new Date().getMonth() + 1).toString())
 
     if (!workspace_id) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // Get start and end of month
     const start = new Date(year, month - 1, 1).toISOString()

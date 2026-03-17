@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -10,7 +12,15 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    
     const { workspace_id, name, goal, audience, num_emails = 5, generate_with_ai = true } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
+    // ── Plan gate ──
+    const gateError = await checkPlanAccess(workspace_id, 'email_sequences')
+    if (gateError) return gateError
 
     const { data: workspace } = await supabase
       .from('workspaces').select('*').eq('id', workspace_id).single()
@@ -98,6 +108,7 @@ Make every email feel personal, human, and specific to the goal. No fluff.`
       name,
       status: 'draft',
       steps,
+      started_at: null, // set when sequence is activated
     }).select().single()
 
     await supabase.from('activity').insert({

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { createHmac } from 'crypto'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 function base64url(input: string): string {
   return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
@@ -33,6 +34,9 @@ export async function POST(request: NextRequest) {
       end_frame_url,       // end frame
       motion_strength = 0.5,
     } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // ── Plan gate ──
     const gateError = await checkPlanAccess(workspace_id, 'video_generation')

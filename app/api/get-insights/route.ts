@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -13,6 +14,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const workspace_id = searchParams.get('workspace_id')
     const period = searchParams.get('period') ?? '30' // days
+
+    if (!workspace_id) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     const daysAgo = new Date()
     daysAgo.setDate(daysAgo.getDate() - parseInt(period))

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -17,6 +18,9 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, type, platform, prompt, tone_override } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // ── Rate limit: max 20 copy generations per hour per workspace ──
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()

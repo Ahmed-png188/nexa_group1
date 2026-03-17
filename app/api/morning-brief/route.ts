@@ -2,15 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function POST(request: NextRequest) {
+  try {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { workspace_id } = await request.json()
+
+  const deny = await guardWorkspace(supabase, workspace_id, user.id)
+  if (deny) return deny
 
   // Check if we already have a fresh brief (< 6 hours old)
   const { data: ws } = await supabase
@@ -162,4 +167,8 @@ Return ONLY valid JSON:
   }).eq('id', workspace_id)
 
   return NextResponse.json({ success: true, brief, cached: false })
+  } catch (error: any) {
+    console.error('Morning brief error:', error)
+    return NextResponse.json({ error: 'Failed to generate brief', details: error.message }, { status: 500 })
+  }
 }

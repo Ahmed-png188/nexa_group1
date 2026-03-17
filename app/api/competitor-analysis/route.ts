@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -12,6 +13,10 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, competitors } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
     const brand = await getBrandContext(workspace_id)
 
     const competitorList = competitors || brand?.profile?.positioning?.competitor_contrast || 'General competitors in this space'

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const VOICE_IDS: Record<string, string> = {
   'rachel':  '21m00Tcm4TlvDq8ikWAM',
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
     const { workspace_id, text, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
     if (!text?.trim()) return NextResponse.json({ error: 'Text is required' }, { status: 400 })
 
-    
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
     // ── Plan gate ──
     const gateError = await checkPlanAccess(workspace_id, 'voice_generation')
     if (gateError) return gateError

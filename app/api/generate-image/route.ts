@@ -3,6 +3,7 @@ import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,9 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, prompt, style, aspect_ratio = '1:1', model = 'flux-pro' } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // ── Plan gate ──
     const gateError = await checkPlanAccess(workspace_id, 'image_generation')

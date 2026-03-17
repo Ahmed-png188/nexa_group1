@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const PLANS = {
   spark: {
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, plan, top_up_credits } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     const { data: workspace } = await supabase
       .from('workspaces').select('*').eq('id', workspace_id).single()
@@ -103,6 +107,7 @@ export async function POST(request: NextRequest) {
         customer: customerId,
         line_items: [{ price: planConfig.priceId, quantity: 1 }],
         metadata: { workspace_id, plan },
+        subscription_data: { metadata: { workspace_id, plan } },
         success_url: `${appUrl}/dashboard/settings?tab=billing&success=true&plan=${plan}`,
         cancel_url: `${appUrl}/dashboard/settings?tab=billing`,
       })

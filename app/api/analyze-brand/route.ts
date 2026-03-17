@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -16,7 +17,10 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, website_url, brand_name, files = [] } = await request.json()
+    const { workspace_id, website_url, brand_name, brand_voice: inputVoice, brand_audience: inputAudience, files = [] } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // Fetch workspace
     const { data: workspace } = await supabase
@@ -35,7 +39,11 @@ export async function POST(request: NextRequest) {
       .limit(20)
 
     const { data: strategy } = await supabase
-      .from('strategies').select('*').eq('workspace_id', workspace_id).single()
+      .from('strategy_plans').select('*').eq('workspace_id', workspace_id).eq('status','active').order('generated_at',{ascending:false}).limit(1).single()
+
+    // If voice/audience were passed directly from onboarding, save them now
+    if (inputVoice) await supabase.from('workspaces').update({ brand_voice: inputVoice }).eq('id', workspace_id)
+    if (inputAudience) await supabase.from('workspaces').update({ brand_audience: inputAudience }).eq('id', workspace_id)
 
     const assetsList = assets?.map(a =>
       `- ${a.type}: ${a.file_name}${a.analysis ? ` (analyzed: ${JSON.stringify(a.analysis).slice(0, 100)})` : ''}`
@@ -252,6 +260,7 @@ Return ONLY valid JSON with this exact structure:
     })
 
   } catch (error: any) {
+    console.error("[analyze-brand] FULL ERROR:", JSON.stringify(error), error?.message, error?.stack)
     console.error('Brand analysis error:', error)
     return NextResponse.json({ error: 'Analysis failed', details: error.message }, { status: 500 })
   }

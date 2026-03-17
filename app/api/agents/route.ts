@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -13,10 +14,13 @@ export async function POST(request: NextRequest) {
 
     const { workspace_id, agent_type } = await request.json()
 
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
     const brand = await getBrandContext(workspace_id)
     if (!brand) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
-    const { data: strategy } = await supabase.from('strategies').select('*').eq('workspace_id', workspace_id).single()
+    const { data: strategy } = await supabase.from('strategy_plans').select('*').eq('workspace_id', workspace_id).eq('status','active').order('generated_at',{ascending:false}).limit(1).single()
     const { data: recentContent } = await supabase.from('content')
       .select('type, body, platform, created_at, metadata')
       .eq('workspace_id', workspace_id)
@@ -235,6 +239,17 @@ Return ONLY JSON:
       title: `${agent_type.charAt(0).toUpperCase() + agent_type.slice(1)} Agent completed — ${result.message}`,
       metadata: { agent_type, result_summary: result.message },
     })
+
+    // Also write to agent_runs so home page counter works
+    try {
+      await supabase.from('agent_runs').insert({
+        workspace_id,
+        agent_type,
+        status: 'completed',
+        result: { message: result.message, summary: result.posts?.length || result.replies?.length || 0 },
+        created_at: new Date().toISOString(),
+      })
+    } catch {}
 
     return NextResponse.json({ success: true, ...result })
 

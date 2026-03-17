@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -11,6 +12,9 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // Fetch workspace context
     const { data: workspace } = await supabase
@@ -74,7 +78,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
 }`
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -100,14 +104,48 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
       .eq('status', 'active')
       .single()
 
+    // Expand 4 weeks into 30 actual day objects
+    const dailyPlan: any[] = []
+    const weekSchedule = strategy.weekly_schedule || {}
+    const dayNames = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    let dayNum = 1
+    for (let week = 0; week < 4; week++) {
+      const weekData = strategy.month_one_plan?.[week] || {}
+      const weekPosts: string[] = weekData.posts || []
+      let postIdx = 0
+      for (const dayName of dayNames) {
+        if (dayNum > 30) break
+        const schedDay = weekSchedule[dayName]
+        const isPostDay = schedDay || (postIdx < weekPosts.length)
+        if (isPostDay || dayNum <= 30) {
+          dailyPlan.push({
+            day: dayNum,
+            date: dayName,
+            week: week + 1,
+            theme: weekData.theme || '',
+            goal: weekData.goal || '',
+            platform: schedDay?.platform || '',
+            type: schedDay?.type || 'post',
+            angle: schedDay?.angle || weekPosts[postIdx] || '',
+            content: weekPosts[postIdx] || schedDay?.angle || '',
+          })
+          if (weekPosts[postIdx]) postIdx++
+          dayNum++
+        }
+      }
+    }
+
     const planData = {
       workspace_id,
       title: `${workspace.brand_name ?? workspace.name} — 30-Day Strategy`,
       status: 'active',
       audience_map: strategy.audience_psychology,
       content_pillars: strategy.content_pillars,
-      platform_strategy: strategy.weekly_schedule,
-      daily_plan: strategy.month_one_plan,
+      platform_strategy: {
+        ...strategy.weekly_schedule,
+        timing: strategy.top_performing_angles,
+      },
+      daily_plan: dailyPlan,
       insights: {
         key_insights: strategy.key_insights,
         top_angles: strategy.top_performing_angles,

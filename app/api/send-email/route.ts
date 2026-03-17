@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 export async function POST(request: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
     const {
       workspace_id,
       sequence_id,
+
       to_emails,       // array of { email, name } objects
       step_number,
       subject,
@@ -19,6 +21,9 @@ export async function POST(request: NextRequest) {
       from_name,
       from_email,
     } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     // Check credits (15 per 100 sends)
     const batchSize = to_emails.length

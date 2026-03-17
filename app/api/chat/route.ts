@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -12,6 +13,9 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { message, workspace_id, history, files } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
     const { data: credits } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
@@ -121,7 +125,7 @@ If the user shares a document, PDF, or content file:
     ]
 
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 2048,
       system: systemPrompt,
       messages: claudeMessages,
