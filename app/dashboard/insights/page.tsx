@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 type Tab = 'overview'|'content'|'email'|'platforms'
 
@@ -213,6 +214,7 @@ function HeroStat({ icon, label, value, rawData, color, trend }: any) {
 ───────────────────────────────────────────────── */
 export default function InsightsPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [ws,        setWs]       = useState<any>(null)
   const [raw,       setRaw]      = useState<any[]>([])
@@ -234,34 +236,90 @@ export default function InsightsPage() {
     if (!user) return
     const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
     const w = (m as any)?.workspaces; setWs(w)
-    const cutoff = new Date(Date.now() - period * 86400000).toISOString().split('T')[0]
-    const [{ data:ins },{ data:plats }] = await Promise.all([
-      supabase.from('analytics').select('*').eq('workspace_id',w?.id).gte('date',cutoff).order('date',{ascending:true}),
+    const now     = new Date()
+    const cutoff  = new Date(now.getTime() - period * 86400000).toISOString()
+    const prevCut = new Date(now.getTime() - period * 2 * 86400000).toISOString()
+
+    const [{ data:content },{ data:prevContent },{ data:plats },{ data:emailSeqs }] = await Promise.all([
+      // Current period — published content with engagement data
+      supabase.from('content').select('*').eq('workspace_id',w?.id).gte('created_at',cutoff).order('created_at',{ascending:true}),
+      // Previous period — for trend calculation
+      supabase.from('content').select('id,impressions,engagement,clicks,reach,likes,comments,shares,created_at').eq('workspace_id',w?.id).gte('created_at',prevCut).lt('created_at',cutoff),
       supabase.from('connected_platforms').select('*').eq('workspace_id',w?.id).eq('is_active',true),
+      supabase.from('email_sequences').select('*').eq('workspace_id',w?.id),
     ])
-    const rows = ins ?? []
-    setRaw(rows); setConnPlats(plats??[])
-    if (rows.length > 0) {
-      const agg = rows.reduce((acc:any,r:any) => ({
-        impressions:       (acc.impressions||0)       + (r.impressions||0),
-        reach:             (acc.reach||0)             + (r.reach||0),
-        engagement:        (acc.engagement||0)        + (r.engagement||0),
-        clicks:            (acc.clicks||0)            + (r.clicks||0),
-        posts_created:     (acc.posts_created||0)     + (r.posts_created||0),
-        followers_gained:  (acc.followers_gained||0)  + (r.followers_gained||0),
-        email_opens:       (acc.email_opens||0)       + (r.email_opens||0),
-        email_clicks:      (acc.email_clicks||0)      + (r.email_clicks||0),
-        email_sent:        (acc.email_sent||0)        + (r.email_sent||0),
-      }), {})
-      setInsights({ ...agg, rows })
-    } else {
-      setInsights(null)
+
+    setConnPlats(plats??[])
+
+    const rows = content ?? []
+    const prev = prevContent ?? []
+
+    // Build daily series from content table
+    // Group by date, aggregate engagement metrics across all platforms
+    const byDate: Record<string, any> = {}
+    for (const c of rows) {
+      const date = c.created_at?.split('T')[0]
+      if (!date) continue
+      if (!byDate[date]) byDate[date] = {
+        date, impressions:0, reach:0, engagement:0, clicks:0,
+        posts_created:0, followers_gained:0,
+        email_opens:0, email_clicks:0, email_sent:0,
+        platform: c.platform, // keep for display
+      }
+      byDate[date].posts_created++
+      byDate[date].impressions   += c.impressions||0
+      byDate[date].reach         += c.reach||0
+      byDate[date].engagement    += (c.likes||0) + (c.comments||0) + (c.shares||0)
+      byDate[date].clicks        += c.clicks||0
+      byDate[date].followers_gained += c.followers_gained||0
     }
+    const rawRows = Object.values(byDate).sort((a:any,b:any) => a.date.localeCompare(b.date))
+    setRaw(rawRows)
+
+    // Build per-platform aggregates for the platform breakdown (store on raw too)
+    // Used by platBreakdown below
+
+    // Aggregate totals for current period
+    const agg = {
+      impressions:      rows.reduce((s,r) => s+(r.impressions||0), 0),
+      reach:            rows.reduce((s,r) => s+(r.reach||0), 0),
+      engagement:       rows.reduce((s,r) => s+(r.likes||0)+(r.comments||0)+(r.shares||0), 0),
+      clicks:           rows.reduce((s,r) => s+(r.clicks||0), 0),
+      posts_created:    rows.length,
+      followers_gained: rows.reduce((s,r) => s+(r.followers_gained||0), 0),
+      email_sent:       emailSeqs?.reduce((s:number,e:any) => s+(e.emails_sent||0), 0) || 0,
+      email_opens:      emailSeqs?.reduce((s:number,e:any) => s+(e.emails_opened||0), 0) || 0,
+      email_clicks:     emailSeqs?.reduce((s:number,e:any) => s+(e.emails_clicked||0), 0) || 0,
+    }
+
+    // Compute real trends vs previous period
+    const prevAgg = {
+      impressions:   prev.reduce((s,r) => s+(r.impressions||0), 0),
+      reach:         prev.reduce((s,r) => s+(r.reach||0), 0),
+      engagement:    prev.reduce((s,r) => s+(r.likes||0)+(r.comments||0)+(r.shares||0), 0),
+      clicks:        prev.reduce((s,r) => s+(r.clicks||0), 0),
+      posts_created: prev.length,
+    }
+    const trend = (cur: number, prv: number) => prv > 0 ? Math.round(((cur - prv) / prv) * 100) : (cur > 0 ? 100 : 0)
+
+    setInsights(rows.length > 0 ? {
+      ...agg,
+      rows,
+      trends: {
+        impressions:   trend(agg.impressions, prevAgg.impressions),
+        reach:         trend(agg.reach, prevAgg.reach),
+        engagement:    trend(agg.engagement, prevAgg.engagement),
+        clicks:        trend(agg.clicks, prevAgg.clicks),
+        posts_created: trend(agg.posts_created, prevAgg.posts_created),
+      }
+    } : null)
     setLoading(false)
   }
 
   async function sync() {
-    if (!ws||syncing) return; setSyncing(true)
+    if (!ws||syncing) return
+    if (connPlats.length === 0) { router.push('/dashboard/integrations'); return }
+    setSyncing(true)
     try { await fetch('/api/sync-platform-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})}); load() } catch {}
     setSyncing(false)
   }
@@ -269,9 +327,19 @@ export default function InsightsPage() {
   async function explain() {
     if (!ws||explaining||!insights) return; setExplaining(true)
     try {
-      const r = await fetch('/api/get-insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,period,metrics:insights})})
+      // Use the AI chat endpoint to get an intelligent performance analysis
+      const summary = `Posts created: ${insights.posts_created||0}, Impressions: ${insights.impressions||0}, Engagement: ${insights.engagement||0}, Reach: ${insights.reach||0}, Clicks: ${insights.clicks||0} over the last ${period} days.`
+      const r = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: ws.id,
+          message: `Analyze my content performance for the last ${period} days and give me 3 specific, actionable insights. Data: ${summary} What's working, what needs improvement, and what should I focus on next week? Be direct and specific to my brand.`,
+          history: [],
+        })
+      })
       const d = await r.json()
-      if (d.explanation) setAiText(d.explanation)
+      setAiText(d.reply || 'No insights available yet. Publish content and connect your platforms to start tracking.')
     } catch {}
     setExplaining(false)
   }
@@ -292,7 +360,7 @@ export default function InsightsPage() {
     const platRows = raw.filter(r=>r.platform===cp.platform)
     return {
       platform: cp.platform,
-      account: cp.account_name||cp.account_id||'',
+      account: cp.platform_username||cp.account_name||cp.platform_name||'',
       impressions: platRows.reduce((a,r)=>a+(r.impressions||0),0),
       engagement: platRows.reduce((a,r)=>a+(r.engagement||0),0),
       followers: platRows.reduce((a,r)=>a+(r.followers_gained||0),0),
@@ -387,7 +455,7 @@ export default function InsightsPage() {
               style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 24px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}>
               <span style={{ display:'flex' }}>{Ic.refresh}</span>Sync platforms
             </button>
-            <Link href="/dashboard/schedule?view=platforms"
+            <Link href="/dashboard/integrations"
               style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 24px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.65)', borderRadius:11, textDecoration:'none', transition:'all 0.18s' }}>
               Connect platforms →
             </Link>
@@ -401,18 +469,41 @@ export default function InsightsPage() {
           {tab === 'overview' && (
             <div style={{ animation:'pageUp 0.3s ease both' }}>
 
+              {/* ── Empty state: no platforms + no data ── */}
+              {connPlats.length === 0 && (!insights || insights.posts_created === 0) && (
+                <div style={{ margin:'12px 0 28px', padding:'36px 28px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:18, textAlign:'center' }}>
+                  <div style={{ width:48, height:48, borderRadius:14, background:'rgba(56,191,255,0.08)', border:'1px solid rgba(56,191,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BFFF" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </div>
+                  <div style={{ fontFamily:'var(--display)', fontSize:17, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.88)', marginBottom:8 }}>No performance data yet</div>
+                  <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.38)', lineHeight:1.75, maxWidth:340, margin:'0 auto 24px' }}>
+                    Connect your social platforms to track impressions, reach, and engagement in real time.
+                  </div>
+                  <div style={{ display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap', marginBottom:16 }}>
+                    {[{id:'instagram',label:'Instagram',color:'#E1306C'},{id:'linkedin',label:'LinkedIn',color:'#0A66C2'},{id:'x',label:'X',color:'#E7E7E7'},{id:'tiktok',label:'TikTok',color:'#FF2D55'}].map(p=>(
+                      <a key={p.id} href={'/api/oauth/'+p.id+'?workspace_id='+(ws?.id||'')}
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:9, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.55)', textDecoration:'none' }}>
+                        <div style={{ width:6,height:6,borderRadius:'50%',background:p.color }}/>
+                        {p.label}
+                      </a>
+                    ))}
+                  </div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)' }}>Already publishing? Hit <strong style={{color:'rgba(255,255,255,0.38)'}}>Sync</strong> above.</div>
+                </div>
+              )}
+
               {/* ── Hero stat grid ── */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px,1fr))', gap:10, marginBottom:18 }}>
-                <HeroStat icon={Ic.eye}    label="Impressions"    value={fmt(insights.impressions)}          rawData={sparkSeries('impressions')}          color="#4D9FFF" trend={12}/>
-                <HeroStat icon={Ic.users}  label="Reach"          value={fmt(insights.reach)}                rawData={sparkSeries('reach')}                color="#A78BFA" trend={8}/>
-                <HeroStat icon={Ic.heart}  label="Engagements"    value={fmt(insights.engagement)}           rawData={sparkSeries('engagement')}           color="#FF7A40" trend={-3}/>
-                <HeroStat icon={Ic.click}  label="Link clicks"    value={fmt(insights.clicks)}               rawData={sparkSeries('clicks')}               color="#34D399" trend={22}/>
-                <HeroStat icon={Ic.chart}  label="Posts created"  value={fmt(insights.posts_created||0)}     rawData={sparkSeries('posts_created')}        color="#FFB547" trend={5}/>
+                <HeroStat icon={Ic.eye}    label="Impressions"    value={fmt(insights.impressions)}          rawData={sparkSeries('impressions')}          color="#4D9FFF" trend={insights?.trends?.impressions}/>
+                <HeroStat icon={Ic.users}  label="Reach"          value={fmt(insights.reach)}                rawData={sparkSeries('reach')}                color="#A78BFA" trend={insights?.trends?.reach}/>
+                <HeroStat icon={Ic.heart}  label="Engagements"    value={fmt(insights.engagement)}           rawData={sparkSeries('engagement')}           color="#FF7A40" trend={insights?.trends?.engagement}/>
+                <HeroStat icon={Ic.click}  label="Link clicks"    value={fmt(insights.clicks)}               rawData={sparkSeries('clicks')}               color="#34D399" trend={insights?.trends?.clicks}/>
+                <HeroStat icon={Ic.chart}  label="Posts created"  value={fmt(insights.posts_created||0)}     rawData={sparkSeries('posts_created')}        color="#FFB547" trend={insights?.trends?.posts_created}/>
                 <HeroStat icon={Ic.users}  label="New followers"  value={fmt(insights.followers_gained||0)}  rawData={sparkSeries('followers_gained')}     color="#FF5757" trend={3}/>
               </div>
 
               {/* ── Main area chart ── */}
-              <div style={{ padding:'20px 22px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, marginBottom:14 }}>
+              <div style={{ padding:'24px 24px', background:'linear-gradient(145deg,rgba(77,159,255,0.06) 0%,rgba(0,0,0,0.35) 100%)', border:'1px solid rgba(77,159,255,0.15)', borderRadius:18, marginBottom:14, boxShadow:'0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(77,159,255,0.08)', position:'relative', overflow:'hidden' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
                   <div>
                     <div style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.88)', letterSpacing:'-0.02em', marginBottom:2 }}>
@@ -431,9 +522,9 @@ export default function InsightsPage() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
                 {[
                   { label:'Engagement rate',  pct:engRate,  color:'#FF7A40', sub:`${engRate.toFixed(2)}% of reach`, desc:'Engagements ÷ reach' },
-                  { label:'Click-through rate', pct:ctr,    color:'#34D399', sub:`${ctr.toFixed(2)}% of impressions`, desc:'Clicks ÷ impressions' },
+                  { label:'Click rate', pct:ctr,    color:'#34D399', sub:`${ctr.toFixed(2)}% of impressions`, desc:'clicks / impressions' },
                 ].map(m => (
-                  <div key={m.label} style={{ padding:'18px 20px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, display:'flex', alignItems:'center', gap:18 }}>
+                  <div key={m.label} style={{ padding:'20px 22px', background:`linear-gradient(145deg,${m.color}06 0%,rgba(0,0,0,0.3) 100%)`, border:`1px solid ${m.color}18`, borderRadius:16, display:'flex', alignItems:'center', gap:18, boxShadow:`0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 ${m.color}10` }}>
                     <div style={{ position:'relative', flexShrink:0 }}>
                       <Donut pct={Math.min(m.pct, 100)} color={m.color} size={88}/>
                       <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
@@ -466,7 +557,7 @@ export default function InsightsPage() {
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.12)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.32)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.07)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.2)'}}>
                   <span style={{ display:'flex', animation:explaining?'pageSpin 0.8s linear infinite':'none' }}>{Ic.bolt}</span>
-                  {explaining ? 'Nexa is reading your data…' : 'Explain my performance with AI'}
+                  {explaining ? 'Reading your numbers…' : 'What does this mean?'}
                 </button>
               )}
             </div>
@@ -484,7 +575,7 @@ export default function InsightsPage() {
               </div>
 
               {/* Engagement over time */}
-              <div style={{ padding:'20px 22px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, marginBottom:14 }}>
+              <div style={{ padding:'24px 24px', background:'linear-gradient(145deg,rgba(77,159,255,0.06) 0%,rgba(0,0,0,0.35) 100%)', border:'1px solid rgba(77,159,255,0.15)', borderRadius:18, marginBottom:14, boxShadow:'0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(77,159,255,0.08)', position:'relative', overflow:'hidden' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
                   <div>
                     <div style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.88)', letterSpacing:'-0.02em', marginBottom:2 }}>Engagement over time</div>
@@ -526,7 +617,7 @@ export default function InsightsPage() {
               {/* Stats */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px,1fr))', gap:10, marginBottom:18 }}>
                 <HeroStat icon={Ic.mail}  label="Emails sent"   value={fmt(insights.email_sent||0)}    rawData={sparkSeries('email_sent')}    color="#34D399"/>
-                <HeroStat icon={Ic.eye}   label="Opens"         value={fmt(insights.email_opens||0)}   rawData={sparkSeries('email_opens')}   color="#4D9FFF" trend={7}/>
+                <HeroStat icon={Ic.eye}   label="Opens"         value={fmt(insights.email_opens||0)}   rawData={sparkSeries('email_opens')}   color="#4D9FFF"/>
                 <HeroStat icon={Ic.click} label="Clicks"        value={fmt(insights.email_clicks||0)}  rawData={sparkSeries('email_clicks')}  color="#A78BFA"/>
                 <HeroStat icon={Ic.chart} label="Open rate"     value={pct(insights.email_opens||0,insights.email_sent||0)} color="#FFB547"/>
               </div>
@@ -667,7 +758,7 @@ export default function InsightsPage() {
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.28)', lineHeight:1.7, marginBottom:16 }}>
                     No platforms connected yet.
                   </div>
-                  <Link href="/dashboard/schedule?view=platforms"
+                  <Link href="/dashboard/integrations"
                     style={{ fontSize:12, fontWeight:700, color:'#4D9FFF', background:'rgba(77,159,255,0.08)', border:'1px solid rgba(77,159,255,0.22)', borderRadius:9, padding:'8px 18px', textDecoration:'none', fontFamily:'var(--sans)' }}>
                     Connect platforms →
                   </Link>

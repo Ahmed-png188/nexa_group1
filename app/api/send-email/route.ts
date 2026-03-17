@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
             html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; line-height: 1.6;">
               ${personalizedBody.split('\n\n').map((p: string) => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
               <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
-              <p style="font-size: 12px; color: #999;">You're receiving this because you opted in. <a href="#" style="color: #999;">Unsubscribe</a></p>
+              <p style="font-size: 12px; color: #999;">You're receiving this because you opted in. <a href="${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?token=${sequence_id ?? ''}" style="color: #999;">Unsubscribe</a></p>
             </div>`,
             tags: [
               { name: 'workspace_id', value: workspace_id },

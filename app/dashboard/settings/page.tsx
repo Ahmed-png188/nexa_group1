@@ -188,7 +188,7 @@ function SettingsInner() {
     setFullName(p?.full_name||''); setBio(p?.bio||'')
     setWsName(w?.name||''); setNiche(w?.niche||'')
     setVoice(w?.brand_voice||''); setTone(w?.brand_tone||'')
-    setAudience(w?.target_audience||'')
+    setAudience(w?.brand_audience||'')
     setLoading(false)
   }
 
@@ -201,7 +201,7 @@ function SettingsInner() {
 
   async function saveWorkspace() {
     if (!ws) return; setSaving(true); setSaved(false)
-    await supabase.from('workspaces').update({ name:wsName, niche, brand_voice:voice, brand_tone:tone, target_audience:audience }).eq('id',ws.id)
+    await supabase.from('workspaces').update({ name:wsName, niche, brand_voice:voice, brand_tone:tone, brand_audience:audience }).eq('id',ws.id)
     toast_('Workspace saved'); setSaved(true); setTimeout(()=>setSaved(false),3000); setSaving(false)
   }
 

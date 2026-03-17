@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 const Ic = {
   plus:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -29,6 +30,7 @@ function Avatar({ name, size=40 }: { name:string; size?:number }) {
 
 export default function AgencyPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [ws,       setWs]       = useState<any>(null)
   const [clients,  setClients]  = useState<any[]>([])
@@ -57,8 +59,8 @@ export default function AgencyPage() {
     const w = (m as any)?.workspaces; setWs(w)
     setIsAgency(w?.plan==='agency'||w?.is_agency||false)
     const [{ data:cl },{ data:inv }] = await Promise.all([
-      supabase.from('agency_clients').select('*, client_workspaces(*)').eq('agency_workspace_id',w?.id).order('created_at',{ascending:false}),
-      supabase.from('agency_invites').select('*').eq('agency_workspace_id',w?.id).eq('status','pending').order('created_at',{ascending:false}),
+      supabase.from('client_workspaces').select('*, client_workspace:client_workspace_id(id,name,brand_name,brand_voice,plan)').eq('agency_workspace_id',w?.id).order('created_at',{ascending:false}),
+      supabase.from('client_invites').select('*').eq('agency_workspace_id',w?.id).eq('status','pending').order('created_at',{ascending:false}),
     ])
     setClients(cl??[]); setInvites(inv??[]); setLoading(false)
   }
@@ -78,7 +80,7 @@ export default function AgencyPage() {
     try {
       const r = await fetch('/api/agency',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'switch_workspace',workspace_id:id})})
       const d = await r.json()
-      if (d.success) window.location.href='/dashboard'
+      if (d.success) router.push('/dashboard')
       else toast_('Failed to switch', false)
     } catch { toast_('Error', false) }
   }
@@ -181,7 +183,7 @@ export default function AgencyPage() {
       )}
 
       {/* Switch workspace CTA */}
-      {sel.client_workspaces?.id && (
+      {sel.client_workspace_id && (
         <div style={{ padding:'20px 24px', background:'linear-gradient(145deg, rgba(77,159,255,0.08) 0%, rgba(77,159,255,0.03) 100%)', border:'1px solid rgba(77,159,255,0.2)', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', marginBottom:3, letterSpacing:'-0.01em' }}>
@@ -191,7 +193,7 @@ export default function AgencyPage() {
               Create content, run strategy, and manage everything from their dashboard
             </div>
           </div>
-          <button onClick={() => switchWs(sel.client_workspaces.id)}
+          <button onClick={() => switchWs(sel.client_workspace_id)}
             style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 22px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s', flexShrink:0 }}>
             <span style={{ display:'flex' }}>{Ic.bolt}</span>Switch workspace
           </button>
@@ -280,9 +282,9 @@ export default function AgencyPage() {
                         <div style={{ fontSize:12, color:'rgba(255,255,255,0.28)' }}>No retainer set</div>
                       )}
                     </div>
-                    {c.client_workspaces?.id && (
+                    {c.client_workspace_id && (
                       <button
-                        onClick={e => { e.stopPropagation(); switchWs(c.client_workspaces.id) }}
+                        onClick={e => { e.stopPropagation(); switchWs(c.client_workspace_id) }}
                         style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 13px', borderRadius:9, fontSize:11, fontWeight:700, background:'rgba(77,159,255,0.1)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', letterSpacing:'-0.01em' }}
                         onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.18)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.38)'}}
                         onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.1)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.22)'}}>

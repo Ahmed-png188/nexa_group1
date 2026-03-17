@@ -151,7 +151,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
 
   async function loadNotifs() {
     try {
-      const r = await fetch(`/api/notifications?workspace_id=${workspace.id}`)
+      const r = await fetch(`/api/notifications?workspace_id=${workspace.id}`, { credentials: 'include' })
       if (r.ok) { const d = await r.json(); setNotifs(d.notifications??[]); setUnread(d.unread??0) }
     } catch {}
   }
@@ -166,7 +166,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
     setMsgs(p => [...p, { role:'user', content:msg }])
     setChatLoading(true)
     try {
-      const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message:msg, workspace_id:workspace.id, history:msgs, files:fs }) })
+      const r = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({ message:msg, workspace_id:workspace.id, history:msgs, files:fs }) })
       const d = await r.json()
       setMsgs(p => [...p, { role:'assistant', content:d.reply }])
     } catch {
