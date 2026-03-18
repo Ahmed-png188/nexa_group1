@@ -52,6 +52,9 @@ export default function HomePage() {
   const [mounted,    setMounted]    = useState(false)
   const [voiceDrift, setVoiceDrift] = useState<any>(null)
   const [totalContent, setTotalContent] = useState(0)
+  const [agentRunning, setAgentRunning] = useState<string | null>(null)
+  const [agentResults, setAgentResults] = useState<Record<string, string>>({})
+  const [agentLastRuns, setAgentLastRuns] = useState<Record<string, string>>({})
 
   useEffect(() => { setMounted(true); load() }, [])
 
@@ -79,6 +82,29 @@ export default function HomePage() {
     try { const r = await supabase.from('agent_runs').select('*').eq('workspace_id', ws.id).order('created_at',{ascending:false}).limit(20); runs = r.data??[] } catch {}
     try { const r = await supabase.from('brand_assets').select('analysis').eq('workspace_id', ws.id).eq('file_name','nexa_brand_intelligence.json').single(); brand = r.data?.analysis??null } catch {}
     try { const r = await supabase.from('brand_learnings').select('*').eq('workspace_id', ws.id).order('created_at',{ascending:false}).limit(6); lg = r.data??[] } catch {}
+
+    // Fetch last agent runs per type for BUILD 6
+    try {
+      const { data: agentRunsData } = await supabase
+        .from('agent_runs')
+        .select('agent_id, status, ran_at, agents(type, name)')
+        .eq('workspace_id', ws.id)
+        .order('ran_at', { ascending: false })
+        .limit(20)
+
+      const lastRunMap: Record<string, string> = {}
+      agentRunsData?.forEach((run: any) => {
+        const type = run.agents?.type
+        if (type && !lastRunMap[type]) {
+          const d = new Date(run.ran_at)
+          const isToday = d.toDateString() === new Date().toDateString()
+          lastRunMap[type] = isToday
+            ? `Today ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+            : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }
+      })
+      setAgentLastRuns(lastRunMap)
+    } catch {}
 
     setCredits(cr.data)
     setTotalContent(ctCount.count ?? ct.data?.length ?? 0)
@@ -127,16 +153,41 @@ export default function HomePage() {
     setBriefLoading(false)
   }
 
-  async function runAgent(id: string) {
-    if (!workspace || running) return
-    setRunning(id); setResult(null)
+  async function runAgent(agentType: string, agentName: string) {
+    if (!workspace || agentRunning) return
+
+    const CRON_ENDPOINTS: Record<string, string> = {
+      content:  `/api/cron/content-agent?workspace_id=${workspace.id}`,
+      timing:   `/api/cron/timing-agent?workspace_id=${workspace.id}`,
+      insights: `/api/cron/insights-agent?workspace_id=${workspace.id}`,
+      email:    `/api/cron/email-agent?workspace_id=${workspace.id}`,
+    }
+
+    const endpoint = CRON_ENDPOINTS[agentType]
+
+    setAgentRunning(agentName)
+    setRunning(agentType)
+    setResult(null)
     try {
-      const r = await fetch('/api/agents',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({workspace_id:workspace.id,agent_type:id}) })
-      const d = await r.json()
-      try { await supabase.from('agent_runs').insert({ workspace_id:workspace.id, agent_type:id, status:d.success?'completed':'failed', result:d }) } catch {}
-      setResult({ type:id, data:d }); load()
-    } catch {}
-    setRunning(null)
+      const res = endpoint
+        ? await fetch(endpoint)
+        : await fetch('/api/agents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspace_id: workspace.id, agent_type: agentType }) })
+
+      const data = await res.json()
+
+      const resultMsg = data.success || data.message
+        ? data.message || `${agentName} completed`
+        : `${agentName} — nothing to do right now`
+
+      setAgentResults(prev => ({ ...prev, [agentName]: resultMsg }))
+      setResult({ type: agentType, data })
+      setTimeout(() => load(), 1000)
+    } catch {
+      setAgentResults(prev => ({ ...prev, [agentName]: 'Failed — check console' }))
+    } finally {
+      setAgentRunning(null)
+      setRunning(null)
+    }
   }
 
   async function checkVoiceDrift() {
@@ -325,8 +376,9 @@ export default function HomePage() {
 
           <div style={{display:'flex',flexDirection:'column',gap:7}}>
             {AGENTS.map(agent => {
-              const lastRun   = agentRuns.find(r => r.agent_type===agent.id)
-              const isRunning = running===agent.id
+              const isRunning = agentRunning === agent.name
+              const lastRunStr = agentLastRuns[agent.id]
+              const resultMsg = agentResults[agent.name]
               return (
                 <div key={agent.id} style={{
                   display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:12,
@@ -340,13 +392,17 @@ export default function HomePage() {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:'rgba(255,255,255,0.85)',marginBottom:2,letterSpacing:'-0.01em'}}>{agent.name}</div>
                     <div style={{fontSize:11,color:'rgba(255,255,255,0.32)',lineHeight:1.4}}>
-                      {lastRun ? `Last run ${formatDistanceToNow(new Date(lastRun.created_at))} ago` : agent.desc}
+                      {resultMsg
+                        ? <span style={{color:'#4ADE80'}}>{resultMsg}</span>
+                        : lastRunStr
+                          ? `Last run ${lastRunStr}`
+                          : agent.desc}
                     </div>
                   </div>
-                  <button onClick={()=>runAgent(agent.id)} disabled={!!running}
-                    style={{display:'flex',alignItems:'center',gap:5,padding:'6px 14px',borderRadius:8,fontSize:11,fontWeight:700,fontFamily:'var(--sans)',background:isRunning?agent.color:'rgba(255,255,255,0.06)',border:`1px solid ${isRunning?'transparent':'rgba(255,255,255,0.09)'}`,color:isRunning?'#000':'rgba(255,255,255,0.5)',cursor:running?'not-allowed':'pointer',transition:'all 0.15s',whiteSpace:'nowrap'}}
-                    onMouseEnter={e=>{if(!running){(e.currentTarget as HTMLElement).style.background=`${agent.color}18`;(e.currentTarget as HTMLElement).style.borderColor=`${agent.color}33`;(e.currentTarget as HTMLElement).style.color=agent.color}}}
-                    onMouseLeave={e=>{if(!running&&!isRunning){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.09)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.5)'}}}>
+                  <button onClick={()=>runAgent(agent.id, agent.name)} disabled={!!agentRunning}
+                    style={{display:'flex',alignItems:'center',gap:5,padding:'6px 14px',borderRadius:8,fontSize:11,fontWeight:700,fontFamily:'var(--sans)',background:isRunning?agent.color:'rgba(255,255,255,0.06)',border:`1px solid ${isRunning?'transparent':'rgba(255,255,255,0.09)'}`,color:isRunning?'#000':'rgba(255,255,255,0.5)',cursor:agentRunning?'not-allowed':'pointer',transition:'all 0.15s',whiteSpace:'nowrap'}}
+                    onMouseEnter={e=>{if(!agentRunning){(e.currentTarget as HTMLElement).style.background=`${agent.color}18`;(e.currentTarget as HTMLElement).style.borderColor=`${agent.color}33`;(e.currentTarget as HTMLElement).style.color=agent.color}}}
+                    onMouseLeave={e=>{if(!agentRunning&&!isRunning){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.09)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.5)'}}}>
                     {isRunning ? (<><div className="nexa-spinner" style={{width:8,height:8}}/>Running</>) : (<><span style={{display:'flex'}}>{Ic.play}</span>Run</>)}
                   </button>
                 </div>
