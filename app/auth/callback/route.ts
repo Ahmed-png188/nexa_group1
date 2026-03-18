@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
     const { data } = await supabase.auth.exchangeCodeForSession(code)
 
-    // Fire welcome email after confirmed signup
     if (data?.user) {
       const { email, user_metadata } = data.user
       const name = user_metadata?.full_name ?? email?.split('@')[0] ?? 'there'
@@ -28,6 +27,18 @@ export async function GET(request: NextRequest) {
         body: JSON.stringify({ type: 'welcome', to: email, name }),
       }).then(r => console.log(`[callback] notify responded ${r.status}`))
         .catch(err => console.error('[callback] Welcome email failed:', err))
+
+      // Check if user already has a workspace → send to dashboard, else onboarding
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', data.user.id)
+        .limit(1)
+        .single()
+
+      if (membership?.workspace_id) {
+        return NextResponse.redirect(`${origin}/dashboard`)
+      }
     } else {
       console.log('[callback] No user in session data — email not sent')
     }

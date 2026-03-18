@@ -80,17 +80,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // For docs — note them (we can't read binary PDF/DOCX without a parser,
-    // but we tell Claude about their names so it acknowledges them)
-    if (docFiles.length > 0) {
+    // For PDFs, send as document blocks — Claude can read them natively
+    const pdfFiles = docFiles.filter(f => f.type === 'application/pdf')
+    const otherDocs = docFiles.filter(f => f.type !== 'application/pdf')
+
+    for (const pdf of pdfFiles.slice(0, 3)) { // max 3 PDFs
+      messageContent.push({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: pdf.base64 },
+      })
       messageContent.push({
         type: 'text',
-        text: `[Uploaded documents: ${docFiles.map(f => f.name).join(', ')}]`,
+        text: `[PDF document: ${pdf.name}]`,
       })
     }
 
+    // For non-PDF docs — note their names (binary formats can't be parsed inline)
+    if (otherDocs.length > 0) {
+      messageContent.push({
+        type: 'text',
+        text: `[Uploaded documents: ${otherDocs.map(f => f.name).join(', ')}]`,
+      })
+    }
+
+    const pdfCount = (files as FilePayload[]).filter(f => f.type === 'application/pdf').length
     const filesSummary = files.length > 0
-      ? `\n## Uploaded Files (${files.length} total)\n${(files as FilePayload[]).map(f => `- ${f.name} (${f.type})`).join('\n')}\n${imageFiles.length > 0 ? `\nI can see the ${imageFiles.length} image(s) above. Analyze their visual style, colors, typography, and brand feel carefully.` : ''}`
+      ? `\n## Uploaded Files (${files.length} total)\n${(files as FilePayload[]).map(f => `- ${f.name} (${f.type})`).join('\n')}\n${imageFiles.length > 0 ? `\nI can see the ${imageFiles.length} image(s) above. Analyze their visual style, colors, typography, and brand feel carefully.` : ''}${pdfCount > 0 ? `\nI can read the ${pdfCount} PDF document(s) above. Extract all brand voice, audience, and strategy signals from them.` : ''}`
       : '\n## Uploaded Files\nNone — analyze from brand name and website only.'
 
     const promptText = `You are the world's best brand strategist, copywriter, and psychologist. Your job is to deeply understand this brand and create a comprehensive Brand Intelligence Profile that will be used to generate ALL future content.
@@ -176,11 +191,20 @@ Return ONLY valid JSON with this exact structure:
     // Add the main prompt as the last text block
     messageContent.push({ type: 'text', text: promptText })
 
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 3500,
-      messages: [{ role: 'user', content: messageContent }],
-    })
+    let response: Awaited<ReturnType<typeof anthropic.messages.create>>
+    try {
+      response = await anthropic.messages.create({
+        model: 'claude-opus-4-5',
+        max_tokens: 3500,
+        messages: [{ role: 'user', content: messageContent }],
+      })
+    } catch (aiError: any) {
+      console.error('[analyze-brand] Anthropic API error:', aiError?.message, aiError?.status)
+      return NextResponse.json({
+        error: 'AI analysis failed',
+        details: aiError?.message || 'Anthropic API call failed. Check API key and quota.',
+      }, { status: 502 })
+    }
 
     const text = (response.content[0] as any).text
     let brandProfile: any = {}

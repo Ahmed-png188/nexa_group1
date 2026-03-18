@@ -21,7 +21,7 @@ export default function LoginPage() {
     setGoogleLoading(true)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/auth/callback' },
+      options: { redirectTo: 'https://nexaa.cc/auth/callback' },
     })
   }
 
