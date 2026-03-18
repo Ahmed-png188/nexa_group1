@@ -2,173 +2,103 @@
 
 import { useState } from 'react'
 
-type Category = 'all' | 'video' | 'image' | 'voice' | 'outreach' | 'automation' | 'publishing'
+type Category = 'all' | 'publishing' | 'productivity' | 'automation' | 'crm' | 'analytics' | 'communication'
 
 const INTEGRATIONS = [
   {
-    id: 'kling',
-    name: 'Kling AI',
-    category: 'video',
-    desc: 'State-of-the-art video generation. Create cinematic clips from text or image prompts in your brand style.',
-    cost: '20 credits / clip',
-    status: 'active',
-    badge: 'Video AI',
-    color: '#6366F1',
-    docs: 'https://klingai.com',
+    id: 'notion', name: 'Notion', category: 'productivity',
+    desc: 'Sync your content briefs, ideas, and strategy directly with your Notion workspace.',
+    cost: 'Free', status: 'coming_soon', badge: 'Productivity', color: '#ffffff',
+    docs: 'https://notion.so'
   },
   {
-    id: 'elevenlabs',
-    name: 'ElevenLabs',
-    category: 'voice',
-    desc: 'Ultra-realistic AI voiceovers. Clone your voice or choose from 1000+ voices for any content.',
-    cost: '8 credits / voice',
-    status: 'active',
-    badge: 'Voice AI',
-    color: '#F59E0B',
-    docs: 'https://elevenlabs.io',
+    id: 'slack', name: 'Slack', category: 'communication',
+    desc: 'Get your daily brief, content alerts, and performance updates delivered to Slack.',
+    cost: 'Free', status: 'coming_soon', badge: 'Communication', color: '#4A154B',
+    docs: 'https://slack.com'
   },
   {
-    id: 'seedream',
-    name: 'Seedream v3',
-    category: 'image',
-    desc: 'Next-gen image generation trained on brand aesthetics. Photorealistic, on-brand visuals every time.',
-    cost: '5 credits / image',
-    status: 'coming_soon',
-    badge: 'Image AI',
-    color: '#10B981',
-    docs: 'https://seedream.ai',
+    id: 'hubspot', name: 'HubSpot', category: 'crm',
+    desc: 'Connect your email sequences to HubSpot. Turn content engagement into sales pipeline.',
+    cost: 'Free', status: 'coming_soon', badge: 'CRM', color: '#FF7A59',
+    docs: 'https://hubspot.com'
   },
   {
-    id: 'sora',
-    name: 'Sora',
-    category: 'video',
-    desc: "OpenAI's video model. Generate stunning, coherent video from a single sentence.",
-    cost: '25 credits / clip',
-    status: 'coming_soon',
-    badge: 'Video AI',
-    color: '#0EA5E9',
-    docs: 'https://openai.com/sora',
+    id: 'google-drive', name: 'Google Drive', category: 'productivity',
+    desc: 'Import brand documents, guidelines, and assets directly from Drive into Brand Brain.',
+    cost: 'Free', status: 'coming_soon', badge: 'Productivity', color: '#4285F4',
+    docs: 'https://drive.google.com'
   },
   {
-    id: 'heygen',
-    name: 'HeyGen',
-    category: 'video',
-    desc: 'AI avatar videos. Turn text into professional talking-head videos with your digital twin.',
-    cost: '30 credits / video',
-    status: 'coming_soon',
-    badge: 'Avatar AI',
-    color: '#8B5CF6',
-    docs: 'https://heygen.com',
+    id: 'google-analytics', name: 'Google Analytics', category: 'analytics',
+    desc: 'See which content drives real traffic and conversions. Close the loop between posts and revenue.',
+    cost: 'Free', status: 'coming_soon', badge: 'Analytics', color: '#F9AB00',
+    docs: 'https://analytics.google.com'
   },
   {
-    id: 'make',
-    name: 'Make.com',
-    category: 'automation',
-    desc: 'Connect Nexa to 2000+ apps. Trigger content generation, sequences, or notifications from any external tool.',
-    cost: 'Free',
-    status: 'active',
-    badge: 'Automation',
-    color: '#A855F7',
-    docs: 'https://make.com',
+    id: 'asana', name: 'Asana', category: 'productivity',
+    desc: 'Turn your content calendar into Asana tasks. Keep your team aligned on every piece.',
+    cost: 'Free', status: 'coming_soon', badge: 'Productivity', color: '#F06A6A',
+    docs: 'https://asana.com'
   },
   {
-    id: 'zapier',
-    name: 'Zapier',
-    category: 'automation',
-    desc: 'Automate anything. Trigger content generation or sequences from any Zapier-connected tool.',
-    cost: 'Free',
-    status: 'active',
-    badge: 'Automation',
-    color: '#FF6B35',
-    docs: 'https://zapier.com',
+    id: 'calendly', name: 'Calendly', category: 'crm',
+    desc: 'Attach your booking link to content automatically. Turn readers into booked calls.',
+    cost: 'Free', status: 'coming_soon', badge: 'Sales', color: '#006BFF',
+    docs: 'https://calendly.com'
   },
   {
-    id: 'apollo',
-    name: 'Apollo.io',
-    category: 'outreach',
-    desc: 'Import contacts from Apollo directly into Nexa email sequences. 275M+ verified contacts.',
-    cost: 'Free connector',
-    status: 'coming_soon',
-    badge: 'Outreach',
-    color: '#3B82F6',
-    docs: 'https://apollo.io',
-  },
-  {
-    id: 'instagram',
-    name: 'Instagram',
-    category: 'publishing',
+    id: 'instagram', name: 'Instagram', category: 'publishing',
     desc: 'Publish posts, Reels, and Stories directly from Nexa. Schedule weeks in advance.',
-    cost: '1 credit / post',
-    status: 'beta',
-    badge: 'Publishing',
-    color: '#E1306C',
-    docs: 'https://developers.facebook.com',
+    cost: '1 credit / post', status: 'beta', badge: 'Publishing', color: '#E1306C',
+    docs: 'https://developers.facebook.com'
   },
   {
-    id: 'linkedin',
-    name: 'LinkedIn',
-    category: 'publishing',
+    id: 'linkedin', name: 'LinkedIn', category: 'publishing',
     desc: 'Auto-publish posts and articles to your LinkedIn profile or company page.',
-    cost: '1 credit / post',
-    status: 'beta',
-    badge: 'Publishing',
-    color: '#0A66C2',
-    docs: 'https://developer.linkedin.com',
+    cost: '1 credit / post', status: 'beta', badge: 'Publishing', color: '#0A66C2',
+    docs: 'https://developer.linkedin.com'
   },
   {
-    id: 'x',
-    name: 'X / Twitter',
-    category: 'publishing',
-    desc: 'Schedule tweets and threads. Auto-publish at optimal times based on your audience data.',
-    cost: '1 credit / post',
-    status: 'beta',
-    badge: 'Publishing',
-    color: '#1DA1F2',
-    docs: 'https://developer.x.com',
+    id: 'x', name: 'X / Twitter', category: 'publishing',
+    desc: 'Schedule and publish threads at optimal times based on your audience data.',
+    cost: '1 credit / post', status: 'beta', badge: 'Publishing', color: '#000000',
+    docs: 'https://developer.x.com'
   },
   {
-    id: 'tiktok',
-    name: 'TikTok',
-    category: 'publishing',
-    desc: 'Schedule and publish TikTok videos directly from Nexa Studio. Pending TikTok app review.',
-    cost: '1 credit / post',
-    status: 'beta',
-    badge: 'Publishing',
-    color: '#FF0050',
-    docs: 'https://developers.tiktok.com',
+    id: 'tiktok', name: 'TikTok', category: 'publishing',
+    desc: 'Schedule and publish TikTok videos directly from Nexa Studio.',
+    cost: '1 credit / post', status: 'beta', badge: 'Publishing', color: '#FF0050',
+    docs: 'https://developers.tiktok.com'
   },
   {
-    id: 'flux',
-    name: 'Flux (fal.ai)',
-    category: 'image',
-    desc: 'Black Forest Labs image model via fal.ai. Exceptional quality for product photography and brand visuals.',
-    cost: '5 credits / image',
-    status: 'active',
-    badge: 'Image AI',
-    color: '#14B8A6',
-    docs: 'https://blackforestlabs.ai',
+    id: 'make', name: 'Make.com', category: 'automation',
+    desc: 'Connect Nexa to 2000+ apps. Trigger content generation from any external tool.',
+    cost: 'Free', status: 'active', badge: 'Automation', color: '#A855F7',
+    docs: 'https://make.com'
   },
   {
-    id: 'claude',
-    name: 'Claude (Anthropic)',
-    category: 'all',
-    desc: 'The intelligence powering all of Nexa — content generation, strategy, brand analysis, and AI chat.',
-    cost: 'Built in',
-    status: 'active',
-    badge: 'Core AI',
-    color: '#00AAFF',
-    docs: 'https://anthropic.com',
+    id: 'zapier', name: 'Zapier', category: 'automation',
+    desc: 'Automate anything. Trigger Nexa actions from any Zapier-connected tool.',
+    cost: 'Free', status: 'active', badge: 'Automation', color: '#FF6B35',
+    docs: 'https://zapier.com'
+  },
+  {
+    id: 'whatsapp', name: 'WhatsApp Business', category: 'communication',
+    desc: 'Send email sequences via WhatsApp. Reach clients where they actually respond.',
+    cost: 'Free', status: 'coming_soon', badge: 'Communication', color: '#25D366',
+    docs: 'https://business.whatsapp.com'
   },
 ]
 
 const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'all',         label: 'All' },
-  { id: 'video',       label: 'Video' },
-  { id: 'image',       label: 'Image' },
-  { id: 'voice',       label: 'Voice' },
-  { id: 'publishing',  label: 'Publishing' },
-  { id: 'automation',  label: 'Automation' },
-  { id: 'outreach',    label: 'Outreach' },
+  { id: 'all',           label: 'All' },
+  { id: 'publishing',    label: 'Publishing' },
+  { id: 'productivity',  label: 'Productivity' },
+  { id: 'automation',    label: 'Automation' },
+  { id: 'crm',           label: 'CRM & Sales' },
+  { id: 'analytics',     label: 'Analytics' },
+  { id: 'communication', label: 'Communication' },
 ]
 
 const STATUS_CONFIG = {
@@ -178,7 +108,7 @@ const STATUS_CONFIG = {
 }
 
 export default function IntegrationsPage() {
-  const [category, setCategory] = useState<Category>('all')
+  const [category, setCategory] = useState<Category>('all' as Category)
   const [search, setSearch] = useState('')
 
   const filtered = INTEGRATIONS.filter(i => {
@@ -199,7 +129,7 @@ export default function IntegrationsPage() {
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 4 }}>Integrations</h1>
         <p style={{ fontSize: 13, color: 'var(--t4)', marginBottom: 16 }}>
-          Every AI model and tool, connected through one brain.
+          The tools your business already uses, connected to your content engine.
         </p>
         <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
           <span style={{ color: '#00d68f', fontWeight: 600 }}>● {active} active</span>
@@ -219,7 +149,7 @@ export default function IntegrationsPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search integrations..."
             style={{ width: '100%', padding: '9px 12px 9px 34px', fontSize: 13, fontFamily: 'var(--sans)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, color: 'var(--t1)', outline: 'none' }}
-            onFocus={e => (e.target.style.borderColor = 'var(--cline2)')}
+            onFocus={e => (e.target.style.borderColor = 'var(--cyan-line)')}
             onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
           />
         </div>
@@ -237,9 +167,9 @@ export default function IntegrationsPage() {
         {filtered.map(integration => {
           const statusConf = STATUS_CONFIG[integration.status as keyof typeof STATUS_CONFIG]
           return (
-            <div key={integration.id} style={{ padding: '20px', background: 'var(--glass)', border: `1px solid ${integration.status === 'active' ? 'var(--cline2)' : 'var(--line2)'}`, borderRadius: 14, position: 'relative', transition: 'border-color .15s, transform .15s' }}
+            <div key={integration.id} style={{ padding: '20px', background: 'var(--glass)', border: `1px solid ${integration.status === 'active' ? 'var(--cyan-line)' : 'var(--line2)'}`, borderRadius: 14, position: 'relative', transition: 'border-color .15s, transform .15s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.18)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = integration.status === 'active' ? 'var(--cline2)' : 'var(--line2)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = integration.status === 'active' ? 'var(--cyan-line)' : 'var(--line2)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
             >
               {/* Top row */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -288,10 +218,10 @@ export default function IntegrationsPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div style={{ marginTop: 28, padding: '20px 24px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cline2)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginTop: 28, padding: '20px 24px', background: 'rgba(0,170,255,0.04)', border: '1px solid var(--cyan-line)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 4 }}>Missing an integration?</div>
-          <div style={{ fontSize: 12, color: 'var(--t4)' }}>Tell us what tools you use and we will prioritize connecting them.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginBottom: 4 }}>Need a specific integration?</div>
+          <div style={{ fontSize: 12, color: 'var(--t4)' }}>We add new ones every week based on what our users actually use.</div>
         </div>
         <a href="mailto:hello@nexaa.cc?subject=Integration request" style={{ padding: '9px 18px', fontSize: 13, fontWeight: 700, background: 'var(--cyan)', color: '#000', borderRadius: 9, textDecoration: 'none', fontFamily: 'var(--sans)', whiteSpace: 'nowrap', flexShrink: 0 }}>
           Request integration →

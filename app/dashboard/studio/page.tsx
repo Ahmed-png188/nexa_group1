@@ -213,8 +213,8 @@ function ErrBanner({ msg }: { msg: string }) {
 function UpgradeGate({ feature, requiredPlan, color }: { feature:string; requiredPlan:string; color:string }) {
   const prices: Record<string,string> = { grow:'$89/mo', scale:'$179/mo', agency:'$349/mo' }
   const feats: Record<string,string[]> = {
-    grow:   ['Image generation with Flux','Email sequences','Webhooks','1,500 credits/mo'],
-    scale:  ['Video generation with Kling AI','Voice with ElevenLabs','Competitor analysis','5,000 credits/mo'],
+    grow:   ['Image generation','Email sequences','Webhooks','1,500 credits/mo'],
+    scale:  ['Video generation','Voice generation','Competitor analysis','5,000 credits/mo'],
     agency: ['Client workspaces','Agency dashboard','All AI models','15,000 credits/mo'],
   }
   const label = requiredPlan.charAt(0).toUpperCase()+requiredPlan.slice(1)
@@ -553,7 +553,7 @@ function StudioInner() {
             {!planAccess.image && <UpgradeGate feature="Image generation" requiredPlan="grow" color="#A78BFA"/>}
             {planAccess.image && (
               <div>
-                <ProvBadge name="Flux" desc="Photorealistic brand imagery - ~15 seconds" color="#A78BFA"/>
+                <ProvBadge name="Nexa Visuals" desc="Brand-accurate AI image generation" color="#A78BFA"/>
                 <div style={{ marginBottom:22 }}>
                   <SLabel>Describe your image</SLabel>
                   <Textarea value={iPrompt} onChange={setIPrompt} rows={4} placeholder="Be specific. A focused founder at a dark oak desk, morning light, premium editorial photography."/>
@@ -581,7 +581,7 @@ function StudioInner() {
                     </div>
                   </div>
                 </div>
-                <GenBtn active={!!iPrompt.trim()} loading={iGen} label="Generate image - 5 credits" loadingLabel="Flux is painting..." onClick={generateImage} color="#A78BFA"/>
+                <GenBtn active={!!iPrompt.trim()} loading={iGen} label="Generate image - 5 credits" loadingLabel="Generating your image..." onClick={generateImage} color="#A78BFA"/>
                 {iErr && <ErrBanner msg={iErr}/>}
                 {iResult && (
                   <div style={{ marginTop:22,animation:'pageUp 0.35s ease both' }}>
@@ -611,7 +611,7 @@ function StudioInner() {
             {!planAccess.video && <UpgradeGate feature="Video generation" requiredPlan="scale" color="#FF7A40"/>}
             {planAccess.video && (
               <div>
-                <ProvBadge name="Kling 3.0" desc="Cinematic video - renders in 1-3 minutes" color="#FF7A40"/>
+                <ProvBadge name="Nexa Video" desc="Cinematic AI video generation" color="#FF7A40"/>
                 <div style={{ marginBottom:20 }}>
                   <SLabel>Mode</SLabel>
                   <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7 }}>
@@ -702,7 +702,7 @@ function StudioInner() {
                     {creditBalance < 20 ? `⚠ Need 20 credits (have ${creditBalance})` : `20 credits · ${creditBalance} available`}
                   </span>
                 </div>
-                <GenBtn active={!!vPrompt.trim()} loading={vGen} label="Generate video - 20 credits" loadingLabel="Kling is rendering..." onClick={()=>setVConfirm(true)} color="#FF7A40"/>
+                <GenBtn active={!!vPrompt.trim()} loading={vGen} label="Generate video - 20 credits" loadingLabel="Rendering your video..." onClick={()=>setVConfirm(true)} color="#FF7A40"/>
                 {vConfirm && !vGen && (
                   <div style={{ marginTop:10, padding:'14px 16px', background:'rgba(255,122,64,0.07)', border:'1px solid rgba(255,122,64,0.22)', borderRadius:12 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', marginBottom:4 }}>Confirm generation</div>
@@ -752,7 +752,7 @@ function StudioInner() {
             {!planAccess.voice && <UpgradeGate feature="Voice generation" requiredPlan="scale" color="#34D399"/>}
             {planAccess.voice && (
               <div>
-                <ProvBadge name="ElevenLabs" desc="Ultra-realistic voiceovers - 8 languages" color="#34D399"/>
+                <ProvBadge name="Nexa Voice" desc="Ultra-realistic AI voiceovers, indistinguishable from human speech" color="#34D399"/>
                 <div style={{ marginBottom:24 }}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9 }}>
                     <SLabel>Script</SLabel>
@@ -790,7 +790,7 @@ function StudioInner() {
                     {creditBalance < 8 ? `⚠ Need 8 credits (have ${creditBalance})` : `8 credits · ${creditBalance} available`}
                   </span>
                 </div>
-                <GenBtn active={!!vxText.trim()} loading={vxGen} label="Generate voiceover - 8 credits" loadingLabel="ElevenLabs is rendering..." onClick={()=>setVxConfirm(true)} color="#34D399"/>
+                <GenBtn active={!!vxText.trim()} loading={vxGen} label="Generate voiceover - 8 credits" loadingLabel="Rendering your voiceover..." onClick={()=>setVxConfirm(true)} color="#34D399"/>
                 {vxConfirm && !vxGen && (
                   <div style={{ marginTop:10, padding:'14px 16px', background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.22)', borderRadius:12 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', marginBottom:4 }}>Confirm generation</div>
