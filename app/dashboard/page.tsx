@@ -249,7 +249,7 @@ export default function HomePage() {
               {/* Today's angle */}
               {brief.todays_angle && (
                 <div
-                  onClick={() => { window.location.href = '/dashboard/studio' }}
+                  onClick={() => { window.location.href = `/dashboard/studio${brief.todays_angle ? `?angle=${encodeURIComponent(brief.todays_angle)}` : ''}` }}
                   style={{padding:'14px 16px',background:'rgba(167,139,250,0.06)',border:'1px solid rgba(167,139,250,0.15)',borderRadius:13,cursor:'pointer',transition:'all 0.15s'}}
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(167,139,250,0.1)';(e.currentTarget as HTMLElement).style.borderColor='rgba(167,139,250,0.3)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(167,139,250,0.06)';(e.currentTarget as HTMLElement).style.borderColor='rgba(167,139,250,0.15)'}}>
@@ -316,10 +316,10 @@ export default function HomePage() {
               <div style={{fontFamily:'var(--display)',fontSize:17,fontWeight:800,color:'rgba(255,255,255,0.92)',letterSpacing:'-0.03em',marginBottom:2}}>Agents</div>
               <div style={{fontSize:13,color:'var(--t4)',fontFamily:'var(--sans)'}}>One click. Nexa executes.</div>
             </div>
-            <a href="/dashboard/automate" style={{fontSize:11,fontWeight:600,color:'#4D9FFF',textDecoration:'none',display:'flex',alignItems:'center',gap:4,opacity:0.75,transition:'opacity 0.15s'}}
+            <a href="/dashboard/schedule" style={{fontSize:11,fontWeight:600,color:'#4D9FFF',textDecoration:'none',display:'flex',alignItems:'center',gap:4,opacity:0.75,transition:'opacity 0.15s'}}
               onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='1'}
               onMouseLeave={e=>(e.currentTarget as HTMLElement).style.opacity='0.75'}>
-              All agents <span style={{display:'flex'}}>{Ic.arrow}</span>
+              Schedule <span style={{display:'flex'}}>{Ic.arrow}</span>
             </a>
           </div>
 

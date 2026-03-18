@@ -112,7 +112,7 @@ function Inner() {
   }
 
   async function del(id:string) {
-    await supabase.from('content').delete().eq('id',id)
+    await fetch(`/api/schedule-post?id=${id}`, { method: 'DELETE' })
     toast_('Deleted'); load()
   }
 
@@ -451,7 +451,7 @@ function Inner() {
                 <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.95)', marginBottom:3 }}>
                   Schedule a post
                 </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>It publishes automatically at the time you set.</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>Save posts to your calendar — publish manually when you're ready.</div>
               </div>
               <button onClick={()=>setModal(false)}
                 style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.38)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>

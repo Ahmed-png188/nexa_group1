@@ -2,6 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as serviceClient } from '@supabase/supabase-js'
 
+async function getValidToken(emailAccount: any, service: any): Promise<string> {
+  // If token expires within 5 minutes, refresh it
+  if (emailAccount.token_expires_at) {
+    const expiresAt = new Date(emailAccount.token_expires_at).getTime()
+    const fiveMinutes = 5 * 60 * 1000
+    if (Date.now() + fiveMinutes >= expiresAt && emailAccount.refresh_token) {
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+          refresh_token: emailAccount.refresh_token,
+          grant_type: 'refresh_token',
+        }),
+      })
+      const tokens = await res.json()
+      if (tokens.access_token) {
+        const newExpiry = tokens.expires_in
+          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+          : null
+        await service.from('email_accounts').update({
+          access_token: tokens.access_token,
+          token_expires_at: newExpiry,
+        }).eq('id', emailAccount.id)
+        return tokens.access_token
+      }
+    }
+  }
+  return emailAccount.access_token
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
@@ -53,13 +85,14 @@ export async function POST(request: NextRequest) {
       .replace(/\//g, '_')
       .replace(/=+$/, '')
 
+    const accessToken = await getValidToken(emailAccount, service)
     console.log('[Email Send] Sending to:', to, 'subject:', subject, 'from:', emailAccount.email)
 
     // Send via Gmail API
     const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${emailAccount.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ raw: encodedEmail }),

@@ -6,6 +6,13 @@ import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+const SEGMENT_CONTEXT: Record<string, string> = {
+  creator:    'USER SEGMENT: Creator — focused on building audience, content virality, and monetizing influence. Prioritize hooks, consistency, platform growth, and turning followers into buyers.',
+  freelancer: 'USER SEGMENT: Freelancer — focused on winning clients, commanding premium rates, and positioning as a specialist. Prioritize case studies, credibility signals, and content that attracts ideal clients.',
+  business:   'USER SEGMENT: Business Owner — focused on revenue, customer acquisition, and brand authority. Prioritize conversion-focused content, trust-building, and ROI-driven messaging.',
+  agency:     'USER SEGMENT: Agency — focused on client results, team positioning, and scaling services. Prioritize thought leadership, case studies, and content that attracts high-value accounts.',
+}
+
 const NEXA_BRAIN = `
 You are Nexa — a business intelligence engine built for business owners, entrepreneurs, creatives, and freelancers who are serious about growth. Not a content tool. Not a chatbot. A strategic weapon.
 
@@ -89,6 +96,9 @@ export async function POST(request: NextRequest) {
 
     const { workspace, profile } = brand
 
+    const { data: wsData } = await supabase.from('workspaces').select('segment').eq('id', workspace_id).single()
+    const segmentCtx = wsData?.segment ? (SEGMENT_CONTEXT[wsData.segment as string] ?? '') : ''
+
     // Check and deduct credits
     const creditCost = CREDIT_COSTS[type] ?? 3
     const { data: deducted } = await supabase.rpc('deduct_credits', {
@@ -154,7 +164,7 @@ Tone: ${tone_override || workspace.brand_tone || 'confident, direct, premium'}
 `
 
     const systemPrompt = `${NEXA_BRAIN}
-
+${segmentCtx ? `\n${segmentCtx}\n` : ''}
 You are the content writer for ${brand.brandName}.
 
 ${deepBrandContext}

@@ -6,6 +6,13 @@ import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+const SEGMENT_CONTEXT: Record<string, string> = {
+  creator:    'USER SEGMENT: Creator — focused on building audience, content virality, and monetizing influence. Prioritize hooks, consistency, platform growth, and turning followers into buyers.',
+  freelancer: 'USER SEGMENT: Freelancer — focused on winning clients, commanding premium rates, and positioning as a specialist. Prioritize case studies, credibility signals, and content that attracts ideal clients.',
+  business:   'USER SEGMENT: Business Owner — focused on revenue, customer acquisition, and brand authority. Prioritize conversion-focused content, trust-building, and ROI-driven messaging.',
+  agency:     'USER SEGMENT: Agency — focused on client results, team positioning, and scaling services. Prioritize thought leadership, case studies, and content that attracts high-value accounts.',
+}
+
 const NEXA_BRAIN = `
 You are Nexa — a business intelligence engine built for business owners, entrepreneurs, creatives, and freelancers who are serious about growth. Not a content tool. Not a chatbot. A strategic weapon.
 
@@ -60,7 +67,7 @@ export async function POST(request: NextRequest) {
   // Check if we already have a fresh brief (< 6 hours old)
   const { data: ws } = await supabase
     .from('workspaces')
-    .select('*, brief_generated_at, weekly_brief, posting_streak, longest_streak, voice_score_avg, top_angle, last_posted_date')
+    .select('*, brief_generated_at, weekly_brief, posting_streak, longest_streak, voice_score_avg, top_angle, last_posted_date, segment')
     .eq('id', workspace_id)
     .single()
 
@@ -132,8 +139,10 @@ export async function POST(request: NextRequest) {
   const todayKey = days[today.getDay()]
   const todayStrategy = (strategy?.platform_strategy as any)?.[todayKey]
 
-  const prompt = `${NEXA_BRAIN}
+  const segmentCtx = ws?.segment ? (SEGMENT_CONTEXT[ws.segment] ?? '') : ''
 
+  const prompt = `${NEXA_BRAIN}
+${segmentCtx ? `\n${segmentCtx}\n` : ''}
 You are Nexa AI — the brand intelligence engine. Generate a sharp, intelligent morning brief for this brand.
 
 ## Brand

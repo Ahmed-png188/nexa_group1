@@ -42,13 +42,8 @@ export async function POST(request: NextRequest) {
         if (!workspace_id) break
 
         if (type === 'top_up' && credits) {
-          // Add credits to balance
+          // Add credits to balance — fetch then update
           const creditAmount = parseInt(credits)
-          await supabase.from('credits')
-            .update({ balance: supabase.rpc('add_credits' as any, { amount: creditAmount }) })
-            .eq('workspace_id', workspace_id)
-
-          // Simpler approach — fetch and update
           const { data: current } = await supabase
             .from('credits').select('balance').eq('workspace_id', workspace_id).single()
           await supabase.from('credits')

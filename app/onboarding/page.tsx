@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-type Step = 'workspace' | 'voice' | 'upload' | 'analyzing' | 'done'
+type Step = 'segment' | 'workspace' | 'voice' | 'upload' | 'analyzing' | 'done'
+type Segment = 'creator' | 'freelancer' | 'business' | 'agency'
 
 interface BrandAnalysis {
   brand_voice: string
@@ -19,8 +20,16 @@ interface BrandAnalysis {
   first_post_body: string
 }
 
+const SEGMENTS: { id: Segment; label: string; sub: string; color: string; emoji: string }[] = [
+  { id: 'creator',    label: 'Creator',    sub: 'Content, audience, influence',   color: '#A78BFA', emoji: '✦' },
+  { id: 'freelancer', label: 'Freelancer', sub: 'Services, clients, rates',        color: '#4D9FFF', emoji: '⌖' },
+  { id: 'business',   label: 'Business',   sub: 'Products, revenue, growth',       color: '#34D399', emoji: '◆' },
+  { id: 'agency',     label: 'Agency',     sub: 'Team, clients, scale',            color: '#FF7A40', emoji: '⬡' },
+]
+
 export default function OnboardingPage() {
-  const [step, setStep]                   = useState<Step>('workspace')
+  const [step, setStep]                   = useState<Step>('segment')
+  const [segment, setSegment]             = useState<Segment | null>(null)
   const [workspaceName, setWorkspaceName] = useState('')
   const [brandName, setBrandName]         = useState('')
   const [brandWebsite, setBrandWebsite]   = useState('')
@@ -80,7 +89,12 @@ export default function OnboardingPage() {
     const data = await res.json()
     if (!res.ok) { setError('Something went wrong. Please try again.'); return }
 
-    setWorkspaceId(data.workspace.id)
+    const wsId = data.workspace.id
+    setWorkspaceId(wsId)
+    // Save segment to workspace
+    if (segment) {
+      await supabase.from('workspaces').update({ segment }).eq('id', wsId)
+    }
     setStep('voice')
   }
 
@@ -193,7 +207,7 @@ export default function OnboardingPage() {
     router.push('/dashboard')
   }
 
-  const STEPS: Step[] = ['workspace', 'voice', 'upload', 'analyzing', 'done']
+  const STEPS: Step[] = ['segment', 'workspace', 'voice', 'upload', 'analyzing', 'done']
   const stepIndex = STEPS.indexOf(step)
 
   return (
@@ -229,6 +243,31 @@ export default function OnboardingPage() {
               <div key={s} style={{ height:3, borderRadius:2, width: step===s ? 28 : 8, background: i < stepIndex ? 'rgba(30,142,240,0.55)' : step===s ? '#1E8EF0' : 'rgba(255,255,255,0.1)', transition:'all 0.35s ease' }}/>
             ))}
           </div>
+
+          {step === 'segment' && (
+            <div className="ob-card" style={card}>
+              <div style={topLine}/>
+              <h1 style={h1}>What best describes you?</h1>
+              <p style={{ ...sub, marginBottom:24 }}>Nexa tailors everything — strategy, content, voice — to your business type.</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:22 }}>
+                {SEGMENTS.map(s => {
+                  const selected = segment === s.id
+                  return (
+                    <button key={s.id} onClick={() => setSegment(s.id)}
+                      style={{ padding:'18px 16px', borderRadius:12, background:selected?`${s.color}12`:'rgba(255,255,255,0.03)', border:`1px solid ${selected?s.color+'44':'rgba(255,255,255,0.1)'}`, cursor:'pointer', textAlign:'left', transition:'all 0.18s', outline:'none', boxShadow:selected?`0 0 0 1px ${s.color}22`:'none' }}>
+                      <div style={{ fontSize:18, marginBottom:8, color:s.color }}>{s.emoji}</div>
+                      <div style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:800, color:selected?'#fff':'rgba(255,255,255,0.75)', marginBottom:3, letterSpacing:'-0.02em' }}>{s.label}</div>
+                      <div style={{ fontSize:11, color:selected?`${s.color}cc`:'rgba(255,255,255,0.35)', lineHeight:1.4 }}>{s.sub}</div>
+                    </button>
+                  )
+                })}
+              </div>
+              <button onClick={() => { if (segment) setStep('workspace') }} className="ob-btn-primary"
+                style={{ ...btnPrimary, opacity: segment ? 1 : 0.5 }}>
+                Continue →
+              </button>
+            </div>
+          )}
 
           {step === 'workspace' && (
             <div className="ob-card" style={card}>

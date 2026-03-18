@@ -259,7 +259,7 @@ function StudioInner() {
   const imgRef       = useRef<HTMLInputElement>(null)
 
   const [ws,             setWs]             = useState<any>(null)
-  const [creditBalance,  setCreditBalance]  = useState<number>(9999)
+  const [creditBalance,  setCreditBalance]  = useState<number>(0)
   const [tab,            setTab]            = useState<Tab>('pipeline')
   const [recent,         setRecent]         = useState<any[]>([])
   const [mounted,        setMounted]        = useState(false)

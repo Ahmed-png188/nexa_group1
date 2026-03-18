@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { type, to, name } = await request.json()
+    const { type, to, name, plan, credits: planCredits } = await request.json()
 
     if (type === 'welcome') {
       const firstName = name?.split(' ')[0] || to.split('@')[0]
@@ -99,11 +99,68 @@ export async function POST(request: NextRequest) {
 </body>
 </html>`,
       })
+    } else if (type === 'plan_activated' || type === 'plan_renewed') {
+      const firstName = name?.split(' ')[0] || to.split('@')[0]
+      const planName = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'your'
+      const subject = type === 'plan_activated'
+        ? `You're on the ${planName} plan — ${planCredits?.toLocaleString()} credits added`
+        : `${planName} plan renewed — ${planCredits?.toLocaleString()} credits added`
+      await resend.emails.send({
+        from: `Nexa <hello@nexaa.cc>`,
+        to,
+        subject,
+        html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#03030A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#F0EEF8;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#03030A;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#070712;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,rgba(77,159,255,0.3) 0%,rgba(7,7,18,1) 60%,rgba(52,211,153,0.15) 100%);padding:36px 40px 28px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <img src="https://nexaa.cc/favicon.png" width="40" height="40" style="border-radius:10px;display:block;margin:0 auto 16px;" alt="Nexa">
+            <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0EEF8;letter-spacing:-0.03em;">${subject}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;">
+            <p style="margin:0 0 16px;font-size:15px;color:rgba(240,238,248,0.8);line-height:1.7;">Hey ${firstName},</p>
+            <p style="margin:0 0 20px;font-size:15px;color:rgba(240,238,248,0.65);line-height:1.75;">
+              ${type === 'plan_activated'
+                ? `Your <strong style="color:#4D9FFF;">${planName} plan</strong> is now active. ${planCredits?.toLocaleString()} credits have been added to your workspace.`
+                : `Your <strong style="color:#4D9FFF;">${planName} plan</strong> has renewed. ${planCredits?.toLocaleString()} fresh credits are ready to use.`}
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+              <tr>
+                <td style="background:rgba(77,159,255,0.06);border:1px solid rgba(77,159,255,0.16);border-radius:12px;padding:20px;text-align:center;">
+                  <div style="font-size:11px;font-weight:600;color:rgba(77,159,255,0.7);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Credits added</div>
+                  <div style="font-size:32px;font-weight:300;color:#4D9FFF;letter-spacing:-0.04em;">${planCredits?.toLocaleString()}</div>
+                </td>
+              </tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center">
+                <a href="https://nexaa.cc/dashboard" style="display:inline-block;background:#1E8EF0;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:10px;">Open your workspace →</a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+            <p style="margin:0;font-size:12px;color:rgba(240,238,248,0.25);">Nexa · <a href="https://nexaa.cc" style="color:rgba(30,142,240,0.6);text-decoration:none;">nexaa.cc</a></p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      })
     }
 
     return NextResponse.json({ success: true })
-  } catch (err: any) {
-    console.error('[notify] error:', err)
+  } catch (error: unknown) {
+    console.error('[notify] error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }

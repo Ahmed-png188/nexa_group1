@@ -15,19 +15,6 @@ export async function GET(request: NextRequest) {
       const { email, user_metadata } = data.user
       const name = user_metadata?.full_name ?? email?.split('@')[0] ?? 'there'
 
-      console.log(`[callback] Firing welcome email to ${email}`)
-
-      // Non-blocking — don't await so redirect is instant
-      fetch(`${origin}/api/notify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
-        },
-        body: JSON.stringify({ type: 'welcome', to: email, name }),
-      }).then(r => console.log(`[callback] notify responded ${r.status}`))
-        .catch(err => console.error('[callback] Welcome email failed:', err))
-
       // Check if user already has a workspace → send to dashboard, else onboarding
       const { data: membership } = await supabase
         .from('workspace_members')
@@ -39,8 +26,16 @@ export async function GET(request: NextRequest) {
       if (membership?.workspace_id) {
         return NextResponse.redirect(`${origin}/dashboard`)
       }
-    } else {
-      console.log('[callback] No user in session data — email not sent')
+
+      // New user — send welcome email (non-blocking)
+      fetch(`${origin}/api/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+        },
+        body: JSON.stringify({ type: 'welcome', to: email, name }),
+      }).catch(err => console.error('[callback] Welcome email failed:', err))
     }
   }
 

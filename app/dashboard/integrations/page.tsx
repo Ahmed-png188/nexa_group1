@@ -74,13 +74,13 @@ const INTEGRATIONS = [
   {
     id: 'make', name: 'Make.com', category: 'automation',
     desc: 'Connect Nexa to 2000+ apps. Trigger content generation from any external tool.',
-    cost: 'Free', status: 'active', badge: 'Automation', color: '#A855F7',
+    cost: 'Free', status: 'coming_soon', badge: 'Automation', color: '#A855F7',
     docs: 'https://make.com'
   },
   {
     id: 'zapier', name: 'Zapier', category: 'automation',
     desc: 'Automate anything. Trigger Nexa actions from any Zapier-connected tool.',
-    cost: 'Free', status: 'active', badge: 'Automation', color: '#FF6B35',
+    cost: 'Free', status: 'coming_soon', badge: 'Automation', color: '#FF6B35',
     docs: 'https://zapier.com'
   },
   {

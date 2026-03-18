@@ -215,7 +215,7 @@ function AmplifyInner() {
 
       // Load recent content
       const { data: content } = await supabase
-        .from('content_items')
+        .from('content')
         .select('id, content, image_url, platform, created_at')
         .eq('workspace_id', member.workspace_id)
         .order('created_at', { ascending: false })
@@ -245,7 +245,7 @@ function AmplifyInner() {
   async function loadContentById(id: string) {
     try {
       const { data } = await supabase
-        .from('content_items')
+        .from('content')
         .select('id, content, image_url, platform, created_at')
         .eq('id', id)
         .single()

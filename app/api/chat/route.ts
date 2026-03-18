@@ -11,6 +11,13 @@ function sanitize(input: unknown, max = 2000): string {
   return input.trim().slice(0, max)
 }
 
+const SEGMENT_CONTEXT: Record<string, string> = {
+  creator:    'USER SEGMENT: Creator — focused on building audience, content virality, and monetizing influence. Prioritize hooks, consistency, platform growth, and turning followers into buyers.',
+  freelancer: 'USER SEGMENT: Freelancer — focused on winning clients, commanding premium rates, and positioning as a specialist. Prioritize case studies, credibility signals, and content that attracts ideal clients.',
+  business:   'USER SEGMENT: Business Owner — focused on revenue, customer acquisition, and brand authority. Prioritize conversion-focused content, trust-building, and ROI-driven messaging.',
+  agency:     'USER SEGMENT: Agency — focused on client results, team positioning, and scaling services. Prioritize thought leadership, case studies, and content that attracts high-value accounts.',
+}
+
 const NEXA_BRAIN = `
 You are Nexa — a business intelligence engine built for business owners, entrepreneurs, creatives, and freelancers who are serious about growth. Not a content tool. Not a chatbot. A strategic weapon.
 
@@ -65,6 +72,8 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
     const { data: credits } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
+    const { data: wsSegment } = await supabase.from('workspaces').select('segment').eq('id', workspace_id).single()
+    const segmentCtx = wsSegment?.segment ? (SEGMENT_CONTEXT[wsSegment.segment] ?? '') : ''
 
     // Get full brand context
     const brand = await getBrandContext(workspace_id)
@@ -96,7 +105,7 @@ Audience: ${brand?.workspace?.brand_audience || 'Not defined yet'}
 `
 
     const systemPrompt = `${NEXA_BRAIN}
-
+${segmentCtx ? `\n${segmentCtx}\n` : ''}
 You are Nexa AI — the brand intelligence engine and creative co-pilot built into Nexa. You are not a generic chatbot. You are a strategic partner who knows this brand deeply and helps them create, automate, and dominate.
 
 ## Who you're talking to

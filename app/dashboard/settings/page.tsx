@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Tab = 'profile'|'workspace'|'billing'|'password'
+type Tab = 'profile'|'workspace'|'billing'|'password'|'leadpage'
 
 const PLANS = [
   {
@@ -49,6 +49,7 @@ const NAV = [
   { id:'profile'   as Tab, label:'Profile',   icon:Ic.user, desc:'Your name, email, bio' },
   { id:'workspace' as Tab, label:'Workspace', icon:Ic.ws,   desc:'Brand voice, audience, niche' },
   { id:'billing'   as Tab, label:'Billing',   icon:Ic.card, desc:'Plan, credits, upgrades' },
+  { id:'leadpage'  as Tab, label:'Lead page', icon:Ic.bolt, desc:'Your public capture page' },
   { id:'password'  as Tab, label:'Security',  icon:Ic.lock, desc:'Change your password' },
 ]
 
@@ -161,6 +162,9 @@ function SettingsInner() {
   const [pwErr,      setPwErr]      = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
+  const [slug,       setSlug]       = useState('')
+  const [customQ,    setCustomQ]    = useState('')
+  const [copied,     setCopied]     = useState(false)
 
   function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),4000) }
 
@@ -189,6 +193,7 @@ function SettingsInner() {
     setWsName(w?.name||''); setNiche(w?.niche||'')
     setVoice(w?.brand_voice||''); setTone(w?.brand_tone||'')
     setAudience(w?.brand_audience||'')
+    setSlug(w?.slug||''); setCustomQ(w?.lead_page_custom_question||'')
     setLoading(false)
   }
 
@@ -227,14 +232,8 @@ function SettingsInner() {
     if (!deleteConfirm) { setDeleteConfirm(true); return }
     setDeleting(true)
     try {
-      // Delete workspace data first
-      if (ws?.id) {
-        await supabase.from('content').delete().eq('workspace_id', ws.id)
-        await supabase.from('credits').delete().eq('workspace_id', ws.id)
-        await supabase.from('workspace_members').delete().eq('workspace_id', ws.id)
-        await supabase.from('workspaces').delete().eq('id', ws.id)
-      }
-      // Sign out (admin deleteUser requires service role; client-side we sign out)
+      const r = await fetch('/api/account/delete', { method: 'DELETE' })
+      if (!r.ok) throw new Error('Delete failed')
       await supabase.auth.signOut()
       router.push('/')
     } catch {
@@ -242,6 +241,13 @@ function SettingsInner() {
       setDeleting(false)
       setDeleteConfirm(false)
     }
+  }
+
+  async function openPortal() {
+    const r = await fetch('/api/stripe/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspace_id: ws?.id }) })
+    const d = await r.json()
+    if (d.url) router.push(d.url)
+    else toast_('Could not open billing portal', false)
   }
 
   if (loading) return (
@@ -422,6 +428,19 @@ function SettingsInner() {
                 </div>
               </div>
 
+              {/* Manage subscription */}
+              {ws?.stripe_subscription_id && (
+                <div style={{ marginBottom:24 }}>
+                  <button onClick={openPortal}
+                    style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:11, color:'rgba(255,255,255,0.7)', cursor:'pointer', transition:'all 0.18s', letterSpacing:'-0.01em' }}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.18)'}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.1)'}}>
+                    <span style={{ display:'flex' }}>{Ic.card}</span>Manage subscription →
+                  </button>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:6 }}>Update payment method, view invoices, or cancel</div>
+                </div>
+              )}
+
               {/* Plan cards */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(210px,1fr))', gap:10 }}>
                 {PLANS.map(plan => {
@@ -483,6 +502,52 @@ function SettingsInner() {
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* ════ LEAD PAGE ════ */}
+          {tab === 'leadpage' && (
+            <div style={{ maxWidth:520, animation:'pageUp 0.35s ease both' }}>
+              <div style={{ marginBottom:28 }}>
+                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Lead page</h2>
+                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Your public page at nexaa.cc/[slug] — captures leads directly into your contacts</p>
+              </div>
+
+              <Field label="Page slug" hint="Your public URL: nexaa.cc/your-slug">
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <span style={{ fontSize:13, color:'rgba(255,255,255,0.35)', flexShrink:0 }}>nexaa.cc/</span>
+                  <Input value={slug} onChange={setSlug} placeholder="your-brand"/>
+                </div>
+              </Field>
+
+              {slug && (
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', padding:'10px 14px', background:'rgba(52,211,153,0.05)', border:'1px solid rgba(52,211,153,0.18)', borderRadius:10 }}>
+                    <span style={{ fontSize:12, color:'rgba(52,211,153,0.8)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      nexaa.cc/{slug}
+                    </span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`https://nexaa.cc/${slug}`); setCopied(true); setTimeout(()=>setCopied(false),2000) }}
+                      style={{ fontSize:11, fontWeight:700, color:copied?'#34D399':'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 0' }}>
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <a href={`https://nexaa.cc/${slug}`} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize:11, fontWeight:700, color:'#4D9FFF', textDecoration:'none', flexShrink:0 }}>
+                      Preview →
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <Field label="Custom question" hint="Shown on your lead page form — optional">
+                <Input value={customQ} onChange={setCustomQ} placeholder="What's your biggest challenge right now?"/>
+              </Field>
+
+              <SaveBtn onClick={async () => {
+                if (!ws) return; setSaving(true); setSaved(false)
+                await supabase.from('workspaces').update({ slug: slug.toLowerCase().trim().replace(/\s+/g,'-'), lead_page_custom_question: customQ }).eq('id', ws.id)
+                toast_('Lead page saved'); setSaved(true); setTimeout(()=>setSaved(false),3000); setSaving(false)
+              }} saving={saving} saved={saved}/>
             </div>
           )}
 
