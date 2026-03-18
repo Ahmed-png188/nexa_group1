@@ -201,18 +201,21 @@ export default function LandingPage() {
             {/* Dashboard preview */}
             <div style={{
               background: 'linear-gradient(135deg, #050510 0%, #07071A 35%, #0A0720 65%, #0F0710 100%)',
-              borderLeft: '1px solid rgba(255,255,255,0.07)',
-              borderRight: '1px solid rgba(255,255,255,0.07)',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              borderRight: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
               borderRadius: '0 0 12px 12px',
               padding: '28px 24px',
               position: 'relative',
               overflow: 'hidden',
               minHeight: 440,
             }}>
-              <div style={{ position:'absolute', top:-80, left:-40, width:380, height:280, borderRadius:'50%', background:'#5B21B6', filter:'blur(130px)', opacity:0.18, pointerEvents:'none' }}/>
-              <div style={{ position:'absolute', top:-20, right:-60, width:300, height:220, borderRadius:'50%', background:'#C2410C', filter:'blur(120px)', opacity:0.12, pointerEvents:'none' }}/>
-              <div style={{ position:'absolute', bottom:-40, left:'40%', width:260, height:180, borderRadius:'50%', background:'#0C5FBF', filter:'blur(100px)', opacity:0.08, pointerEvents:'none' }}/>
+              {/* Purple bloom */}
+              <div style={{ position:'absolute', top:-80, left:-40, width:380, height:280, borderRadius:'50%', background:'#5B21B6', filter:'blur(130px)', opacity:0.22, pointerEvents:'none' }}/>
+              {/* Orange ember */}
+              <div style={{ position:'absolute', top:-20, right:-60, width:300, height:220, borderRadius:'50%', background:'#C2410C', filter:'blur(120px)', opacity:0.15, pointerEvents:'none' }}/>
+              {/* Blue cold */}
+              <div style={{ position:'absolute', bottom:-40, left:'40%', width:260, height:180, borderRadius:'50%', background:'#0C5FBF', filter:'blur(100px)', opacity:0.1, pointerEvents:'none' }}/>
 
               <div style={{ position:'relative', zIndex:1 }}>
                 <div style={{ marginBottom:20 }}>
@@ -240,7 +243,7 @@ export default function LandingPage() {
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                  <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)', position:'relative', overflow:'hidden' }}>
+                  <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)', position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(77,171,247,0.3),transparent)' }}/>
                     <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:13, fontWeight:700, color:'#fff', letterSpacing:'-0.01em', marginBottom:3 }}>Agents</div>
                     <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:"'DM Sans',sans-serif", marginBottom:12 }}>One click. Nexa executes.</div>
@@ -257,9 +260,9 @@ export default function LandingPage() {
                     ))}
                   </div>
 
-                  <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(30,142,240,0.2)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(30,142,240,0.07), inset 0 1px 0 rgba(30,142,240,0.12)', position:'relative', overflow:'hidden' }}>
+                  <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(30,142,240,0.25)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.6), 0 0 48px rgba(30,142,240,0.1), inset 0 1px 0 rgba(30,142,240,0.15)', position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(30,142,240,0.5),transparent)' }}/>
-                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'#1E8EF0', filter:'blur(50px)', opacity:0.08, pointerEvents:'none' }}/>
+                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'#1E8EF0', filter:'blur(50px)', opacity:0.1, pointerEvents:'none' }}/>
                     <div style={{ position:'relative', zIndex:1 }}>
                       <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:13, fontWeight:700, color:'#fff', letterSpacing:'-0.01em', marginBottom:3 }}>Brand Brain</div>
                       <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:"'DM Sans',sans-serif", marginBottom:14 }}>Intelligence layer · Active</div>
@@ -281,8 +284,6 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          {/* glow */}
-          <div style={{ position: 'absolute', bottom: -60, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 120, background: `radial-gradient(ellipse, rgba(77,171,247,0.15), transparent)`, pointerEvents: 'none' }} />
         </div>
       </section>
 
