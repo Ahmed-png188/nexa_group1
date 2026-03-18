@@ -38,8 +38,8 @@ function StatCard({ icon, label, value, color }: any) {
     <div style={{ padding:'14px 18px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, display:'flex', alignItems:'center', gap:12 }}>
       <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, border:`1px solid ${color}25`, display:'flex', alignItems:'center', justifyContent:'center', color, flexShrink:0 }}>{icon}</div>
       <div>
-        <div style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.9)', lineHeight:1 }}>{value}</div>
-        <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:3, fontWeight:500 }}>{label}</div>
+        <div className="nexa-num" style={{ fontSize:22 }}>{value}</div>
+        <div className="nexa-label" style={{ marginTop:4 }}>{label}</div>
       </div>
     </div>
   )
@@ -77,7 +77,7 @@ function EmptyTab({ icon, title, desc, btnLabel, btnColor, onAction, loading }: 
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
         style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:loading?'rgba(255,255,255,0.04)':hov?btnColor:`${btnColor}ee`, color:loading?'rgba(255,255,255,0.25)':isLight?'#000':'#fff', border:'none', borderRadius:11, cursor:loading?'not-allowed':'pointer', transition:'all 0.18s', boxShadow:loading?'none':`0 4px 22px ${btnColor}40`, transform:hov&&!loading?'translateY(-1px)':'none' }}>
         {loading
-          ? <><div style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'rgba(255,255,255,0.6)',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/>Building…</>
+          ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Building…</>
           : <><span style={{ display:'flex' }}>{Ic.bolt}</span>{btnLabel}</>}
       </button>
     </div>
@@ -90,6 +90,7 @@ export default function StrategyPage() {
 
   const [ws,         setWs]        = useState<any>(null)
   const [strategy,   setStrategy]  = useState<any>(null)
+  const [hasBrand,   setHasBrand]  = useState(false)
   const [generating, setGenerating]= useState(false)
   const [loading,    setLoading]   = useState(true)
   const [tab,        setTab]       = useState<Tab>('overview')
@@ -109,6 +110,8 @@ export default function StrategyPage() {
     const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
     const w = (m as any)?.workspaces
     setWs(w); setCompInput(w?.brand_tone||'')
+    const { data:ba } = await supabase.from('brand_assets').select('id').eq('workspace_id',w?.id).eq('file_name','nexa_brand_intelligence.json').single()
+    setHasBrand(!!ba)
     const { data:plan } = await supabase.from('strategy_plans').select('*').eq('workspace_id',w?.id).eq('status','active').order('generated_at',{ascending:false}).limit(1).single()
     if (plan) {
       setStrategy({ audience:plan.audience_map, pillars:plan.content_pillars, angles:plan.insights?.top_angles, plan:plan.daily_plan, insights:plan.insights?.key_insights })
@@ -119,7 +122,20 @@ export default function StrategyPage() {
 
   async function generateStrategy() {
     if (!ws||generating) return; setGenerating(true)
-    try { const r=await fetch('/api/generate-strategy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})}); const d=await r.json(); if(d.success)setStrategy(d.strategy) } catch {}
+    try {
+      const r = await fetch('/api/generate-strategy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})})
+      const d = await r.json()
+      if (d.success) {
+        // Reload from DB so field mapping is consistent with normal load path
+        const { data:ba } = await supabase.from('brand_assets').select('id').eq('workspace_id',ws?.id).eq('file_name','nexa_brand_intelligence.json').single()
+    setHasBrand(!!ba)
+    const { data:plan } = await supabase.from('strategy_plans').select('*').eq('workspace_id',ws.id).eq('status','active').order('generated_at',{ascending:false}).limit(1).single()
+        if (plan) {
+          setStrategy({ audience:plan.audience_map, pillars:plan.content_pillars, angles:plan.insights?.top_angles, plan:plan.daily_plan, insights:plan.insights?.key_insights })
+          if (plan.platform_strategy?.timing) setTimingData(plan.platform_strategy.timing)
+        }
+      }
+    } catch {}
     setGenerating(false)
   }
   async function generateTiming() {
@@ -134,8 +150,11 @@ export default function StrategyPage() {
   }
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'rgba(255,255,255,0.28)', fontSize:13 }}>
-      Loading strategy…
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16 }}>
+      <div style={{ width:44, height:44, borderRadius:13, background:'rgba(255,181,71,0.07)', border:'1px solid rgba(255,181,71,0.18)', display:'flex', alignItems:'center', justifyContent:'center', animation:'glow-breathe 2s ease-in-out infinite' }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB547" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 17.5L21 21M14 17.5h7"/></svg>
+      </div>
+      <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600 }}>Loading your blueprint</div>
     </div>
   )
 
@@ -161,13 +180,19 @@ export default function StrategyPage() {
           <p style={{ fontSize:14, color:'rgba(255,255,255,0.38)', lineHeight:1.8, maxWidth:480, margin:'0 auto 32px' }}>
             Nexa analyzes your brand voice, audience psychology, and content patterns — then builds a complete strategy: pillars, winning angles, a 30-day plan, optimal posting times, and competitive intelligence.
           </p>
-          <button onClick={generateStrategy}
-            style={{ display:'inline-flex', alignItems:'center', gap:9, padding:'14px 32px', fontSize:15, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:13, cursor:'pointer', boxShadow:'0 4px 28px rgba(77,159,255,0.4)', transition:'all 0.18s' }}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 36px rgba(77,159,255,0.5)'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(0)';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 28px rgba(77,159,255,0.4)'}}>
-            <span style={{ display:'flex' }}>{Ic.bolt}</span>
-            Build my strategy
-          </button>
+          {!hasBrand && (
+            <div style={{ marginBottom:20, padding:'12px 20px', background:'rgba(52,211,153,0.06)', border:'1px solid rgba(52,211,153,0.2)', borderRadius:11, display:'inline-flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:'#34D399', flexShrink:0 }}/>
+              <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)' }}>Strategy works best after Brand Brain is trained.</span>
+              <a href="/dashboard/brand" style={{ fontSize:12, fontWeight:700, color:'#34D399', textDecoration:'none', flexShrink:0 }}>Train Brand Brain →</a>
+            </div>
+          )}
+          <div className="nexa-ring-wrap">
+            <button onClick={generateStrategy} className="nexa-ring-body" style={{ padding:'12px 32px', fontSize:15 }}>
+              <span style={{ display:'flex' }}>{Ic.bolt}</span>
+              Build my strategy
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -207,11 +232,11 @@ export default function StrategyPage() {
         transition:'opacity 0.45s ease, transform 0.45s ease',
       }}>
         <div>
-          <h1 style={{ fontFamily:'var(--display)', fontSize:24, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
+          <h1 style={{ fontFamily:'var(--display)', fontSize:28, fontWeight:800, letterSpacing:'-0.05em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
             Strategy
           </h1>
           <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
-            Your AI-powered content intelligence
+            Your brand's complete content blueprint
           </p>
         </div>
         <GhostBtn icon={Ic.refresh} label="Regenerate" onClick={generateStrategy}/>
@@ -256,19 +281,23 @@ export default function StrategyPage() {
           {/* Key insights hero card */}
           {insights.length > 0 && (
             <div style={{
-              padding:'20px 22px', marginBottom:16,
-              background:'linear-gradient(145deg, rgba(77,159,255,0.08) 0%, rgba(77,159,255,0.03) 100%)',
-              border:'1px solid rgba(77,159,255,0.2)', borderRadius:16,
-              boxShadow:'0 0 40px rgba(77,159,255,0.07)',
+              padding:'24px 26px', marginBottom:20,
+              background:'linear-gradient(145deg, rgba(77,159,255,0.07) 0%, rgba(0,0,0,0.4) 100%)',
+              border:'1px solid rgba(77,159,255,0.18)', borderRadius:18,
+              boxShadow:'0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(77,159,255,0.1)',
+              position:'relative', overflow:'hidden',
             }}>
-              <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14 }}>
-                <div style={{ width:6, height:6, borderRadius:'50%', background:'#4D9FFF', boxShadow:'0 0 8px #4D9FFF' }}/>
-                <span style={{ fontSize:9, fontWeight:700, color:'#4D9FFF', letterSpacing:'0.09em', textTransform:'uppercase' }}>Key Insights</span>
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg, transparent, rgba(77,159,255,0.5), transparent)' }}/>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:18 }}>
+                <div style={{ width:7, height:7, borderRadius:'50%', background:'#4D9FFF', boxShadow:'0 0 10px #4D9FFF' }}/>
+                <span style={{ fontSize:10, fontWeight:700, color:'#4D9FFF', letterSpacing:'0.1em', textTransform:'uppercase' }}>What Nexa found</span>
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 {insights.map((ins: string, i: number) => (
-                  <div key={i} style={{ display:'flex', gap:10, fontSize:13, color:'rgba(255,255,255,0.7)', lineHeight:1.68 }}>
-                    <span style={{ color:'#4D9FFF', flexShrink:0, marginTop:3, display:'flex' }}>{Ic.arrow}</span>
+                  <div key={i} style={{ display:'flex', gap:14, fontSize:13.5, color:'rgba(255,255,255,0.75)', lineHeight:1.72, letterSpacing:'-0.01em' }}>
+                    <div style={{ width:20, height:20, borderRadius:6, background:'rgba(77,159,255,0.12)', border:'1px solid rgba(77,159,255,0.22)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
+                      <span style={{ fontSize:9, fontWeight:800, color:'#4D9FFF' }}>{i+1}</span>
+                    </div>
                     {ins}
                   </div>
                 ))}
@@ -301,22 +330,30 @@ export default function StrategyPage() {
           {pillars.length > 0 ? (
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:10 }}>
               {pillars.map((p: any, i: number) => {
-                const name   = typeof p==='string'?p:(p.name||p.pillar||`Pillar ${i+1}`)
-                const desc   = typeof p==='string'?'':(p.description||p.purpose||'')
-                const topics = p.topics||[]
+                const name        = typeof p==='string'?p:(p.name||p.pillar||`Pillar ${i+1}`)
+                const desc        = typeof p==='string'?'':(p.description||p.purpose||'')
+                const topics      = p.topics||[]
+                const frequency   = p.frequency||''
+                const exampleAngle= p.example_angle||''
                 const color  = PILLAR_COLORS[i % PILLAR_COLORS.length]
                 return (
-                  <div key={i}
-                    style={{ padding:'20px 20px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, transition:'all 0.15s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.13)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:12 }}>
-                      <div style={{ width:32, height:32, borderRadius:10, background:`${color}12`, border:`1px solid ${color}28`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:13, fontWeight:800, color, flexShrink:0 }}>
+                  <div key={i} className="strategy-card" style={{ padding:'24px 22px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+                      <div style={{ width:36, height:36, borderRadius:11, background:`${color}14`, border:`1px solid ${color}30`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:15, fontWeight:800, color, flexShrink:0, boxShadow:`0 0 16px ${color}18` }}>
                         {i+1}
                       </div>
-                      <span style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.88)', letterSpacing:'-0.02em' }}>{name}</span>
+                      <div>
+                        <span style={{ fontSize:16, fontWeight:800, color:'rgba(255,255,255,0.92)', letterSpacing:'-0.03em', fontFamily:'var(--display)', display:'block', lineHeight:1.2 }}>{name}</span>
+                        {frequency && <span style={{ fontSize:10, fontWeight:700, color:`${color}aa`, letterSpacing:'0.05em', textTransform:'uppercase' }}>{frequency}</span>}
+                      </div>
                     </div>
-                    {desc && <p style={{ fontSize:12.5, color:'rgba(255,255,255,0.45)', lineHeight:1.68, marginBottom:topics.length?14:0 }}>{desc}</p>}
+                    {desc && <p style={{ fontSize:12.5, color:'rgba(255,255,255,0.45)', lineHeight:1.68, marginBottom:(topics.length||frequency||exampleAngle)?14:0 }}>{desc}</p>}
+                    {(frequency||exampleAngle) && (
+                      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:topics.length?10:0 }}>
+                        {frequency && <span style={{ fontSize:10, padding:'3px 10px', borderRadius:100, background:`${color}10`, border:`1px solid ${color}22`, color:`${color}cc`, fontWeight:600 }}>{frequency}</span>}
+                        {exampleAngle && <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontStyle:'italic' }}>e.g. "{exampleAngle}"</span>}
+                      </div>
+                    )}
                     {topics.length > 0 && (
                       <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                         {topics.slice(0,4).map((t: string, j: number) => (
@@ -340,27 +377,27 @@ export default function StrategyPage() {
       {tab === 'angles' && (
         <div style={{ display:'flex', flexDirection:'column', gap:10, animation:'pageUp 0.3s ease both' }}>
           {angles.length > 0 ? angles.map((a: any, i: number) => {
-            const title = typeof a==='string'?a:(a.title||a.angle||`Angle ${i+1}`)
-            const hook  = a.hook||''
-            const why   = a.why||a.description||''
+            const title = typeof a==='string'?a:(a.angle||a.title||`Angle ${i+1}`)
+            const hook  = a.example_hook||a.hook||''
+            const why   = a.why_it_works||a.why||a.description||''
             return (
-              <div key={i}
-                style={{ padding:'20px 22px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, transition:'all 0.15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,122,64,0.22)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)' }}>
-                <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:(hook||why)?14:0 }}>
-                  <div style={{ width:26, height:26, borderRadius:8, background:'rgba(255,122,64,0.1)', border:'1px solid rgba(255,122,64,0.22)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'#FF7A40', flexShrink:0, fontFamily:'var(--display)', marginTop:1 }}>
+              <div key={i} className="angle-card" style={{ padding:'24px 22px' }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:(hook||why)?16:0 }}>
+                  <div style={{ width:28, height:28, borderRadius:9, background:'rgba(255,122,64,0.12)', border:'1px solid rgba(255,122,64,0.28)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#FF7A40', flexShrink:0, fontFamily:'var(--display)', marginTop:2, boxShadow:'0 0 12px rgba(255,122,64,0.15)' }}>
                     {i+1}
                   </div>
-                  <span style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.88)', letterSpacing:'-0.02em', lineHeight:1.42 }}>{title}</span>
+                  <span style={{ fontSize:15, fontWeight:800, color:'rgba(255,255,255,0.92)', letterSpacing:'-0.03em', lineHeight:1.38, fontFamily:'var(--display)' }}>{title}</span>
                 </div>
                 {hook && (
-                  <p style={{ fontSize:14, color:'#FF7A40', fontStyle:'italic', lineHeight:1.7, paddingLeft:38, marginBottom:why?9:0, opacity:0.9, letterSpacing:'-0.01em' }}>
-                    "{hook}"
-                  </p>
+                  <div className="hook-quote" style={{ margin:'0 0 12px 42px', padding:'12px 16px', background:'rgba(255,122,64,0.05)', borderRadius:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,122,64,0.6)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:5 }}>Hook</div>
+                    <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.82)', lineHeight:1.65, letterSpacing:'-0.01em', fontStyle:'italic' }}>
+                      &ldquo;{hook}&rdquo;
+                    </p>
+                  </div>
                 )}
                 {why && (
-                  <p style={{ fontSize:12.5, color:'rgba(255,255,255,0.4)', lineHeight:1.68, paddingLeft:38 }}>{why}</p>
+                  <p style={{ fontSize:12.5, color:'rgba(255,255,255,0.42)', lineHeight:1.72, paddingLeft:42 }}>{why}</p>
                 )}
               </div>
             )
@@ -388,18 +425,24 @@ export default function StrategyPage() {
                   return (
                     <div key={i}
                       onClick={() => setExpanded(isOpen ? null : num)}
-                      style={{ padding:'10px', background:isOpen?`${wkCol}0e`:'rgba(255,255,255,0.025)', border:`1px solid ${isOpen?`${wkCol}28`:'rgba(255,255,255,0.07)'}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s' }}
-                      onMouseEnter={e => { if(!isOpen){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.13)'} }}
-                      onMouseLeave={e => { if(!isOpen){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'} }}>
-                      <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:800, color:isOpen?wkCol:'rgba(255,255,255,0.6)', lineHeight:1, marginBottom:5, letterSpacing:'-0.03em' }}>
+                      className="day-cell"
+                      style={{
+                        padding:'12px 10px',
+                        background: isOpen ? `${wkCol}12` : 'rgba(255,255,255,0.025)',
+                        borderColor: isOpen ? `${wkCol}35` : 'rgba(255,255,255,0.07)',
+                        boxShadow: isOpen ? `0 0 0 1.5px ${wkCol}40, 0 4px 20px rgba(0,0,0,0.5)` : 'none',
+                        position:'relative', overflow:'hidden',
+                      }}>
+                      {isOpen && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:wkCol, borderRadius:'12px 12px 0 0' }}/>}
+                      <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:isOpen?wkCol:'rgba(255,255,255,0.55)', lineHeight:1, marginBottom:6, letterSpacing:'-0.04em' }}>
                         {String(num).padStart(2,'0')}
                       </div>
                       {plat && (
-                        <div style={{ fontSize:9, fontWeight:700, color:isOpen?wkCol:'rgba(255,255,255,0.22)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:3 }}>
+                        <div style={{ fontSize:8.5, fontWeight:700, color:isOpen?`${wkCol}cc`:'rgba(255,255,255,0.2)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
                           {plat.slice(0,3)}
                         </div>
                       )}
-                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
+                      <div style={{ fontSize:9.5, color:isOpen?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.28)', lineHeight:1.45, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
                         {theme}
                       </div>
                     </div>
@@ -413,25 +456,46 @@ export default function StrategyPage() {
                 if (!day) return null
                 const col = PILLAR_COLORS[Math.floor((expanded-1)/7) % PILLAR_COLORS.length]
                 return (
-                  <div style={{ padding:'20px 22px', background:`${col}09`, border:`1px solid ${col}22`, borderRadius:16, animation:'pageUp 0.2s ease both' }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:11 }}>
-                        <span style={{ fontFamily:'var(--display)', fontSize:28, fontWeight:800, color:col, letterSpacing:'-0.04em', lineHeight:1 }}>
+                  <div style={{ padding:'28px 26px', background:`linear-gradient(145deg, ${col}0d 0%, rgba(0,0,0,0.4) 100%)`, border:`1px solid ${col}25`, borderRadius:18, animation:'pageUp 0.2s ease both', boxShadow:`0 16px 48px rgba(0,0,0,0.6), inset 0 1px 0 ${col}20`, position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg, transparent, ${col}, transparent)` }}/>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:22 }}>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, color:`${col}99`, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:4 }}>
+                          {day.platform ? `${day.platform} · ` : ''}{Math.ceil(expanded/7) ? `Week ${Math.ceil(expanded/7)}` : ''}
+                        </div>
+                        <span style={{ fontFamily:'var(--display)', fontSize:36, fontWeight:800, color:col, letterSpacing:'-0.05em', lineHeight:1, display:'block', marginBottom:4 }}>
                           Day {String(expanded).padStart(2,'0')}
                         </span>
-                        {day.platform && (
-                          <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:100, background:`${col}14`, border:`1px solid ${col}28`, color:col }}>
-                            {day.platform}
-                          </span>
-                        )}
+                        {day.theme && <div style={{ fontSize:14, color:'rgba(255,255,255,0.55)', letterSpacing:'-0.01em' }}>{day.theme}</div>}
                       </div>
-                      <button onClick={() => setExpanded(null)} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', display:'flex', padding:4 }}>
+                      <button onClick={() => setExpanded(null)} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'rgba(255,255,255,0.4)', cursor:'pointer', display:'flex', padding:'6px', transition:'all 0.15s' }}>
                         {Ic.close}
                       </button>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                      {day.theme      && <InfoCard label="Theme"   value={day.theme}                       accent={col}/>}
-                      {(day.content||day.description) && <InfoCard label="Content" value={day.content||day.description} accent={col}/>}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                      {day.angle && (
+                        <div style={{ padding:'16px', background:'rgba(0,0,0,0.3)', border:`1px solid ${col}20`, borderRadius:12, gridColumn:(day.angle.length > 60 ? 'span 2' : 'span 1') }}>
+                          <div style={{ fontSize:9, fontWeight:700, color:`${col}88`, letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:8 }}>Angle</div>
+                          <div style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.88)', lineHeight:1.5, letterSpacing:'-0.02em', fontFamily:'var(--display)' }}>{day.angle}</div>
+                        </div>
+                      )}
+                      {day.goal && (
+                        <div style={{ padding:'16px', background:'rgba(0,0,0,0.3)', border:`1px solid ${col}20`, borderRadius:12 }}>
+                          <div style={{ fontSize:9, fontWeight:700, color:`${col}88`, letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:8 }}>Goal</div>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6 }}>{day.goal}</div>
+                        </div>
+                      )}
+                      {(day.content||day.description) && (
+                        <div style={{ padding:'16px', background:'rgba(0,0,0,0.3)', border:`1px solid ${col}20`, borderRadius:12, gridColumn:'span 2' }}>
+                          <div style={{ fontSize:9, fontWeight:700, color:`${col}88`, letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:8 }}>What to create</div>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.7 }}>{day.content||day.description}</div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop:18, display:'flex', gap:8 }}>
+                      <a href="/dashboard/studio" style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', background:col, color:'#000', borderRadius:9, fontSize:12, fontWeight:700, textDecoration:'none', boxShadow:`0 4px 16px ${col}40`, transition:'all 0.15s' }}>
+                        Write this post in Studio
+                      </a>
                     </div>
                   </div>
                 )
@@ -453,7 +517,7 @@ export default function StrategyPage() {
               icon={Ic.clock}
               title="Timing Engine"
               desc="Nexa reverse-engineers your audience's daily schedule — their morning routines, commute windows, evening habits — and finds the exact moments they're most receptive to your content."
-              btnLabel="Generate timing analysis"
+              btnLabel="Map my posting times"
               btnColor="#FFB547"
               onAction={generateTiming}
               loading={genTiming}
@@ -523,7 +587,7 @@ export default function StrategyPage() {
               <button onClick={generateComp} disabled={genComp}
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 28px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:genComp?'rgba(255,255,255,0.04)':'#FF5757', color:genComp?'rgba(255,255,255,0.25)':'#fff', border:'none', borderRadius:11, cursor:genComp?'not-allowed':'pointer', transition:'all 0.18s', boxShadow:genComp?'none':'0 4px 22px rgba(255,87,87,0.35)' }}>
                 {genComp
-                  ? <><div style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'rgba(255,255,255,0.6)',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/>Analyzing competitors…</>
+                  ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Analyzing competitors…</>
                   : <><span style={{ display:'flex' }}>{Ic.target}</span>Run competitor analysis</>}
               </button>
             </div>

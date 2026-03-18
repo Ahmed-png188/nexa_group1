@@ -125,7 +125,7 @@ function SaveBtn({ onClick, saving, saved, disabled }: any) {
         boxShadow: saved || saving || disabled ? 'none' : '0 4px 18px rgba(77,159,255,0.35)',
       }}>
       {saving
-        ? <><div style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'rgba(255,255,255,0.6)',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/>Saving…</>
+        ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Saving…</>
         : saved
         ? <><span style={{ display:'flex' }}>{Ic.check}</span>Saved</>
         : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Save changes</>}
@@ -403,15 +403,15 @@ function SettingsInner() {
                 </div>
                 <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
                 <div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:6 }}>Credits remaining</div>
-                  <div style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.88)' }}>
+                  <div className="nexa-label" style={{ marginBottom:6 }}>Credits remaining</div>
+                  <div className="nexa-num" style={{ fontSize:22 }}>
                     {credits?.balance?.toLocaleString()||0}
                   </div>
                 </div>
                 <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
                 <div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:6 }}>Lifetime used</div>
-                  <div style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.88)' }}>
+                  <div className="nexa-label" style={{ marginBottom:6 }}>Lifetime used</div>
+                  <div className="nexa-num" style={{ fontSize:22 }}>
                     {credits?.lifetime_used?.toLocaleString()||0}
                   </div>
                 </div>
@@ -422,10 +422,10 @@ function SettingsInner() {
                 {PLANS.map(plan => {
                   const isCurrent = currentPlan === plan.id
                   return (
-                    <div key={plan.id}
-                      style={{ padding:'20px', background:isCurrent?`${plan.color}09`:'rgba(255,255,255,0.025)', border:`1px solid ${isCurrent?`${plan.color}28`:'rgba(255,255,255,0.08)'}`, borderRadius:16, transition:'all 0.15s', position:'relative', boxShadow:isCurrent?`0 0 24px ${plan.color}12`:'none' }}
-                      onMouseEnter={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'} }}
-                      onMouseLeave={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.08)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)'} }}>
+                    <div key={plan.id} className="nexa-card"
+                      style={{ padding:'20px', background:isCurrent?'var(--blue-dim)':'', border:isCurrent?'1px solid var(--blue-border)':'', borderRadius:16, position:'relative' }}
+                      onMouseEnter={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';} }}
+                      onMouseLeave={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='';} }}>
 
                       {/* Popular badge */}
                       {plan.popular && !isCurrent && (

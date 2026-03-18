@@ -381,13 +381,13 @@ export default function DashboardShell({ user, workspace, credits: init, childre
               </a>
             )}
 
-            {/* Credits pill — full word */}
-            <div data-tour="credits" title="Post: 3cr · Hook: 2cr · Thread: 5cr · Image: 5cr · Voice: 8cr · Video: 15cr · Strategy & chat: free" style={{ display:'flex', alignItems:'center', gap:7, padding:'6px 14px', background:'rgba(14,165,255,0.08)', border:'1px solid rgba(14,165,255,0.2)', borderRadius:9, cursor:'help', position:'relative', boxShadow:'inset 0 1px 0 rgba(14,165,255,0.12)' }}>
-              <div style={{ width:5, height:5, borderRadius:'50%', background:'#4D9FFF' }}/>
-              <span style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#4D9FFF', letterSpacing:'-0.02em' }}>
+            {/* Credits chip */}
+            <div data-tour="credits" title="Post: 3cr · Hook: 2cr · Thread: 5cr · Image: 5cr · Voice: 8cr · Video: 15cr · Strategy & chat: free" style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', background:'var(--blue-dim)', border:'1px solid var(--blue-border)', borderRadius:8, cursor:'help' }}>
+              <div style={{ width:4, height:4, borderRadius:'50%', background:'var(--blue2)', flexShrink:0 }}/>
+              <span className="nexa-num" style={{ fontSize:13, color:'var(--blue2)' }}>
                 {credits.toLocaleString()}
               </span>
-              <span style={{ fontSize:11, color:'rgba(77,159,255,0.55)', fontWeight:500 }}>credits</span>
+              <span style={{ fontSize:10, color:'var(--blue-border)', fontWeight:500, letterSpacing:'0.03em' }}>cr</span>
             </div>
 
             {/* Notification bell */}
@@ -462,7 +462,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                 style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', background:pillOpen?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.04)', border:`1px solid ${pillOpen?'rgba(255,255,255,0.14)':BORDER}`, borderRadius:11, cursor:'pointer', transition:'all 0.15s' }}
                 onMouseEnter={e => { if(!pillOpen){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)'} }}
                 onMouseLeave={e => { if(!pillOpen){(e.currentTarget as HTMLElement).style.borderColor=BORDER;(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'} }}>
-                <div style={{ width:26, height:26, borderRadius:8, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>
+                <div style={{ width:26, height:26, borderRadius:7, background:'linear-gradient(135deg,var(--blue),var(--blue2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', fontFamily:'var(--display)', flexShrink:0 }}>
                   {initial}
                 </div>
                 <div style={{ lineHeight:1 }}>
@@ -540,8 +540,8 @@ export default function DashboardShell({ user, workspace, credits: init, childre
           <div style={{ height:'var(--topbar-h)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:`1px solid rgba(255,255,255,0.055)`, flexShrink:0, background:SURFACE, position:'relative', overflow:'hidden' }}>
             <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 200% 300% at -10% 50%, rgba(14,165,255,0.05) 0%, transparent 60%)', pointerEvents:'none' }}/>
             <div style={{ display:'flex', alignItems:'center', gap:11, position:'relative' }}>
-              <div style={{ width:34, height:34, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
-                <img src="/favicon.png" alt="Nexa" width={34} height={34} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+              <div style={{ width:20, height:20, borderRadius:5, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
+                <img src="/favicon.png" alt="Nexa" width={20} height={20} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
               </div>
               <div>
                 <div style={{ fontFamily:'var(--display)', fontSize:14, fontWeight:800, color:'rgba(255,255,255,0.95)', lineHeight:1, letterSpacing:'-0.03em' }}>Nexa AI</div>
@@ -658,8 +658,8 @@ export default function DashboardShell({ user, workspace, credits: init, childre
               />
               <button onClick={send}
                 disabled={(!input.trim() && files.length===0) || chatLoading}
-                style={{ width:32, height:32, borderRadius:10, background:(input.trim()||files.length>0) ? '#0EA5FF' : 'rgba(255,255,255,0.05)', border:'none', cursor:(input.trim()||files.length>0)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', color:(input.trim()||files.length>0)?'#000':'rgba(255,255,255,0.2)', transition:'all 0.15s', flexShrink:0, boxShadow:(input.trim()||files.length>0)?'0 2px 12px rgba(14,165,255,0.4)':'none' }}>
-                {Ic.send}
+                style={{ width:32, height:32, borderRadius:9, background:(input.trim()||files.length>0) ? 'var(--blue)' : 'rgba(255,255,255,0.05)', border:'none', cursor:(input.trim()||files.length>0)?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', color:(input.trim()||files.length>0)?'#fff':'rgba(255,255,255,0.2)', transition:'all 0.15s', flexShrink:0, boxShadow:(input.trim()||files.length>0)?'0 2px 12px rgba(30,142,240,0.35)':'none' }}>
+                {chatLoading ? <div className="nexa-spinner" style={{ width:14, height:14 }}/> : Ic.send}
               </button>
             </div>
             <p style={{ fontSize:10, color:'rgba(255,255,255,0.16)', textAlign:'center', marginTop:8, letterSpacing:'0.01em' }}>

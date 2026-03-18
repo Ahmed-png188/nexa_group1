@@ -304,12 +304,13 @@ export default function BrandPage() {
               Upload brand assets
             </button>
             {assets.length > 0 && (
-              <button onClick={analyze} disabled={analyzing}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'rgba(167,139,250,0.12)', border:'1px solid rgba(167,139,250,0.3)', color:'#A78BFA', borderRadius:12, cursor:'pointer', transition:'all 0.18s' }}>
-                {analyzing
-                  ? <><div style={{ width:14,height:14,border:'2px solid rgba(167,139,250,0.3)',borderTopColor:'#A78BFA',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/>Analyzing…</>
-                  : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze {assets.length} asset{assets.length!==1?'s':''}</>}
-              </button>
+              <div className="nexa-ring-wrap">
+                <button onClick={analyze} disabled={analyzing} className="nexa-ring-body" style={{ cursor:analyzing?'not-allowed':'pointer', opacity:analyzing?0.7:1 }}>
+                  {analyzing
+                    ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Analyzing…</>
+                    : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze {assets.length} asset{assets.length!==1?'s':''}</>}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -343,12 +344,13 @@ export default function BrandPage() {
             {assets.length} asset{assets.length!==1?'s':''} · {learnings.length} learnings · Brand score {overallScore}%
           </p>
         </div>
-        <button onClick={analyze} disabled={analyzing}
-          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:analyzing?'rgba(255,255,255,0.04)':'#A78BFA', color:analyzing?'rgba(255,255,255,0.3)':'#000', border:'none', borderRadius:11, cursor:analyzing?'not-allowed':'pointer', boxShadow:analyzing?'none':'0 4px 18px rgba(167,139,250,0.35)', transition:'all 0.18s' }}>
-          {analyzing
-            ? <><div style={{ width:13,height:13,border:'2px solid rgba(255,255,255,0.2)',borderTopColor:'rgba(255,255,255,0.6)',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/>Analyzing…</>
-            : <><span style={{ display:'flex' }}>{Ic.refresh}</span>Re-analyze</>}
-        </button>
+        <div className="nexa-ring-wrap">
+          <button onClick={analyze} disabled={analyzing} className="nexa-ring-body" style={{ cursor:analyzing?'not-allowed':'pointer', opacity:analyzing?0.7:1 }}>
+            {analyzing
+              ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Analyzing…</>
+              : <><span style={{ display:'flex' }}>{Ic.refresh}</span>Re-analyze</>}
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}
@@ -394,10 +396,10 @@ export default function BrandPage() {
               </div>
               {/* Overall score */}
               <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'var(--display)', fontSize:42, fontWeight:800, letterSpacing:'-0.06em', color:'#A78BFA', lineHeight:1, filter:'drop-shadow(0 0 16px rgba(167,139,250,0.5))' }}>
+                <div className="nexa-num" style={{ fontSize:42, color:'var(--blue2)', lineHeight:1 }}>
                   {overallScore}
                 </div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2 }}>Overall score</div>
+                <div className="nexa-label" style={{ marginTop:4 }}>Overall score</div>
               </div>
             </div>
             {/* Three rings */}

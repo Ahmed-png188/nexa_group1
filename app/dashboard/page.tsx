@@ -167,10 +167,8 @@ export default function HomePage() {
 
   if (loading) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh - var(--topbar-h))',flexDirection:'column',gap:16}}>
-      <div style={{width:40,height:40,borderRadius:12,background:'linear-gradient(135deg,rgba(14,165,255,0.15),rgba(167,139,250,0.08))',border:'1px solid rgba(14,165,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',animation:'glow-breathe 2s ease-in-out infinite'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0EA5FF" strokeWidth="1.8" strokeLinecap="round"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
-      </div>
-      <div style={{fontSize:12,color:'rgba(255,255,255,0.28)',letterSpacing:'0.04em',fontWeight:500}}>Loading your workspace</div>
+      <div className="nexa-spinner" style={{ width:28, height:28 }}/>
+      <div style={{fontSize:12,color:'var(--t4)',letterSpacing:'0.04em',fontWeight:500}}>Loading your workspace</div>
     </div>
   )
 
@@ -185,10 +183,8 @@ export default function HomePage() {
         transition:'opacity 0.5s ease, transform 0.5s ease',
       }}>
         {/* Atmospheric bg */}
-        <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#060d1a 0%,#080618 40%,#130616 70%,#1a0908 100%)'}}/>
-        <div style={{position:'absolute',top:-80,left:-40,width:340,height:340,borderRadius:'50%',background:'radial-gradient(circle,rgba(14,165,255,0.38) 0%,rgba(14,165,255,0.12) 40%,transparent 70%)',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',top:-60,left:'35%',transform:'translateX(-50%)',width:280,height:280,borderRadius:'50%',background:'radial-gradient(circle,rgba(120,80,255,0.32) 0%,rgba(120,80,255,0.08) 45%,transparent 70%)',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',top:-50,right:-60,width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(255,80,30,0.28) 0%,rgba(255,80,30,0.08) 45%,transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#050510 0%,#07071A 40%,#0A0720 70%,#0F0710 100%)'}}/>
+        <div className="nexa-cinema-bg"/>
 
         <div style={{position:'relative',zIndex:1,padding:'28px 32px'}}>
           {/* Top row: greeting + brand status */}
@@ -198,8 +194,8 @@ export default function HomePage() {
                 {greeting} · {format(new Date(),'EEEE, MMMM d')}
               </div>
               <div style={{display:'flex',alignItems:'baseline',gap:12,marginBottom:8}}>
-                <div style={{fontFamily:'var(--display)',fontSize:36,fontWeight:800,letterSpacing:'-0.055em',color:'#F4F0FF',lineHeight:1}}>{firstName}</div>
-                <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.25)',letterSpacing:'0.04em',textTransform:'uppercase',paddingBottom:2}}>command center</div>
+                <div style={{fontFamily:'var(--serif)',fontSize:36,fontWeight:400,letterSpacing:'-0.01em',color:'var(--t1)',lineHeight:1}}>{firstName}</div>
+                <div style={{fontSize:10,fontWeight:500,color:'var(--t4)',letterSpacing:'0.06em',textTransform:'uppercase',paddingBottom:2}}>command center</div>
               </div>
 
               {/* Morning brief headline */}
@@ -297,13 +293,13 @@ export default function HomePage() {
                 textDecoration:'none', padding:i===0?'0 20px 0 0':i===4?'0 0 0 20px':'0 20px',
                 borderLeft:i>0?'1px solid rgba(255,255,255,0.08)':'none', display:'block',
               }}>
-                <div style={{display:'flex',alignItems:'center',gap:7,fontSize:10,color:'rgba(255,255,255,0.38)',fontWeight:500,marginBottom:8,letterSpacing:'0.02em'}}>
-                  {s.label}
-                  <span style={{color:s.tagColor,fontWeight:700,fontSize:10,background:`${s.tagColor}18`,border:`1px solid ${s.tagColor}28`,padding:'1px 6px',borderRadius:4}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:8}}>
+                  <span className="nexa-label">{s.label}</span>
+                  <span style={{color:s.tagColor,fontWeight:600,fontSize:9,background:`${s.tagColor}18`,border:`1px solid ${s.tagColor}28`,padding:'1px 6px',borderRadius:4,letterSpacing:'0.04em',textTransform:'uppercase'}}>
                     {s.tag}
                   </span>
                 </div>
-                <div style={{fontFamily:'var(--display)',fontSize:32,fontWeight:800,letterSpacing:'-0.055em',color:'#F4F0FF',lineHeight:1}}>{s.value}</div>
+                <div className="nexa-num" style={{fontSize:28}}>{s.value}</div>
               </a>
             ))}
           </div>
@@ -351,7 +347,7 @@ export default function HomePage() {
                     style={{display:'flex',alignItems:'center',gap:5,padding:'6px 14px',borderRadius:8,fontSize:11,fontWeight:700,fontFamily:'var(--sans)',background:isRunning?agent.color:'rgba(255,255,255,0.06)',border:`1px solid ${isRunning?'transparent':'rgba(255,255,255,0.09)'}`,color:isRunning?'#000':'rgba(255,255,255,0.5)',cursor:running?'not-allowed':'pointer',transition:'all 0.15s',whiteSpace:'nowrap'}}
                     onMouseEnter={e=>{if(!running){(e.currentTarget as HTMLElement).style.background=`${agent.color}18`;(e.currentTarget as HTMLElement).style.borderColor=`${agent.color}33`;(e.currentTarget as HTMLElement).style.color=agent.color}}}
                     onMouseLeave={e=>{if(!running&&!isRunning){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.09)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.5)'}}}>
-                    {isRunning ? (<><div style={{width:8,height:8,border:'1.5px solid rgba(0,0,0,0.3)',borderTopColor:'#000',borderRadius:'50%',animation:'pageSpin 0.7s linear infinite'}}/>Running</>) : (<><span style={{display:'flex'}}>{Ic.play}</span>Run</>)}
+                    {isRunning ? (<><div className="nexa-spinner" style={{width:8,height:8}}/>Running</>) : (<><span style={{display:'flex'}}>{Ic.play}</span>Run</>)}
                   </button>
                 </div>
               )

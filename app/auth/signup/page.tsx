@@ -177,14 +177,7 @@ export default function SignupPage() {
         >
           {loading ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <span style={{
-                width: 14, height: 14,
-                border: '2px solid rgba(0,0,0,0.2)',
-                borderTopColor: '#000',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-                display: 'inline-block',
-              }} />
+              <span className="nexa-spinner" style={{ width:14, height:14 }}/>
               Creating account...
             </span>
           ) : 'Create account →'}
@@ -211,7 +204,7 @@ export default function SignupPage() {
 const cardStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 420,
-  background: 'rgba(13,13,20,0.9)',
+  background: 'var(--bg2)',
   border: '1px solid var(--line2)',
   borderRadius: 18,
   padding: '36px 32px',

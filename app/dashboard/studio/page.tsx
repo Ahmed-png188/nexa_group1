@@ -148,7 +148,7 @@ function GenBtn({ active, loading, label, loadingLabel, onClick, color }: any) {
     <button onClick={onClick} disabled={!active||loading} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
       style={{ width:'100%', padding:'15px 20px', borderRadius:13, fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:bg, color:active?'#000':'rgba(255,255,255,0.18)', border:'none', cursor:active?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, transition:'all 0.18s', boxShadow:shd, transform:(active&&hov)?'translateY(-1px)':'none' }}>
       {loading
-        ? <><div style={{ width:15,height:15,border:'2px solid rgba(0,0,0,0.15)',borderTopColor:'#000',borderTopStyle:'solid',borderRadius:'50%',animation:'pageSpin 0.7s linear infinite' }}/><span style={{ letterSpacing:'-0.01em' }}>{loadingLabel}</span></>
+        ? <><div className="nexa-spinner" style={{ width:15, height:15 }}/><span style={{ letterSpacing:'-0.01em' }}>{loadingLabel}</span></>
         : <><span style={{ display:'flex',opacity:0.85 }}>{Ic.bolt}</span>{label}</>
       }
     </button>
