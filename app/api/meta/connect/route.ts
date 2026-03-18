@@ -4,12 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect('/auth/login')
+  if (!user) return NextResponse.redirect('https://nexaa.cc/auth/login')
 
   const code = request.nextUrl.searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect('/dashboard/amplify?error=no_code')
+    return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=no_code')
   }
 
   try {
@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
       `https://graph.facebook.com/v18.0/oauth/access_token?` +
       `client_id=${process.env.META_APP_ID}&` +
       `client_secret=${process.env.META_APP_SECRET}&` +
-      `redirect_uri=${encodeURIComponent((process.env.NEXT_PUBLIC_APP_URL ?? '') + '/api/meta/connect')}&` +
+      `redirect_uri=https%3A%2F%2Fnexaa.cc%2Fapi%2Fmeta%2Fconnect&` +
       `code=${code}`
     )
     const tokenData = await tokenRes.json() as { access_token?: string }
 
     if (!tokenData.access_token) {
-      return NextResponse.redirect('/dashboard/amplify?error=token_failed')
+      return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=token_failed')
     }
 
     // Get user's ad accounts
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    if (!member) return NextResponse.redirect('/dashboard/amplify?error=no_workspace')
+    if (!member) return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=no_workspace')
 
     // Save connection
     await supabase.from('meta_connections').upsert({
@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id' })
 
-    return NextResponse.redirect('/dashboard/amplify?connected=true')
+    return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?connected=true')
   } catch (error) {
     console.error('[Meta Connect]', error)
-    return NextResponse.redirect('/dashboard/amplify?error=failed')
+    return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=failed')
   }
 }
