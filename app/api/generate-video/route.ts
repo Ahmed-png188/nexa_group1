@@ -5,15 +5,20 @@ import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
 import { persistFile } from '@/lib/storage'
 
+function sanitize(input: unknown, max = 2000): string {
+  if (typeof input !== 'string') throw new Error('Invalid input')
+  return input.trim().slice(0, max)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, prompt, aspect_ratio = '9:16', duration = 8, mode = 'text' } = await request.json()
-
-    if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt required' }, { status: 400 })
+    const { workspace_id, prompt: rawPrompt, aspect_ratio = '9:16', duration = 8, mode = 'text' } = await request.json()
+    const prompt = sanitize(rawPrompt, 1000)
+    if (!prompt) return NextResponse.json({ error: 'Prompt required' }, { status: 400 })
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -35,9 +40,8 @@ export async function POST(request: NextRequest) {
     let finalPrompt = prompt
     try {
       finalPrompt = await enhanceVideoPrompt(prompt, brand)
-      console.log('[Nexa Video] Enhanced prompt:', finalPrompt)
     } catch (e) {
-      console.error('[Nexa Video] Enhancer failed, using original:', e)
+      console.error('[generate-video] Enhancer failed, using original prompt')
       finalPrompt = prompt
     }
 
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     if (!submitRes.ok) {
       const err = await submitRes.text()
-      console.error('[Nexa Video] Veo submit error:', err)
+      console.error('[generate-video] Veo API error:', submitRes.status)
       // Refund credits on API error
       await supabase.rpc('deduct_credits', {
         p_workspace_id: workspace_id,
@@ -172,10 +176,8 @@ export async function POST(request: NextRequest) {
       enhanced_prompt: finalPrompt,
     })
 
-  } catch (error: any) {
-    console.error('[Nexa Video] Error:', error)
-    return NextResponse.json({
-      error: error.message || 'Video generation failed'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[generate-video] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Video generation failed' }, { status: 500 })
   }
 }

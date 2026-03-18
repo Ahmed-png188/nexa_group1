@@ -211,8 +211,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
 
     return NextResponse.json({ success: true, strategy })
 
-  } catch (error: any) {
-    console.error('Strategy generation error:', error)
-    return NextResponse.json({ error: 'Strategy generation failed', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[generate-strategy] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Strategy generation failed' }, { status: 500 })
   }
 }

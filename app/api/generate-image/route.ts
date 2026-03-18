@@ -10,13 +10,19 @@ import { fal } from '@fal-ai/client'
 // Configure fal client
 fal.config({ credentials: process.env.FAL_KEY })
 
+function sanitize(input: unknown, max = 2000): string {
+  if (typeof input !== 'string') throw new Error('Invalid input')
+  return input.trim().slice(0, max)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, prompt, style, aspect_ratio = '1:1' } = await request.json()
+    const { workspace_id, prompt: rawPrompt, style, aspect_ratio = '1:1' } = await request.json()
+    const prompt = sanitize(rawPrompt, 1000)
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -65,9 +71,9 @@ export async function POST(request: NextRequest) {
     let finalPrompt = basePrompt
     try {
       finalPrompt = await enhanceImagePrompt(basePrompt, brand)
-      console.log('[Nexa] Image prompt enhanced:', finalPrompt)
     } catch (e) {
-      console.error('[Nexa] Enhancer failed, using original:', e)
+      console.error('[generate-image] Enhancer failed, using original prompt')
+
       finalPrompt = basePrompt
     }
 
@@ -123,8 +129,8 @@ export async function POST(request: NextRequest) {
       credits_used: 5,
     })
 
-  } catch (error: any) {
-    console.error('Image generation error:', error)
-    return NextResponse.json({ error: 'Failed to generate image', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[generate-image] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Failed to generate image' }, { status: 500 })
   }
 }

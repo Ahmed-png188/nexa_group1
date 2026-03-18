@@ -100,13 +100,19 @@ export async function DELETE(request: NextRequest) {
 
     const { content_id } = await request.json()
 
+    const { data: post } = await supabase.from('content').select('workspace_id').eq('id', content_id).single()
+    if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const deny = await guardWorkspace(supabase, post.workspace_id, user.id)
+    if (deny) return deny
+
     await supabase.from('content').update({
       status: 'draft',
       scheduled_for: null,
     }).eq('id', content_id)
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: 'Failed to unschedule' }, { status: 500 })
   }
 }
@@ -123,6 +129,9 @@ export async function PATCH(request: NextRequest) {
     // Get the content
     const { data: post } = await supabase.from('content').select('*').eq('id', content_id).single()
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+
+    const deny = await guardWorkspace(supabase, post.workspace_id, user.id)
+    if (deny) return deny
 
     // Get platform connection
     const { data: connection } = await supabase
@@ -199,7 +208,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, published })
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: 'Failed to publish' }, { status: 500 })
   }
 }

@@ -209,8 +209,8 @@ Return ONLY valid JSON:
   }).eq('id', workspace_id)
 
   return NextResponse.json({ success: true, brief, cached: false })
-  } catch (error: any) {
-    console.error('Morning brief error:', error)
-    return NextResponse.json({ error: 'Failed to generate brief', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[morning-brief] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Failed to generate brief' }, { status: 500 })
   }
 }

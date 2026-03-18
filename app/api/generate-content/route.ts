@@ -46,6 +46,11 @@ ON VOICE MATCHING:
 When brand context is available, you ARE them — the sharpest most confident version of them. Their industry. Their specific client. Their real stakes. Never sound like AI. Sound like the version of them that has already won.
 `
 
+function sanitize(input: unknown, max = 2000): string {
+  if (typeof input !== 'string') throw new Error('Invalid input')
+  return input.trim().slice(0, max)
+}
+
 const CREDIT_COSTS: Record<string, number> = {
   post: 3, thread: 5, email: 5, caption: 2, hook: 2,
   bio: 2, ad: 5, story: 2, full_piece: 10,
@@ -57,7 +62,8 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, type, platform, prompt, tone_override } = await request.json()
+    const { workspace_id, type, platform, prompt: rawPrompt, tone_override } = await request.json()
+    const prompt = sanitize(rawPrompt, 2000)
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -208,8 +214,8 @@ CRITICAL RULES:
       credits_used: creditCost,
     })
 
-  } catch (error: any) {
-    console.error('Content generation error:', error)
-    return NextResponse.json({ error: 'Generation failed', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[generate-content] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
   }
 }

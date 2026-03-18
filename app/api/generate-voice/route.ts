@@ -6,6 +6,11 @@ import { guardWorkspace } from '@/lib/workspace-guard'
 import { getBrandContext } from '@/lib/brand-context'
 import { enhanceVoiceScript } from '@/lib/prompt-enhancer'
 
+function sanitize(input: unknown, max = 2000): string {
+  if (typeof input !== 'string') throw new Error('Invalid input')
+  return input.trim().slice(0, max)
+}
+
 const VOICE_IDS: Record<string, string> = {
   'rachel':  '21m00Tcm4TlvDq8ikWAM',
   'drew':    '29vD33N1ost6f7gBRAFC',
@@ -23,8 +28,9 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, text, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
-    if (!text?.trim()) return NextResponse.json({ error: 'Text is required' }, { status: 400 })
+    const { workspace_id, text: rawText, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
+    const text = sanitize(rawText, 3000)
+    if (!text) return NextResponse.json({ error: 'Text is required' }, { status: 400 })
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -124,9 +130,9 @@ export async function POST(request: NextRequest) {
       credits_used: 8,
     })
 
-  } catch (error: any) {
-    console.error('Voice generation error:', error)
-    return NextResponse.json({ error: 'Failed to generate voice', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[generate-voice] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Failed to generate voice' }, { status: 500 })
   }
 }
 

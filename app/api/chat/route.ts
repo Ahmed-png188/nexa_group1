@@ -6,6 +6,11 @@ import { guardWorkspace } from '@/lib/workspace-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+function sanitize(input: unknown, max = 2000): string {
+  if (typeof input !== 'string') throw new Error('Invalid input')
+  return input.trim().slice(0, max)
+}
+
 const NEXA_BRAIN = `
 You are Nexa — a business intelligence engine built for business owners, entrepreneurs, creatives, and freelancers who are serious about growth. Not a content tool. Not a chatbot. A strategic weapon.
 
@@ -52,7 +57,8 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { message, workspace_id, history, files } = await request.json()
+    const { message: rawMessage, workspace_id, history, files } = await request.json()
+    const message = rawMessage ? sanitize(rawMessage, 4000) : ''
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -238,8 +244,8 @@ If the user shares a document, PDF, or content file:
 
     return NextResponse.json({ reply })
 
-  } catch (error: any) {
-    console.error('Chat API error:', error)
+  } catch (error: unknown) {
+    console.error('[chat] Error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed', reply: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -198,12 +198,9 @@ Return ONLY valid JSON with this exact structure:
         max_tokens: 3500,
         messages: [{ role: 'user', content: messageContent }],
       })
-    } catch (aiError: any) {
-      console.error('[analyze-brand] Anthropic API error:', aiError?.message, aiError?.status)
-      return NextResponse.json({
-        error: 'AI analysis failed',
-        details: aiError?.message || 'Anthropic API call failed. Check API key and quota.',
-      }, { status: 502 })
+    } catch (aiError: unknown) {
+      console.error('[analyze-brand] Anthropic API error:', aiError instanceof Error ? aiError.message : 'Unknown error')
+      return NextResponse.json({ error: 'AI analysis failed' }, { status: 502 })
     }
 
     const text = (response.content[0] as any).text
@@ -283,9 +280,8 @@ Return ONLY valid JSON with this exact structure:
       },
     })
 
-  } catch (error: any) {
-    console.error("[analyze-brand] FULL ERROR:", JSON.stringify(error), error?.message, error?.stack)
-    console.error('Brand analysis error:', error)
-    return NextResponse.json({ error: 'Analysis failed', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    console.error('[analyze-brand] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Analysis failed' }, { status: 500 })
   }
 }
