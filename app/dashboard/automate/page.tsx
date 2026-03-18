@@ -27,6 +27,8 @@ export default function AutomatePage() {
   const [composeBody, setComposeBody] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [writingEmail, setWritingEmail] = useState(false)
+  const [gmailConnectError, setGmailConnectError] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -34,6 +36,12 @@ export default function AutomatePage() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('gmail_connected') === 'true') {
       window.history.replaceState({}, '', '/dashboard/automate')
+    }
+    const gmailError = params.get('error')
+    const gmailReason = params.get('reason')
+    if (gmailError) {
+      console.error('[Gmail] Connect error:', gmailError, gmailReason)
+      setGmailConnectError(`Connection failed: ${gmailReason || gmailError}`)
     }
   }, [])
 
@@ -127,21 +135,58 @@ export default function AutomatePage() {
     }
   }
 
-  async function writeWithBrandBrain() {
-    const context = `Email to ${composeTo || 'a contact'} about ${composeSubject || 'this topic'}`
+  async function writeWithBrandBrain(context: string) {
+    setWritingEmail(true)
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspace_id: workspaceId,
-          message: `Write a professional email in my brand voice. Context: ${context}. Return only the email body, no subject line, no greeting metadata.`,
+          message: `Write a professional outreach email in my exact brand voice.
+
+Recipient: ${composeTo || 'the recipient'}
+Context/Topic: ${context || composeSubject || 'general outreach'}
+
+Rules:
+- Return ONLY the email body text, nothing else
+- No "Here's your email:" preamble
+- No "---" separators
+- No meta-commentary or instructions in asterisks
+- Write as if I am writing it personally
+- No more than 150 words
+- Conversational, direct, human tone
+- End with my name: Ahmed`,
         }),
       })
       const data = await res.json()
-      if (data.reply) setComposeBody(data.reply)
+      const raw = data.reply || data.message || data.content || ''
+      const cleaned = raw
+        .replace(/^here'?s? (your |the )?email:?\s*/i, '')
+        .replace(/^---+\s*/gm, '')
+        .replace(/\*[^*]+\*/g, '')
+        .replace(/^\s*drop in.*$/gim, '')
+        .trim()
+      setComposeBody(cleaned)
+
+      // Auto-generate subject if empty
+      if (!composeSubject && cleaned) {
+        const subjectRes = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspace_id: workspaceId,
+            message: `Write a short, compelling email subject line for this email. Return ONLY the subject line, nothing else, no quotes:\n\n${cleaned}`,
+          }),
+        })
+        const subjectData = await subjectRes.json()
+        const subject = (subjectData.reply || subjectData.message || subjectData.content || '').replace(/^["']|["']$/g, '').trim()
+        if (subject) setComposeSubject(subject)
+      }
     } catch (e) {
-      console.error('[BrandBrain] Error:', e instanceof Error ? e.message : 'Unknown')
+      console.error('[BrandBrain Email] Error:', e instanceof Error ? e.message : 'Unknown')
+    } finally {
+      setWritingEmail(false)
     }
   }
 
@@ -206,6 +251,11 @@ export default function AutomatePage() {
             >
               Connect Gmail →
             </button>
+            {gmailConnectError && (
+              <div style={{ fontSize: 10, color: '#FF5757', marginTop: 6, fontFamily: 'var(--sans)', lineHeight: 1.5 }}>
+                {gmailConnectError}
+              </div>
+            )}
           </div>
         )}
 
@@ -283,11 +333,28 @@ export default function AutomatePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Message</div>
                   <button
-                    onClick={writeWithBrandBrain}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 6, fontSize: 11, color: 'var(--blue2)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+                    onClick={() => writeWithBrandBrain(`Email about ${composeSubject || 'outreach'} to ${composeTo || 'recipient'}`)}
+                    disabled={writingEmail}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '5px 12px',
+                      background: writingEmail ? 'rgba(30,142,240,0.05)' : 'rgba(30,142,240,0.08)',
+                      border: '1px solid rgba(30,142,240,0.2)',
+                      borderRadius: 6, fontSize: 11,
+                      color: writingEmail ? 'var(--t4)' : 'var(--blue2)',
+                      cursor: writingEmail ? 'not-allowed' : 'pointer',
+                      fontFamily: 'var(--sans)',
+                      transition: 'all 0.15s',
+                    }}
                   >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    Write with Brand Brain
+                    {writingEmail ? (
+                      <><div className="nexa-spinner" style={{ width: 10, height: 10 }}/>Writing...</>
+                    ) : (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Write with Brand Brain
+                      </>
+                    )}
                   </button>
                 </div>
                 <textarea
