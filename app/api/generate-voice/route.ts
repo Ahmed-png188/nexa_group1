@@ -3,6 +3,8 @@ import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { getBrandContext } from '@/lib/brand-context'
+import { enhanceVoiceScript } from '@/lib/prompt-enhancer'
 
 const VOICE_IDS: Record<string, string> = {
   'rachel':  '21m00Tcm4TlvDq8ikWAM',
@@ -52,6 +54,15 @@ export async function POST(request: NextRequest) {
 
     const resolvedVoiceId = VOICE_IDS[voice_id] ?? VOICE_IDS['rachel']
 
+    // AI-enhance the script with pacing and delivery notes
+    const brand = await getBrandContext(workspace_id)
+    let finalScript = text
+    try {
+      finalScript = await enhanceVoiceScript(text, brand)
+    } catch {
+      finalScript = text // fallback to original
+    }
+
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}`, {
       method: 'POST',
       headers: {
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
         'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
-        text: text.slice(0, 5000),
+        text: finalScript.slice(0, 5000),
         model_id: 'eleven_multilingual_v2',
         voice_settings: {
           stability,

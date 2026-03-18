@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-type ContentType = 'post' | 'thread' | 'email' | 'caption' | 'hook' | 'bio' | 'ad' | 'story'
-type Platform    = 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'email' | 'general'
-type Tab         = 'copy' | 'image' | 'video' | 'voice'
+type ContentType   = 'post' | 'thread' | 'email' | 'caption' | 'hook' | 'bio' | 'ad' | 'story'
+type Platform      = 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'email' | 'general'
+type Tab           = 'pipeline' | 'copy' | 'image' | 'video' | 'voice'
+type PipelineFormat = 'post' | 'image' | 'carousel' | 'reel' | 'voice'
 
 interface TodayAngle {
   angle: string
@@ -32,10 +33,11 @@ const Ic = {
 }
 
 const TABS = [
-  { id: 'copy'  as Tab, label: 'Copy',  sub: 'All plans', color: '#4D9FFF', icon: Ic.copy,  requiredPlan: null    },
-  { id: 'image' as Tab, label: 'Image', sub: 'Grow+',     color: '#A78BFA', icon: Ic.image, requiredPlan: 'grow'  },
-  { id: 'video' as Tab, label: 'Video', sub: 'Scale+',    color: '#FF7A40', icon: Ic.video, requiredPlan: 'scale' },
-  { id: 'voice' as Tab, label: 'Voice', sub: 'Scale+',    color: '#34D399', icon: Ic.voice, requiredPlan: 'scale' },
+  { id: 'pipeline' as Tab, label: 'Pipeline', sub: 'Start here', color: '#4D9FFF', icon: Ic.bolt,  requiredPlan: null    },
+  { id: 'copy'     as Tab, label: 'Copy',     sub: 'All plans',  color: '#4D9FFF', icon: Ic.copy,  requiredPlan: null    },
+  { id: 'image'    as Tab, label: 'Image',    sub: 'Grow+',      color: '#A78BFA', icon: Ic.image, requiredPlan: 'grow'  },
+  { id: 'video'    as Tab, label: 'Video',    sub: 'Scale+',     color: '#FF7A40', icon: Ic.video, requiredPlan: 'scale' },
+  { id: 'voice'    as Tab, label: 'Voice',    sub: 'Scale+',     color: '#34D399', icon: Ic.voice, requiredPlan: 'scale' },
 ]
 const FORMATS = [
   { id: 'post'    as ContentType, label: 'Post',    cost: 3 },
@@ -251,13 +253,14 @@ function UpgradeGate({ feature, requiredPlan, color }: { feature:string; require
 function StudioInner() {
   const supabase     = createClient()
   const searchParams = useSearchParams()
+  const router       = useRouter()
   const startRef     = useRef<HTMLInputElement>(null)
   const endRef       = useRef<HTMLInputElement>(null)
   const imgRef       = useRef<HTMLInputElement>(null)
 
   const [ws,             setWs]             = useState<any>(null)
   const [creditBalance,  setCreditBalance]  = useState<number>(9999)
-  const [tab,            setTab]            = useState<Tab>('copy')
+  const [tab,            setTab]            = useState<Tab>('pipeline')
   const [recent,         setRecent]         = useState<any[]>([])
   const [mounted,        setMounted]        = useState(false)
   const [todayAngle,     setTodayAngle]     = useState<TodayAngle|null>(null)
@@ -301,11 +304,40 @@ function StudioInner() {
   const [vxErr,     setVxErr]     = useState<string|null>(null)
   const [vxConfirm, setVxConfirm] = useState(false)
 
+  // ── Pipeline state ──
+  const [pipelineCopy,         setPipelineCopy]         = useState('')
+  const [pipelineFormat,       setPipelineFormat]       = useState<PipelineFormat|null>(null)
+  const [pipelineAsset,        setPipelineAsset]        = useState<string|null>(null)
+  const [pipelineAssetId,      setPipelineAssetId]      = useState<string|null>(null)
+  const [pipelineStage,        setPipelineStage]        = useState<1|2|3|4>(1)
+  const [strategyDayId,        setStrategyDayId]        = useState<string|null>(null)
+  const [pipePlat,             setPipePlat]             = useState<Platform>('instagram')
+  const [pipelineScheduleTime, setPipelineScheduleTime] = useState('')
+  const [pipelineGenning,      setPipelineGenning]      = useState(false)
+  const [pipeSched,            setPipeSched]            = useState(false)
+  const [pipelineScheduled,    setPipelineScheduled]    = useState(false)
+  const [pipelineErr,          setPipelineErr]          = useState<string|null>(null)
+  const [pipelineImgPrompt,    setPipelineImgPrompt]    = useState('')
+  const [pipelineImgStyle,     setPipelineImgStyle]     = useState('photorealistic')
+  const [pipelineVidPrompt,    setPipelineVidPrompt]    = useState('')
+  const [pipelineVidDur,       setPipelineVidDur]       = useState(5)
+  const [pipelineVoiceId,      setPipelineVoiceId]      = useState('rachel')
+  const [pipelineSlideCount,   setPipelineSlideCount]   = useState(5)
+
   useEffect(() => {
     setMounted(true)
     loadWs()
-    const q = searchParams.get('q')
+    const q       = searchParams.get('q')
+    const angle   = searchParams.get('angle')
+    const dayId   = searchParams.get('strategy_day')
+    const fmt     = searchParams.get('format') as PipelineFormat | null
     if (q) setPrompt(decodeURIComponent(q))
+    if (angle) {
+      setPipelineCopy(decodeURIComponent(angle))
+      setTab('pipeline')
+      if (fmt) { setPipelineFormat(fmt); setPipelineStage(fmt === 'post' ? 4 : 3) } else { setPipelineStage(2) }
+    }
+    if (dayId) setStrategyDayId(dayId)
   }, [])
 
   async function loadWs() {
@@ -417,6 +449,89 @@ function StudioInner() {
     setVxGen(false)
   }
 
+  // ─────────────── Pipeline functions ───────────────
+  async function generatePipelineCopy() {
+    if (!pipelineCopy.trim() || pipelineGenning) return
+    setPipelineGenning(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/generate-content', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:ws?.id, type:'post', platform:pipePlat, prompt:pipelineCopy.trim() }) })
+      const d = await r.json()
+      if (r.ok) setPipelineCopy(d.content)
+      else setPipelineErr(d.message || d.error || 'Generation failed')
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipelineGenning(false)
+  }
+
+  async function generatePipelineImage() {
+    if (!pipelineImgPrompt.trim() || pipelineGenning) return
+    setPipelineGenning(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/generate-image', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:ws?.id, prompt:pipelineImgPrompt, style:pipelineImgStyle, aspect_ratio:'4:5' }) })
+      const d = await r.json()
+      if (!r.ok) { setPipelineErr(r.status===402?d.message:(d.error||'Failed')); setPipelineGenning(false); return }
+      setPipelineAsset(d.image_url); setPipelineAssetId(d.content_id); setPipelineStage(4)
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipelineGenning(false)
+  }
+
+  async function generatePipelineCarousel() {
+    if (!pipelineCopy.trim() || pipelineGenning) return
+    setPipelineGenning(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/generate-content', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:ws?.id, type:'post', platform:pipePlat, prompt:`Create a ${pipelineSlideCount}-slide carousel from this copy. Format each slide as "Slide N: [text]". Make each a standalone insight. Last slide = CTA. Copy: ${pipelineCopy}` }) })
+      const d = await r.json()
+      if (!r.ok) { setPipelineErr(d.message||'Failed'); setPipelineGenning(false); return }
+      setPipelineAsset(d.content); setPipelineStage(4)
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipelineGenning(false)
+  }
+
+  async function generatePipelineVideo() {
+    if (!pipelineVidPrompt.trim() || pipelineGenning) return
+    if (creditBalance < 20) { setPipelineErr('Insufficient credits. Video generation costs 20 credits.'); return }
+    setPipelineGenning(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/generate-video', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:ws?.id, prompt:pipelineVidPrompt, style:'cinematic', duration:pipelineVidDur, aspect_ratio:'9:16' }) })
+      const d = await r.json()
+      if (!r.ok) { setPipelineErr(r.status===402?d.message:(d.error||'Failed')); setPipelineGenning(false); return }
+      setPipelineAsset(d.video_url); setPipelineAssetId(d.content_id); setPipelineStage(4)
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipelineGenning(false)
+  }
+
+  async function generatePipelineVoice() {
+    if (!pipelineCopy.trim() || pipelineGenning) return
+    if (creditBalance < 8) { setPipelineErr('Insufficient credits. Voice generation costs 8 credits.'); return }
+    setPipelineGenning(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/generate-voice', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:ws?.id, text:pipelineCopy, voice_id:pipelineVoiceId, stability:0.5 }) })
+      const d = await r.json()
+      if (!r.ok) { setPipelineErr(r.status===402?d.message:(d.error||'Failed')); setPipelineGenning(false); return }
+      setPipelineAsset(d.audio_url); setPipelineAssetId(d.content_id); setPipelineStage(4)
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipelineGenning(false)
+  }
+
+  async function schedulePipelinePost() {
+    if (!pipelineScheduleTime || pipeSched) return
+    setPipeSched(true); setPipelineErr(null)
+    try {
+      const r = await fetch('/api/schedule-post', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+        workspace_id: ws?.id,
+        content_id:   pipelineAssetId || undefined,
+        platform:     pipePlat,
+        scheduled_for: new Date(pipelineScheduleTime).toISOString(),
+        body:          pipelineCopy,
+        type:          pipelineFormat === 'reel' ? 'video' : pipelineFormat === 'voice' ? 'voice' : 'post',
+        strategy_day_id: strategyDayId || undefined,
+      }) })
+      if (r.ok) setPipelineScheduled(true)
+      else { const d = await r.json(); setPipelineErr(d.message||'Failed to schedule') }
+    } catch { setPipelineErr('Something went wrong.') }
+    setPipeSched(false)
+  }
+  // ─────────────────────────────────────────────────
+
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text)
     setCopied(true); setTimeout(()=>setCopied(false),2000)
@@ -494,6 +609,302 @@ function StudioInner() {
             })}
           </div>
         </div>
+
+        {tab === 'pipeline' && (
+          <div style={{ width:'100%', animation:'pageUp 0.3s ease both' }}>
+            {/* Stage indicators */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:28 }}>
+              {(['Copy','Format','Asset','Schedule'] as const).map((label, i) => {
+                const s = (i + 1) as 1|2|3|4
+                const done = pipelineStage > s
+                const cur  = pipelineStage === s
+                return (
+                  <div key={s} style={{ display:'flex', alignItems:'center', gap:6, flex: i < 3 ? 1 : 'none' }}>
+                    <div onClick={() => done && setPipelineStage(s)}
+                      style={{ width:26, height:26, borderRadius:'50%', flexShrink:0,
+                        background: cur ? '#4D9FFF' : done ? 'rgba(77,159,255,0.25)' : 'rgba(255,255,255,0.06)',
+                        border: cur ? 'none' : done ? '1px solid rgba(77,159,255,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                        color: cur ? '#000' : done ? '#4D9FFF' : 'rgba(255,255,255,0.25)',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:10, fontWeight:700, cursor: done ? 'pointer' : 'default', transition:'all 0.2s',
+                      }}>{done ? '✓' : s}</div>
+                    <span style={{ fontSize:10, fontWeight:600, color: cur ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)', letterSpacing:'0.02em' }}>{label}</span>
+                    {i < 3 && <div style={{ flex:1, height:1, background: done ? 'rgba(77,159,255,0.3)' : 'rgba(255,255,255,0.07)', marginLeft:4 }}/>}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* ── Stage 1: Copy ── */}
+            {pipelineStage === 1 && (
+              <div>
+                {strategyDayId && (
+                  <div style={{ marginBottom:16, padding:'10px 14px', background:'rgba(77,159,255,0.06)', border:'1px solid rgba(77,159,255,0.2)', borderRadius:10, fontSize:12, color:'rgba(77,159,255,0.75)' }}>
+                    Strategy Day {strategyDayId} — write content for this angle
+                  </div>
+                )}
+                <div style={{ marginBottom:18 }}>
+                  <SLabel>Platform</SLabel>
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    {PLATFORMS.map(p => <PlatPill key={p.id} p={p} active={pipePlat===p.id} onClick={() => setPipePlat(p.id)}/>)}
+                  </div>
+                </div>
+                <div style={{ marginBottom:18 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:9 }}>
+                    <SLabel>Copy / Script</SLabel>
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.18)' }}>Type your own or generate below</span>
+                  </div>
+                  <Textarea value={pipelineCopy} onChange={setPipelineCopy} rows={7} placeholder="Give Nexa a direction, paste your draft, or enter your script. This becomes the foundation for everything."/>
+                </div>
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:18 }}>
+                  {(strategyAngles.length > 0 ? strategyAngles : ANGLES).map((a,i) => (
+                    <button key={i} onClick={() => setPipelineCopy(a)}
+                      style={{ padding:'4px 10px', borderRadius:100, fontSize:11, background:'transparent', border:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.22)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.18s' }}>
+                      {a.length > 48 ? a.slice(0,48)+'...' : a}
+                    </button>
+                  ))}
+                </div>
+                <GenBtn active={!!pipelineCopy.trim()} loading={pipelineGenning} label="Generate with Brand Brain" loadingLabel="Writing in your brand voice..." onClick={generatePipelineCopy} color="#4D9FFF"/>
+                {pipelineErr && <ErrBanner msg={pipelineErr}/>}
+                {pipelineCopy.trim() && !pipelineGenning && (
+                  <button onClick={() => setPipelineStage(2)}
+                    style={{ marginTop:12, width:'100%', padding:'14px', borderRadius:13, background:'rgba(77,159,255,0.06)', border:'1px solid rgba(77,159,255,0.2)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--sans)', fontSize:13, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.18s' }}>
+                    Continue — choose format →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ── Stage 2: Format chooser ── */}
+            {pipelineStage === 2 && (
+              <div>
+                <div style={{ marginBottom:18, padding:'14px 16px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:6, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Your copy</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.72)', lineHeight:1.6, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' as const }}>{pipelineCopy}</div>
+                  <button onClick={() => setPipelineStage(1)} style={{ fontSize:11, color:'rgba(77,159,255,0.6)', background:'none', border:'none', cursor:'pointer', padding:'6px 0 0', fontFamily:'var(--sans)' }}>Edit copy</button>
+                </div>
+                <SLabel>Choose your format</SLabel>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                  {([
+                    { id:'post'     as PipelineFormat, label:'Post only',   emoji:'📝', cost:'Ready to schedule',  desc:'Schedule the copy directly to any platform' },
+                    { id:'image'    as PipelineFormat, label:'+ Image',      emoji:'🖼', cost:'+5 credits',         desc:'AI-generated brand visual paired with copy' },
+                    { id:'carousel' as PipelineFormat, label:'+ Carousel',   emoji:'🎠', cost:'+credits by slides', desc:'Multi-slide breakdown of your copy' },
+                    { id:'reel'     as PipelineFormat, label:'→ Reel',       emoji:'🎬', cost:'+20 credits',        desc:'Cinematic video generated from the copy' },
+                    { id:'voice'    as PipelineFormat, label:'🎙 Voiceover', emoji:'🎙', cost:'+8 credits',         desc:'Professional narration of the copy' },
+                  ] as const).map(f => {
+                    const active = pipelineFormat === f.id
+                    return (
+                      <div key={f.id}
+                        onClick={() => { setPipelineFormat(f.id); setPipelineAsset(null); setPipelineAssetId(null); setPipelineErr(null); setPipelineScheduled(false); if (f.id === 'image') setPipelineImgPrompt(pipelineCopy.slice(0,200)); if (f.id === 'reel') setPipelineVidPrompt(pipelineCopy.slice(0,200)); if (f.id === 'post') setPipelineStage(4); else setPipelineStage(3) }}
+                        style={{ padding:'18px 16px', borderRadius:14, background: active ? 'rgba(77,159,255,0.08)' : 'rgba(255,255,255,0.025)', border: `1px solid ${active ? 'rgba(77,159,255,0.3)' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer', transition:'all 0.15s', gridColumn: f.id === 'post' ? 'span 2' : 'span 1' }}>
+                        <div style={{ fontSize:22, marginBottom:8 }}>{f.emoji}</div>
+                        <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.88)', marginBottom:4, letterSpacing:'-0.01em' }}>{f.label}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.33)', marginBottom:5, lineHeight:1.5 }}>{f.desc}</div>
+                        <div style={{ fontSize:10, fontWeight:600, color: active ? '#4D9FFF' : 'rgba(255,255,255,0.2)' }}>{f.cost}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── Stage 3: Asset generation ── */}
+            {pipelineStage === 3 && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:22 }}>
+                  <button onClick={() => setPipelineStage(2)} style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:8, fontSize:11, fontWeight:600, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontFamily:'var(--sans)' }}>← Back</button>
+                  <span style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>
+                    {pipelineFormat === 'image' && 'Generate a brand image'}
+                    {pipelineFormat === 'carousel' && 'Build your carousel'}
+                    {pipelineFormat === 'reel' && 'Generate a cinematic reel'}
+                    {pipelineFormat === 'voice' && 'Generate a voiceover'}
+                  </span>
+                </div>
+
+                {pipelineFormat === 'image' && <>
+                  <ProvBadge name="Nexa Visuals" desc="Brand-accurate AI image generation" color="#A78BFA"/>
+                  {!planAccess.image ? <UpgradeGate feature="Image generation" requiredPlan="grow" color="#A78BFA"/> : <>
+                    <div style={{ marginBottom:18 }}>
+                      <SLabel>Visual direction</SLabel>
+                      <Textarea value={pipelineImgPrompt} onChange={setPipelineImgPrompt} rows={4} placeholder="Describe the visual — Nexa enhances it cinematically."/>
+                    </div>
+                    <div style={{ marginBottom:22 }}>
+                      <SLabel>Style</SLabel>
+                      <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                        {IMG_STYLES.map((s,i) => <Pill key={s} label={s} active={pipelineImgStyle===IMG_IDS[i]} onClick={() => setPipelineImgStyle(IMG_IDS[i])} color="#A78BFA"/>)}
+                      </div>
+                    </div>
+                    <GenBtn active={!!pipelineImgPrompt.trim()} loading={pipelineGenning} label="Generate image — 5 credits" loadingLabel="Generating your image..." onClick={generatePipelineImage} color="#A78BFA"/>
+                  </>}
+                </>}
+
+                {pipelineFormat === 'carousel' && <>
+                  <div style={{ marginBottom:18 }}>
+                    <SLabel>Number of slides</SLabel>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {[3,5,7,10].map(n => (
+                        <button key={n} onClick={() => setPipelineSlideCount(n)}
+                          style={{ padding:'8px 18px', borderRadius:100, fontSize:13, fontWeight:600, background:pipelineSlideCount===n?'rgba(167,139,250,0.12)':'rgba(255,255,255,0.04)', border:`1px solid ${pipelineSlideCount===n?'rgba(167,139,250,0.3)':'rgba(255,255,255,0.08)'}`, color:pipelineSlideCount===n?'#A78BFA':'rgba(255,255,255,0.4)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.14s' }}>
+                          {n} slides
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:14, padding:'12px 16px', background:'rgba(167,139,250,0.05)', border:'1px solid rgba(167,139,250,0.12)', borderRadius:10, fontSize:12, color:'rgba(255,255,255,0.38)', lineHeight:1.65 }}>
+                    Nexa splits your copy into {pipelineSlideCount} carousel slides — hook, insights, and CTA — in your exact brand voice.
+                  </div>
+                  <GenBtn active={!!pipelineCopy.trim()} loading={pipelineGenning} label={`Generate ${pipelineSlideCount} slides — ${pipelineSlideCount * 2} credits`} loadingLabel="Building carousel..." onClick={generatePipelineCarousel} color="#A78BFA"/>
+                </>}
+
+                {pipelineFormat === 'reel' && <>
+                  <ProvBadge name="Nexa Video" desc="Cinematic AI video generation" color="#FF7A40"/>
+                  {!planAccess.video ? <UpgradeGate feature="Video generation" requiredPlan="scale" color="#FF7A40"/> : <>
+                    <div style={{ marginBottom:18 }}>
+                      <SLabel>Scene description</SLabel>
+                      <Textarea value={pipelineVidPrompt} onChange={setPipelineVidPrompt} rows={4} placeholder="Describe the scene — Nexa will direct it cinematically."/>
+                    </div>
+                    <div style={{ marginBottom:18 }}>
+                      <SLabel>Duration</SLabel>
+                      <div style={{ display:'flex', gap:6 }}>
+                        {[5,10].map(d => (
+                          <button key={d} onClick={() => setPipelineVidDur(d)}
+                            style={{ padding:'8px 18px', borderRadius:100, fontSize:13, fontWeight:600, background:pipelineVidDur===d?'rgba(255,122,64,0.12)':'rgba(255,255,255,0.04)', border:`1px solid ${pipelineVidDur===d?'rgba(255,122,64,0.3)':'rgba(255,255,255,0.08)'}`, color:pipelineVidDur===d?'#FF7A40':'rgba(255,255,255,0.4)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.14s' }}>
+                            {d}s
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:6 }}>
+                      <span style={{ fontSize:11, color: creditBalance < 20 ? '#FF5757' : 'rgba(255,255,255,0.28)', fontWeight:500 }}>
+                        {creditBalance < 20 ? `⚠ Need 20 credits (have ${creditBalance})` : `20 credits · ${creditBalance} available`}
+                      </span>
+                    </div>
+                    <GenBtn active={!!pipelineVidPrompt.trim()} loading={pipelineGenning} label="Generate reel — 20 credits" loadingLabel="Rendering your video..." onClick={generatePipelineVideo} color="#FF7A40"/>
+                  </>}
+                </>}
+
+                {pipelineFormat === 'voice' && <>
+                  <ProvBadge name="Nexa Voice" desc="Ultra-realistic AI voiceovers, indistinguishable from human speech" color="#34D399"/>
+                  {!planAccess.voice ? <UpgradeGate feature="Voice generation" requiredPlan="scale" color="#34D399"/> : <>
+                    <div style={{ marginBottom:22 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:9 }}>
+                        <SLabel>Script</SLabel>
+                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.2)' }}>{pipelineCopy.length} / 5,000</span>
+                      </div>
+                      <Textarea value={pipelineCopy} onChange={setPipelineCopy} rows={6} placeholder="Your script..."/>
+                    </div>
+                    <div style={{ marginBottom:22 }}>
+                      <SLabel>Voice</SLabel>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:7 }}>
+                        {VOICES.map(v => (
+                          <button key={v.id} onClick={() => setPipelineVoiceId(v.id)}
+                            style={{ padding:'11px 10px', borderRadius:11, background:pipelineVoiceId===v.id?'rgba(52,211,153,0.09)':'rgba(255,255,255,0.025)', border:'1px solid '+(pipelineVoiceId===v.id?'rgba(52,211,153,0.28)':'rgba(255,255,255,0.07)'), cursor:'pointer', fontFamily:'var(--sans)', textAlign:'left', transition:'all 0.15s' }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:pipelineVoiceId===v.id?'#34D399':'rgba(255,255,255,0.75)', marginBottom:2 }}>{v.name}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{v.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:6 }}>
+                      <span style={{ fontSize:11, color: creditBalance < 8 ? '#FF5757' : 'rgba(255,255,255,0.28)', fontWeight:500 }}>
+                        {creditBalance < 8 ? `⚠ Need 8 credits (have ${creditBalance})` : `8 credits · ${creditBalance} available`}
+                      </span>
+                    </div>
+                    <GenBtn active={!!pipelineCopy.trim()} loading={pipelineGenning} label="Generate voiceover — 8 credits" loadingLabel="Rendering your voiceover..." onClick={generatePipelineVoice} color="#34D399"/>
+                  </>}
+                </>}
+
+                {pipelineErr && <ErrBanner msg={pipelineErr}/>}
+              </div>
+            )}
+
+            {/* ── Stage 4: Review + Schedule ── */}
+            {pipelineStage === 4 && (
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:22 }}>
+                  <button onClick={() => setPipelineStage(pipelineFormat === 'post' ? 2 : 3)} style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:8, fontSize:11, fontWeight:600, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontFamily:'var(--sans)' }}>← Back</button>
+                  <div style={{ width:6, height:6, borderRadius:'50%', background:'#34D399', boxShadow:'0 0 6px #34D399' }}/>
+                  <span style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.55)' }}>Review & schedule</span>
+                </div>
+
+                {/* Copy preview */}
+                <div style={{ marginBottom:16, padding:'18px 20px', background:'rgba(77,159,255,0.04)', border:'1px solid rgba(77,159,255,0.15)', borderRadius:14 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+                    <span style={{ fontSize:9, fontWeight:700, color:'rgba(77,159,255,0.7)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Copy</span>
+                    <button onClick={() => setPipelineStage(1)} style={{ fontSize:11, color:'rgba(77,159,255,0.55)', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--sans)' }}>Edit</button>
+                  </div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', lineHeight:1.7, whiteSpace:'pre-wrap', maxHeight:160, overflowY:'auto' }}>{pipelineCopy}</div>
+                </div>
+
+                {/* Asset preview */}
+                {pipelineAsset && pipelineFormat === 'image' && (
+                  <div style={{ marginBottom:16, borderRadius:14, overflow:'hidden', border:'1px solid rgba(167,139,250,0.2)' }}>
+                    <img src={pipelineAsset} alt="Generated" style={{ width:'100%', display:'block', maxHeight:360, objectFit:'cover' }}/>
+                  </div>
+                )}
+                {pipelineAsset && pipelineFormat === 'reel' && (
+                  <div style={{ marginBottom:16, borderRadius:14, overflow:'hidden', border:'1px solid rgba(255,122,64,0.2)', background:'#000' }}>
+                    <video src={pipelineAsset} controls style={{ width:'100%', display:'block', maxHeight:300 }}/>
+                  </div>
+                )}
+                {pipelineAsset && pipelineFormat === 'voice' && (
+                  <div style={{ marginBottom:16, padding:'18px 20px', background:'rgba(52,211,153,0.05)', border:'1px solid rgba(52,211,153,0.18)', borderRadius:14 }}>
+                    <audio src={pipelineAsset} controls style={{ width:'100%' }}/>
+                  </div>
+                )}
+                {pipelineAsset && pipelineFormat === 'carousel' && (
+                  <div style={{ marginBottom:16, padding:'16px 18px', background:'rgba(167,139,250,0.04)', border:'1px solid rgba(167,139,250,0.15)', borderRadius:14 }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:'rgba(167,139,250,0.7)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.08em' }}>Carousel slides</div>
+                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.72)', lineHeight:1.8, whiteSpace:'pre-wrap', maxHeight:220, overflowY:'auto' }}>{pipelineAsset}</div>
+                  </div>
+                )}
+
+                {/* Schedule controls */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:18 }}>
+                  <div>
+                    <SLabel>Platform</SLabel>
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {PLATFORMS.filter(p => p.id !== 'general' && p.id !== 'email').map(p => (
+                        <PlatPill key={p.id} p={p} active={pipePlat===p.id} onClick={() => setPipePlat(p.id)}/>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <SLabel>Schedule for</SLabel>
+                    <input
+                      type="datetime-local"
+                      value={pipelineScheduleTime}
+                      onChange={e => setPipelineScheduleTime(e.target.value)}
+                      style={{ width:'100%', padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, color:'rgba(255,255,255,0.85)', fontSize:12, fontFamily:'var(--sans)', outline:'none', boxSizing:'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {strategyDayId && (
+                  <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(52,211,153,0.06)', border:'1px solid rgba(52,211,153,0.18)', borderRadius:10, fontSize:12, color:'rgba(52,211,153,0.75)' }}>
+                    ✓ Linked to Day {strategyDayId} of your strategy — will mark complete when scheduled
+                  </div>
+                )}
+
+                <GenBtn active={!!pipelineScheduleTime && !pipelineScheduled} loading={pipeSched} label="Schedule post — 1 credit" loadingLabel="Scheduling..." onClick={schedulePipelinePost} color="#34D399"/>
+                {pipelineErr && <ErrBanner msg={pipelineErr}/>}
+
+                {pipelineScheduled && (
+                  <div style={{ marginTop:14, padding:'16px 18px', background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.22)', borderRadius:13 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#34D399', marginBottom:4 }}>Scheduled ✓</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
+                      Your {pipelineFormat} has been added to the queue.{strategyDayId ? ` Day ${strategyDayId} marked complete in your strategy.` : ''}
+                    </div>
+                    <button onClick={() => { setPipelineStage(1); setPipelineCopy(''); setPipelineFormat(null); setPipelineAsset(null); setPipelineAssetId(null); setPipelineScheduled(false); setPipelineScheduleTime(''); setStrategyDayId(null) }}
+                      style={{ marginTop:12, padding:'8px 18px', borderRadius:9, fontSize:12, fontWeight:700, background:'rgba(52,211,153,0.12)', border:'1px solid rgba(52,211,153,0.25)', color:'#34D399', cursor:'pointer', fontFamily:'var(--sans)' }}>
+                      Create another →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {tab === 'copy' && (
           <div style={{ width:'100%',animation:'pageUp 0.3s ease both' }}>

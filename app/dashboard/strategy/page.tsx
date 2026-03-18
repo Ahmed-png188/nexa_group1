@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type Tab = 'overview'|'pillars'|'angles'|'plan'|'timing'|'competitors'
 
@@ -87,6 +88,7 @@ function EmptyTab({ icon, title, desc, btnLabel, btnColor, onAction, loading }: 
 /* ─── Page ─── */
 export default function StrategyPage() {
   const supabase = createClient()
+  const router   = useRouter()
 
   const [ws,         setWs]        = useState<any>(null)
   const [strategy,   setStrategy]  = useState<any>(null)
@@ -101,6 +103,7 @@ export default function StrategyPage() {
   const [compInput,  setCompInput] = useState('')
   const [expanded,   setExpanded]  = useState<number|null>(null)
   const [mounted,    setMounted]   = useState(false)
+  const [hovDay,     setHovDay]    = useState<number|null>(null)
 
   useEffect(() => { setMounted(true); load() }, [])
 
@@ -425,6 +428,8 @@ export default function StrategyPage() {
                   return (
                     <div key={i}
                       onClick={() => setExpanded(isOpen ? null : num)}
+                      onMouseEnter={() => setHovDay(num)}
+                      onMouseLeave={() => setHovDay(null)}
                       className="day-cell"
                       style={{
                         padding:'12px 10px',
@@ -445,6 +450,13 @@ export default function StrategyPage() {
                       <div style={{ fontSize:9.5, color:isOpen?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.28)', lineHeight:1.45, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
                         {theme}
                       </div>
+                      {hovDay === num && !isOpen && (
+                        <button
+                          onClick={e => { e.stopPropagation(); router.push(`/dashboard/studio?strategy_day=${num}&angle=${encodeURIComponent(day.angle||day.theme||theme)}`) }}
+                          style={{ position:'absolute', bottom:6, right:6, padding:'3px 8px', borderRadius:6, fontSize:9, fontWeight:700, background:wkCol, color:'#000', border:'none', cursor:'pointer', fontFamily:'var(--sans)', whiteSpace:'nowrap' }}>
+                          Create →
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -492,10 +504,17 @@ export default function StrategyPage() {
                         </div>
                       )}
                     </div>
-                    <div style={{ marginTop:18, display:'flex', gap:8 }}>
-                      <a href="/dashboard/studio" style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', background:col, color:'#000', borderRadius:9, fontSize:12, fontWeight:700, textDecoration:'none', boxShadow:`0 4px 16px ${col}40`, transition:'all 0.15s' }}>
-                        Write this post in Studio
-                      </a>
+                    <div style={{ marginTop:18, display:'flex', gap:8, flexWrap:'wrap' }}>
+                      <button
+                        onClick={() => router.push(`/dashboard/studio?strategy_day=${expanded}&angle=${encodeURIComponent(day.angle||day.theme||'')}`)  }
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', background:col, color:'#000', borderRadius:9, fontSize:12, fontWeight:700, border:'none', cursor:'pointer', fontFamily:'var(--sans)', boxShadow:`0 4px 16px ${col}40`, transition:'all 0.15s' }}>
+                        Create content in Studio →
+                      </button>
+                      <button
+                        onClick={() => router.push(`/dashboard/studio?strategy_day=${expanded}&angle=${encodeURIComponent(day.angle||day.theme||'')}&format=reel`)}
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.6)', borderRadius:9, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s' }}>
+                        → Make a Reel
+                      </button>
                     </div>
                   </div>
                 )

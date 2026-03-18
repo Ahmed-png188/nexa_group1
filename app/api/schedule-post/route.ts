@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, content_id, platform, scheduled_for, title, body, type } = await request.json()
+    const { workspace_id, content_id, platform, scheduled_for, title, body, type, strategy_day_id } = await request.json()
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -59,6 +59,30 @@ export async function POST(request: NextRequest) {
       title: `Post scheduled for ${platform} · ${new Date(scheduled_for).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       metadata: { content_id: savedId, platform, scheduled_for },
     })
+
+    // Mark strategy day complete if linked
+    if (strategy_day_id) {
+      try {
+        const { data: plan } = await supabase
+          .from('strategy_plans')
+          .select('daily_plan')
+          .eq('workspace_id', workspace_id)
+          .eq('status', 'active')
+          .single()
+
+        if (plan?.daily_plan) {
+          const dayNum = parseInt(strategy_day_id)
+          const updatedPlan = (plan.daily_plan as any[]).map((day: any, i: number) =>
+            (day.day ?? i + 1) === dayNum ? { ...day, status: 'scheduled', content_id: savedId } : day
+          )
+          await supabase
+            .from('strategy_plans')
+            .update({ daily_plan: updatedPlan })
+            .eq('workspace_id', workspace_id)
+            .eq('status', 'active')
+        }
+      } catch { /* non-fatal */ }
+    }
 
     return NextResponse.json({ success: true, content_id: savedId })
 

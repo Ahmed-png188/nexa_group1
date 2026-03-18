@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { enhanceImagePrompt } from '@/lib/prompt-enhancer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,15 +55,20 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    // Inject brand visual context into every image prompt
+    // Inject brand visual context and AI enhancement into every image prompt
     const brand = await getBrandContext(workspace_id)
-    const brandVisual = brand?.imageContext || ''
     const brandPrefix = brand?.profile?.visual?.aesthetic
       ? `${brand.profile.visual.aesthetic}, ${brand.profile.visual.photography_style || 'professional photography'}, `
       : ''
-    const enhancedPrompt = style
-      ? `${brandPrefix}${prompt}, ${style} style, professional quality, brand photography`
-      : `${brandPrefix}${prompt}, professional quality, clean composition, brand photography`
+    const basePrompt = style
+      ? `${brandPrefix}${prompt}, ${style} style`
+      : `${brandPrefix}${prompt}`
+    let enhancedPrompt = basePrompt
+    try {
+      enhancedPrompt = await enhanceImagePrompt(basePrompt, brand)
+    } catch {
+      enhancedPrompt = `${basePrompt}, professional quality, clean composition, brand photography`
+    }
 
     const falResponse = await fetch('https://fal.run/fal-ai/flux/dev', {
       method: 'POST',

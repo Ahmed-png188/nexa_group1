@@ -5,6 +5,7 @@ import { persistFile } from '@/lib/storage'
 import { createHmac } from 'crypto'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { enhanceVideoPrompt } from '@/lib/prompt-enhancer'
 
 function base64url(input: string): string {
   return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
@@ -78,14 +79,21 @@ export async function POST(request: NextRequest) {
 
     const token = getKlingToken()
 
-    // Get brand video context
+    // Get brand video context and AI-enhance the prompt
     const brand = await getBrandContext(workspace_id)
     const brandVideo = brand?.videoContext ? `${brand.videoContext}, ` : ''
+    const baseVideoPrompt = `${brandVideo}${prompt}, ${style} style`
+    let finalVideoPrompt = baseVideoPrompt
+    try {
+      finalVideoPrompt = await enhanceVideoPrompt(baseVideoPrompt, brand)
+    } catch {
+      finalVideoPrompt = `${baseVideoPrompt}, high quality, professional`
+    }
 
     // Determine endpoint and body based on mode
     let endpoint: string
     const body: any = {
-      prompt: `${brandVideo}${prompt}, ${style} style, high quality, professional`,
+      prompt: finalVideoPrompt,
       negative_prompt: 'blurry, low quality, distorted, watermark, text',
       cfg_scale: motion_strength,
       duration,
