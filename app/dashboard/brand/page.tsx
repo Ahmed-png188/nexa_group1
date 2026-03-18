@@ -544,6 +544,27 @@ export default function BrandPage() {
             </div>
           </div>
 
+          {/* Quick actions */}
+          <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+            <button
+              onClick={() => {
+                const audienceContext = aud?.primary || aud?.demographics || ws?.brand_audience || 'my target audience'
+                const params = new URLSearchParams({
+                  view: 'compose',
+                  context: `Writing to my audience: ${audienceContext}`,
+                  objective: 'nurture',
+                })
+                window.location.href = `/dashboard/automate?${params.toString()}`
+              }}
+              style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', background:'rgba(30,142,240,0.07)', border:'1px solid rgba(30,142,240,0.18)', borderRadius:8, fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#4DABF7', cursor:'pointer', transition:'all 0.15s' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(30,142,240,0.12)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='rgba(30,142,240,0.07)'}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Email my audience →
+            </button>
+          </div>
+
           {/* Recent learnings */}
           {learnings.length > 0 && (
             <div style={{ padding:'18px 22px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16 }}>

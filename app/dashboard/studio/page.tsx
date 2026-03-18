@@ -954,11 +954,21 @@ function StudioInner() {
                 <div className="nexa-card" style={{ padding:'26px 28px',background:'linear-gradient(160deg,rgba(77,159,255,0.07) 0%,rgba(0,0,0,0.4) 100%)',border:'1px solid rgba(77,159,255,0.2)',borderRadius:18,fontSize:15,color:'rgba(255,255,255,0.9)',lineHeight:1.8,whiteSpace:'pre-wrap',letterSpacing:'-0.015em',position:'relative',overflow:'hidden',fontFamily:'var(--serif)' }}>
                   {result}
                 </div>
-                {resultId && (
+                {result && (
                   <div style={{ marginTop:10, display:'flex', justifyContent:'flex-end' }}>
                     <button
-                      onClick={() => router.push(`/dashboard/amplify?boost=true&content_id=${resultId}`)}
-                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.2)', borderRadius:7, fontFamily:'var(--display)', fontSize:12, fontWeight:600, color:'#F97316', cursor:'pointer', transition:'all 0.15s' }}
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          boost: 'true',
+                          content: result.slice(0, 500),
+                          platform: plat,
+                          ...(resultId ? { content_id: resultId } : {}),
+                        })
+                        window.location.href = `/dashboard/amplify?${params.toString()}`
+                      }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'8px 16px', background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.2)', borderRadius:8, fontFamily:'var(--display)', fontSize:12, fontWeight:700, color:'#F97316', cursor:'pointer', transition:'all 0.15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background='rgba(249,115,22,0.14)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(249,115,22,0.35)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background='rgba(249,115,22,0.08)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(249,115,22,0.2)' }}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
                       Boost with Amplify →

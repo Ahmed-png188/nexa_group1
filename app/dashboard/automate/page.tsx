@@ -54,6 +54,17 @@ export default function AutomatePage() {
       console.error('[Gmail] Connect error:', gmailError, gmailReason)
       setGmailConnectError(`Connection failed: ${gmailReason || gmailError}`)
     }
+    // Brand Brain → Email deep link
+    const urlView = params.get('view') as View | null
+    const urlContext = params.get('context')
+    const urlObjective = params.get('objective')
+    if (urlView === 'compose') {
+      setView('compose')
+      if (urlContext) setEmailContext(decodeURIComponent(urlContext))
+      if (urlObjective) setEmailObjective(decodeURIComponent(urlObjective))
+      setShowContextPanel(true)
+      window.history.replaceState({}, '', '/dashboard/automate')
+    }
   }, [])
 
   useEffect(() => {

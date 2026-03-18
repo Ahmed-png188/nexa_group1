@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-type Step = 'segment' | 'workspace' | 'voice' | 'upload' | 'analyzing' | 'done'
+type Step = 'segment' | 'username' | 'workspace' | 'voice' | 'upload' | 'analyzing' | 'reveal' | 'done'
 type Segment = 'creator' | 'freelancer' | 'business' | 'agency'
 
 interface BrandAnalysis {
@@ -13,9 +13,11 @@ interface BrandAnalysis {
   brand_tone: string
   content_pillars: string[]
   top_angles: string[]
+  content_angles?: string[]
   voice_match_score: number
   audience_fit_score: number
   visual_style_score: number
+  voice_score?: number
   first_post_hook: string
   first_post_body: string
 }
@@ -26,6 +28,68 @@ const SEGMENTS: { id: Segment; label: string; sub: string; color: string; emoji:
   { id: 'business',   label: 'Business',   sub: 'Products, revenue, growth',       color: '#34D399', emoji: '◆' },
   { id: 'agency',     label: 'Agency',     sub: 'Team, clients, scale',            color: '#FF7A40', emoji: '⬡' },
 ]
+
+/* ── Animated analyzing steps component ── */
+function AnalyzingSteps() {
+  const steps = [
+    'Reading your content...',
+    'Extracting your voice...',
+    'Building your audience profile...',
+    'Calibrating your tone...',
+    'Mapping your content angles...',
+    'Brand Brain is ready.',
+  ]
+  const [visibleSteps, setVisibleSteps] = useState<number[]>([])
+
+  useEffect(() => {
+    steps.forEach((_, i) => {
+      setTimeout(() => {
+        setVisibleSteps(prev => [...prev, i])
+      }, i * 800 + 200)
+    })
+  }, [])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {steps.map((step, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            opacity: visibleSteps.includes(i) ? 1 : 0,
+            transform: visibleSteps.includes(i) ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'all 0.4s ease',
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+            background: i === steps.length - 1 && visibleSteps.includes(i)
+              ? 'rgba(34,197,94,0.15)'
+              : 'rgba(30,142,240,0.1)',
+            border: `1px solid ${i === steps.length - 1 && visibleSteps.includes(i) ? 'rgba(34,197,94,0.3)' : 'rgba(30,142,240,0.2)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {i === steps.length - 1 && visibleSteps.includes(i) ? (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ) : visibleSteps.includes(i) && i < steps.length - 1 ? (
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#4DABF7' }}/>
+            ) : null}
+          </div>
+          <span style={{
+            fontFamily: 'var(--sans)',
+            fontSize: 14,
+            color: i === steps.length - 1 && visibleSteps.includes(i)
+              ? '#4ADE80'
+              : 'rgba(255,255,255,0.65)',
+            fontWeight: i === steps.length - 1 && visibleSteps.includes(i) ? 600 : 400,
+          }}>
+            {step}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function OnboardingPage() {
   const [step, setStep]                   = useState<Step>('segment')
@@ -44,6 +108,8 @@ export default function OnboardingPage() {
   const [analyzeError, setAnalyzeError]   = useState<string | null>(null)
   const [error, setError]                 = useState<string | null>(null)
   const [scores, setScores]               = useState({ voice: 0, audience: 0, visual: 0 })
+  const [usernameSlug, setUsernameSlug]   = useState('')
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const router  = useRouter()
   const supabase = createClient()
@@ -75,6 +141,29 @@ export default function OnboardingPage() {
     }
   }, [step, analysis])
 
+  useEffect(() => {
+    if (step === 'done') {
+      if (workspaceId) {
+        fetch('/api/generate-strategy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace_id: workspaceId }),
+        }).catch(() => {})
+      }
+      setTimeout(() => router.push('/dashboard'), 1800)
+    }
+  }, [step])
+
+  async function checkSlugAvailability() {
+    if (!usernameSlug || usernameSlug.length < 2) return
+    const { data } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('slug', usernameSlug)
+      .single()
+    setSlugAvailable(!data)
+  }
+
   async function handleCreateWorkspace(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -91,10 +180,17 @@ export default function OnboardingPage() {
 
     const wsId = data.workspace.id
     setWorkspaceId(wsId)
+
     // Save segment to workspace
     if (segment) {
       await supabase.from('workspaces').update({ segment }).eq('id', wsId)
     }
+
+    // Save claimed slug if available
+    if (usernameSlug && slugAvailable) {
+      await supabase.from('workspaces').update({ slug: usernameSlug }).eq('id', wsId)
+    }
+
     setStep('voice')
   }
 
@@ -192,7 +288,7 @@ export default function OnboardingPage() {
       setAnalysisStage('Brand profile complete.')
       setAnalysisProgress(100)
       await new Promise(r => setTimeout(r, 800))
-      setStep('done')
+      setStep('reveal') // show reveal screen instead of going straight to done
 
     } catch {
       clearInterval(iv)
@@ -207,7 +303,7 @@ export default function OnboardingPage() {
     router.push('/dashboard')
   }
 
-  const STEPS: Step[] = ['segment', 'workspace', 'voice', 'upload', 'analyzing', 'done']
+  const STEPS: Step[] = ['segment', 'username', 'workspace', 'voice', 'upload', 'analyzing', 'reveal', 'done']
   const stepIndex = STEPS.indexOf(step)
 
   return (
@@ -226,6 +322,140 @@ export default function OnboardingPage() {
         .ob-btn-sec:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.18) !important }
       `}</style>
 
+      {/* ── ANALYZING SCREEN ── */}
+      {step === 'analyzing' && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: '#000',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 100,
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.032,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            backgroundSize: '256px 256px', pointerEvents: 'none',
+          }}/>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%,-50%)',
+            width: 400, height: 300, borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(30,142,240,0.08) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}/>
+          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: 440, padding: '0 24px' }}>
+            <svg width="40" height="40" viewBox="0 0 36 36" fill="none" style={{ marginBottom: 32 }}>
+              <defs><linearGradient id="anlg" x1="3" y1="3" x2="33" y2="33" gradientUnits="userSpaceOnUse"><stop stopColor="#4DABF7"/><stop offset="1" stopColor="#0C5FBF"/></linearGradient></defs>
+              <polygon points="3,33 9,3 17,3 11,33" fill="url(#anlg)"/>
+              <polygon points="19,3 27,3 33,33 25,33" fill="url(#anlg)"/>
+            </svg>
+            <AnalyzingSteps />
+          </div>
+        </div>
+      )}
+
+      {/* ── REVEAL SCREEN ── */}
+      {step === 'reveal' && analysis && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: '#000',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: '40px 24px',
+          zIndex: 100,
+          overflow: 'hidden',
+        }}>
+          <div style={{ position:'absolute', inset:0, opacity:0.032, backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize:'256px 256px', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:500, height:400, borderRadius:'50%', background:'radial-gradient(ellipse, rgba(30,142,240,0.07) 0%, transparent 70%)', pointerEvents:'none' }}/>
+
+          <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:520, animation:'fadeUp 0.5s ease both' }}>
+            <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--sans)' }}>
+              Brand Brain · Active
+            </div>
+
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 80, fontWeight: 300, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1, marginBottom: 4 }}>
+              {analysis.voice_score || analysis.voice_match_score || 94}
+            </div>
+            <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)', marginBottom: 32, fontFamily: 'var(--sans)' }}>% voice match</div>
+
+            {analysis.brand_voice && (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 12,
+                padding: '16px 20px',
+                marginBottom: 20,
+                fontStyle: 'italic',
+                fontSize: 15,
+                color: 'rgba(255,255,255,0.7)',
+                lineHeight: 1.7,
+                fontFamily: 'var(--serif)',
+              }}>
+                &ldquo;{analysis.brand_voice}&rdquo;
+              </div>
+            )}
+
+            {(analysis.content_angles || analysis.top_angles) && (analysis.content_angles || analysis.top_angles)!.length > 0 && (
+              <div style={{ marginBottom: 32 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.3)', marginBottom: 12, fontFamily: 'var(--sans)' }}>
+                  Your top content angles
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(analysis.content_angles || analysis.top_angles || []).slice(0, 3).map((angle: string, i: number) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '10px 14px',
+                      background: 'rgba(30,142,240,0.04)',
+                      border: '1px solid rgba(30,142,240,0.1)',
+                      borderRadius: 9,
+                      textAlign: 'left',
+                    }}>
+                      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 300, color: '#4DABF7', flexShrink: 0, marginTop: 1 }}>0{i + 1}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.55, fontFamily: 'var(--sans)' }}>{angle}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                setStep('done')
+                try {
+                  await fetch('/api/generate-strategy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workspace_id: workspaceId }),
+                  })
+                } catch (e) {
+                  console.error('[Onboarding] Strategy gen failed:', e)
+                }
+              }}
+              style={{
+                padding: '14px 40px',
+                background: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                fontFamily: 'var(--display)',
+                fontSize: 15, fontWeight: 800,
+                color: '#000',
+                cursor: 'pointer',
+                letterSpacing: '-0.02em',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f0f0f0'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#fff'}
+            >
+              Let&apos;s build your strategy →
+            </button>
+
+            <div style={{ marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--sans)' }}>
+              Your 30-day content plan is generating in the background
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ minHeight:'100vh', background:'#000000', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'fixed', top:0, left:'50%', transform:'translateX(-50%)', width:900, height:600, background:'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,130,255,0.08) 0%, transparent 70%)', pointerEvents:'none' }}/>
 
@@ -237,13 +467,16 @@ export default function OnboardingPage() {
             <span style={{ fontFamily:'var(--display)', fontWeight:800, fontSize:16, color:'#ffffff', letterSpacing:'-0.03em' }}>Nexa</span>
           </div>
 
-          {/* Progress dots */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:24 }}>
-            {STEPS.map((s, i) => (
-              <div key={s} style={{ height:3, borderRadius:2, width: step===s ? 28 : 8, background: i < stepIndex ? 'rgba(30,142,240,0.55)' : step===s ? '#1E8EF0' : 'rgba(255,255,255,0.1)', transition:'all 0.35s ease' }}/>
-            ))}
-          </div>
+          {/* Progress dots — hide for fullscreen steps */}
+          {step !== 'analyzing' && step !== 'reveal' && step !== 'done' && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:24 }}>
+              {STEPS.filter(s => s !== 'analyzing' && s !== 'reveal' && s !== 'done').map((s, i, arr) => (
+                <div key={s} style={{ height:3, borderRadius:2, width: step===s ? 28 : 8, background: arr.indexOf(step) > i ? 'rgba(30,142,240,0.55)' : step===s ? '#1E8EF0' : 'rgba(255,255,255,0.1)', transition:'all 0.35s ease' }}/>
+              ))}
+            </div>
+          )}
 
+          {/* ── SEGMENT ── */}
           {step === 'segment' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
@@ -262,13 +495,98 @@ export default function OnboardingPage() {
                   )
                 })}
               </div>
-              <button onClick={() => { if (segment) setStep('workspace') }} className="ob-btn-primary"
+              <button onClick={() => { if (segment) setStep('username') }} className="ob-btn-primary"
                 style={{ ...btnPrimary, opacity: segment ? 1 : 0.5 }}>
                 Continue →
               </button>
             </div>
           )}
 
+          {/* ── USERNAME CLAIM ── */}
+          {step === 'username' && (
+            <div className="ob-card" style={card}>
+              <div style={topLine}/>
+              <h1 style={h1}>Claim your lead page</h1>
+              <p style={{ ...sub, marginBottom: 24 }}>
+                Your public page captures leads from your content 24/7.
+              </p>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 8, fontFamily: 'var(--sans)' }}>
+                  Your page will be at:
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${slugAvailable === false ? 'rgba(255,87,87,0.3)' : slugAvailable === true ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 10, overflow: 'hidden',
+                }}>
+                  <div style={{
+                    padding: '11px 14px',
+                    fontSize: 14, color: 'rgba(255,255,255,0.35)',
+                    fontFamily: 'var(--mono)', fontWeight: 300,
+                    borderRight: '1px solid rgba(255,255,255,0.08)',
+                    whiteSpace: 'nowrap' as const,
+                    flexShrink: 0,
+                  }}>
+                    nexaa.cc/
+                  </div>
+                  <input
+                    value={usernameSlug}
+                    onChange={e => {
+                      const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30)
+                      setUsernameSlug(clean)
+                      setSlugAvailable(null)
+                    }}
+                    onBlur={checkSlugAvailability}
+                    placeholder="yourname"
+                    style={{
+                      flex: 1, padding: '11px 14px',
+                      fontSize: 14, background: 'transparent',
+                      border: 'none', color: '#fff',
+                      outline: 'none', fontFamily: 'var(--sans)',
+                    }}
+                  />
+                  {slugAvailable === true && (
+                    <div style={{ padding: '0 12px', color: '#4ADE80', fontSize: 12, fontWeight: 600 }}>✓</div>
+                  )}
+                  {slugAvailable === false && (
+                    <div style={{ padding: '0 12px', color: '#FF5757', fontSize: 12, fontWeight: 600 }}>✗</div>
+                  )}
+                </div>
+                {slugAvailable === false && (
+                  <div style={{ fontSize: 11, color: '#FF5757', marginTop: 6, fontFamily: 'var(--sans)' }}>
+                    This username is taken. Try another.
+                  </div>
+                )}
+                {slugAvailable === true && (
+                  <div style={{ fontSize: 11, color: '#4ADE80', marginTop: 6, fontFamily: 'var(--sans)' }}>
+                    nexaa.cc/{usernameSlug} is available!
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setStep('workspace')}
+                  className="ob-btn-sec"
+                  style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontFamily: 'var(--sans)', fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', transition: 'all 0.18s' }}
+                >
+                  Skip for now
+                </button>
+                <button
+                  onClick={() => setStep('workspace')}
+                  disabled={usernameSlug.length >= 2 && slugAvailable === false}
+                  className="ob-btn-primary"
+                  style={{ ...btnPrimary, flex: 2, opacity: usernameSlug.length < 2 ? 0.5 : 1 }}
+                >
+                  {usernameSlug.length >= 2 ? 'Claim it →' : 'Continue →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── WORKSPACE ── */}
           {step === 'workspace' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
@@ -293,6 +611,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── VOICE ── */}
           {step === 'voice' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
@@ -314,6 +633,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── UPLOAD ── */}
           {step === 'upload' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
@@ -347,56 +667,15 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 'analyzing' && (
-            <div className="ob-card" style={{ ...card, textAlign:'center' }}>
+          {/* ── DONE ── (auto-redirects) */}
+          {step === 'done' && (
+            <div className="ob-card" style={{ ...card, textAlign: 'center' }}>
               <div style={topLine}/>
-              <div style={{ position:'relative', width:72, height:72, margin:'0 auto 24px' }}>
-                <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(30,142,240,0.3)', animation:'pulse-ring 2s ease-out infinite' }}/>
-                <div style={{ position:'relative', width:72, height:72, borderRadius:'50%', background:'rgba(30,142,240,0.08)', border:'1px solid rgba(30,142,240,0.22)', display:'flex', alignItems:'center', justifyContent:'center', animation:'breathe 2.5s ease-in-out infinite' }}>
-                  <span style={{ fontSize:26, color:'#1E8EF0' }}>✦</span>
-                </div>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
               </div>
-              <h1 style={{ ...h1, marginBottom:6 }}>Building your Brand Brain...</h1>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:28, minHeight:20 }}>{analysisStage}</p>
-              <div style={{ background:'rgba(255,255,255,0.06)', borderRadius:100, height:5, overflow:'hidden', marginBottom:8 }}>
-                <div style={{ height:'100%', width:`${analysisProgress}%`, background:'linear-gradient(90deg,#0C5FBF,#1E8EF0,#4DABF7)', borderRadius:100, transition:'width 1s ease' }}/>
-              </div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>{Math.round(analysisProgress)}%</div>
-            </div>
-          )}
-
-          {step === 'done' && analysis && (
-            <div className="ob-card" style={card}>
-              <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,#1E8EF0,#4DABF7,transparent)', borderRadius:'18px 18px 0 0' }}/>
-              <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(30,142,240,0.1)', border:'1px solid rgba(30,142,240,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E8EF0" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <h1 style={{ ...h1, marginBottom:4 }}>Nexa knows your brand.</h1>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,0.55)', textAlign:'center', lineHeight:1.65, maxWidth:380, margin:'0 auto 22px' }}>{analysis.brand_voice}</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:18 }}>
-                {([['Voice match', scores.voice, '#1E8EF0'], ['Audience fit', scores.audience, 'rgba(0,210,155,0.9)'], ['Visual style', scores.visual, 'rgba(255,184,0,0.9)']] as [string,number,string][]).map(([label, val, color]) => (
-                  <div key={label}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{label}</span>
-                      <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>{val}%</span>
-                    </div>
-                    <div style={{ height:4, background:'rgba(255,255,255,0.06)', borderRadius:4, overflow:'hidden' }}>
-                      <div style={{ width:`${val}%`, height:'100%', background:color, borderRadius:4, transition:'width 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center', marginBottom:18 }}>
-                {analysis.content_pillars.map((p, i) => (
-                  <span key={i} style={{ fontSize:11, fontWeight:600, padding:'4px 11px', background:'rgba(30,142,240,0.08)', border:'1px solid rgba(30,142,240,0.2)', borderRadius:100, color:'#4DABF7' }}>{p}</span>
-                ))}
-              </div>
-              <div style={{ padding:'14px 16px', background:'rgba(30,142,240,0.04)', border:'1px solid rgba(30,142,240,0.12)', borderRadius:11, marginBottom:22 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#4DABF7', letterSpacing:'.07em', textTransform:'uppercase', marginBottom:8 }}>First post — written in your voice</div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#ffffff', marginBottom:5, lineHeight:1.45 }}>{analysis.first_post_hook}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.65 }}>{analysis.first_post_body}</div>
-              </div>
-              <button onClick={handleEnterDashboard} className="ob-btn-primary" style={btnPrimary}>Enter your workspace →</button>
+              <h1 style={{ ...h1, marginBottom:8 }}>All set — building your workspace</h1>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,0.4)', lineHeight:1.65 }}>Taking you to your dashboard…</p>
             </div>
           )}
 

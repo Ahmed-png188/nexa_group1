@@ -169,10 +169,15 @@ function AmplifyInner() {
   }, [oauthConnected, oauthError])
 
   useEffect(() => {
-    if (isBoost && boostContentId) {
+    if (isBoost) {
       setShowCreate(true)
-      setCurrentStep(1)
-      loadContentById(boostContentId)
+      setCurrentStep(2) // skip to ad copy step
+      const boostText = searchParams.get('content')
+      const boostPlatform = searchParams.get('platform')
+      if (boostText) setAdCopy(decodeURIComponent(boostText).slice(0, 125))
+      if (boostContentId) loadContentById(boostContentId)
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/amplify')
     }
   }, [isBoost, boostContentId])
 
