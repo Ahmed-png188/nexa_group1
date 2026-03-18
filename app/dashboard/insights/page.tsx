@@ -375,7 +375,7 @@ export default function InsightsPage() {
   const maxPlat = Math.max(...platBreakdown.map(p=>p.impressions), 1)
 
   return (
-    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto' }}>
+    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000' }}>
 
       {/* ── Header ── */}
       <div style={{

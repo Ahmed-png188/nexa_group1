@@ -168,6 +168,10 @@ function SettingsInner() {
 
   function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),4000) }
 
+  function generateSlug(name: string): string {
+    return name.toLowerCase().replace(/[^a-z\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 40)
+  }
+
   useEffect(() => { 
     load()
     // Handle Stripe redirect success
@@ -193,7 +197,7 @@ function SettingsInner() {
     setWsName(w?.name||''); setNiche(w?.niche||'')
     setVoice(w?.brand_voice||''); setTone(w?.brand_tone||'')
     setAudience(w?.brand_audience||'')
-    setSlug(w?.slug||''); setCustomQ(w?.lead_page_custom_question||'')
+    setSlug(w?.slug || generateSlug(w?.brand_name || w?.name || '')); setCustomQ(w?.lead_page_custom_question||'')
     setLoading(false)
   }
 

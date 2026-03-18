@@ -97,9 +97,9 @@ export default function AgencyPage() {
 
   /* ─── NON-AGENCY UPSELL ─── */
   if (!isAgency) return (
-    <div style={{ height:'calc(100vh - var(--topbar-h))', overflowY:'auto' }}>
+    <div style={{ height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000' }}>
       <div style={{ position:'relative', overflow:'hidden', padding:'64px 40px', textAlign:'center' }}>
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #060a14 0%, #080618 40%, #0a0610 70%, #0c0a06 100%)' }}/>
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(6,10,20,0.5) 0%, rgba(8,6,24,0.5) 40%, transparent 100%)' }}/>
         <div style={{ position:'absolute', top:-60, left:'20%', width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle, rgba(77,159,255,0.2) 0%, transparent 65%)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', top:-40, right:'15%', width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,122,64,0.15) 0%, transparent 65%)', pointerEvents:'none' }}/>
 
@@ -143,7 +143,7 @@ export default function AgencyPage() {
 
   /* ─── CLIENT DETAIL ─── */
   if (sel) return (
-    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto' }}>
+    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000' }}>
       {/* Back + header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:28 }}>
         <button onClick={() => setSel(null)}
@@ -211,7 +211,7 @@ export default function AgencyPage() {
   return (
     <>
       <div style={{
-        padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto',
+        padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000',
         opacity:mounted?1:0, transition:'opacity 0.4s ease',
       }}>
         {/* Header */}

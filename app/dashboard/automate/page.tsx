@@ -30,6 +30,17 @@ export default function AutomatePage() {
   const [writingEmail, setWritingEmail] = useState(false)
   const [gmailConnectError, setGmailConnectError] = useState<string | null>(null)
 
+  // Brand Brain context panel
+  const [showContextPanel, setShowContextPanel] = useState(false)
+  const [emailObjective, setEmailObjective] = useState('')
+  const [emailContext, setEmailContext] = useState('')
+
+  // Inbox state
+  type InboxMessage = { id: string; threadId: string; subject: string; fromName: string; fromEmail: string; date: string; snippet: string; unread: boolean }
+  const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([])
+  const [inboxLoading, setInboxLoading] = useState(false)
+  const [selectedInboxMessage, setSelectedInboxMessage] = useState<InboxMessage | null>(null)
+
   useEffect(() => {
     setMounted(true)
     loadData()
@@ -44,6 +55,23 @@ export default function AutomatePage() {
       setGmailConnectError(`Connection failed: ${gmailReason || gmailError}`)
     }
   }, [])
+
+  useEffect(() => {
+    if (view === 'inbox' && emailAccount) loadInbox()
+  }, [view, emailAccount])
+
+  async function loadInbox() {
+    setInboxLoading(true)
+    try {
+      const res = await fetch('/api/email/inbox')
+      const data = await res.json()
+      setInboxMessages(data.messages || [])
+    } catch (e) {
+      console.error('[Inbox] Load error:', e instanceof Error ? e.message : 'Unknown')
+    } finally {
+      setInboxLoading(false)
+    }
+  }
 
   async function loadData() {
     try {
@@ -139,8 +167,10 @@ export default function AutomatePage() {
     }
   }
 
-  async function writeWithBrandBrain(context: string) {
+  async function writeWithBrandBrain() {
+    setShowContextPanel(false)
     setWritingEmail(true)
+    const context = [emailObjective, emailContext].filter(Boolean).join(' — ')
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -150,13 +180,13 @@ export default function AutomatePage() {
           message: `Write a professional outreach email in my exact brand voice.
 
 Recipient: ${composeTo || 'the recipient'}
+Objective: ${emailObjective || 'general outreach'}
 Context/Topic: ${context || composeSubject || 'general outreach'}
 
 Rules:
 - No more than 150 words
 - Conversational, direct, human tone
 - Write as if I am writing it personally
-- End with my name: Ahmed
 
 Return your response in EXACTLY this format:
 SUBJECT: [subject line here]
@@ -185,6 +215,8 @@ BODY:
       console.error('[BrandBrain Email] Error:', e instanceof Error ? e.message : 'Unknown')
     } finally {
       setWritingEmail(false)
+      setEmailObjective('')
+      setEmailContext('')
     }
   }
 
@@ -337,7 +369,7 @@ BODY:
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Message</div>
                   <button
-                    onClick={() => writeWithBrandBrain(`Email about ${composeSubject || 'outreach'} to ${composeTo || 'recipient'}`)}
+                    onClick={() => { setEmailObjective(''); setEmailContext(''); setShowContextPanel(true) }}
                     disabled={writingEmail}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
@@ -550,19 +582,125 @@ BODY:
 
         {/* INBOX VIEW */}
         {view === 'inbox' && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <div style={{ fontFamily: 'var(--display)', fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Inbox coming soon</div>
-            <div style={{ fontSize: 14, color: 'var(--t4)', textAlign: 'center', maxWidth: 380, lineHeight: 1.7, fontFamily: 'var(--sans)' }}>
-              Full inbox with reply tracking is in development. For now, use Compose to send emails and Sent to track them.
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            {/* Message list */}
+            <div style={{ width: 340, borderRight: '1px solid rgba(255,255,255,0.07)', overflowY: 'auto', flexShrink: 0 }}>
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontFamily: 'var(--display)', fontSize: 14, fontWeight: 700, color: '#fff' }}>Inbox</div>
+                <button onClick={loadInbox} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t4)', display: 'flex', padding: 4 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.37"/></svg>
+                </button>
+              </div>
+
+              {!emailAccount ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--t4)', fontSize: 13, fontFamily: 'var(--sans)' }}>Connect Gmail to view inbox</div>
+              ) : inboxLoading ? (
+                <div style={{ padding: '40px 20px', display: 'flex', justifyContent: 'center' }}>
+                  <div className="nexa-spinner" style={{ width: 16, height: 16 }}/>
+                </div>
+              ) : inboxMessages.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--t4)', fontSize: 13, fontFamily: 'var(--sans)' }}>No messages in inbox</div>
+              ) : inboxMessages.map(msg => (
+                <div
+                  key={msg.id}
+                  onClick={() => setSelectedInboxMessage(msg)}
+                  style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', background: selectedInboxMessage?.id === msg.id ? 'rgba(30,142,240,0.05)' : 'transparent', transition: 'background 0.1s' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, gap: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: msg.unread ? 700 : 500, color: msg.unread ? '#fff' : 'rgba(255,255,255,0.75)', fontFamily: 'var(--sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{msg.fromName || msg.fromEmail}</div>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 300, color: 'var(--t4)', flexShrink: 0 }}>{msg.date}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: msg.unread ? 'rgba(255,255,255,0.7)' : 'var(--t3)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--sans)' }}>{msg.subject}</div>
+                  <div style={{ fontSize: 11, color: 'var(--t4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--sans)' }}>{msg.snippet}</div>
+                  {msg.unread && <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--blue)', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}/>}
+                </div>
+              ))}
             </div>
-            <button onClick={() => setView('compose')} style={{ padding: '10px 24px', background: 'var(--blue)', border: 'none', borderRadius: 8, fontFamily: 'var(--display)', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
-              Compose email →
-            </button>
+
+            {/* Message detail */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+              {selectedInboxMessage ? (
+                <div style={{ maxWidth: 680 }}>
+                  <div style={{ fontFamily: 'var(--display)', fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.025em', marginBottom: 6 }}>{selectedInboxMessage.subject}</div>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>From: <span style={{ color: 'var(--t2)' }}>{selectedInboxMessage.fromName} {selectedInboxMessage.fromEmail ? `<${selectedInboxMessage.fromEmail}>` : ''}</span></div>
+                    <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>{selectedInboxMessage.date}</div>
+                  </div>
+                  <div style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontFamily: 'var(--sans)', whiteSpace: 'pre-wrap' }}>
+                    {selectedInboxMessage.snippet}
+                    <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(30,142,240,0.05)', border: '1px solid rgba(30,142,240,0.12)', borderRadius: 7, fontSize: 12, color: 'var(--t4)' }}>
+                      Open Gmail to read full message →
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+                    <button onClick={() => { setComposeTo(selectedInboxMessage.fromEmail); setView('compose') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--blue2)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                      Reply
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <div style={{ fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Select a message to preview</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
       </div>
+
+      {/* BRAND BRAIN CONTEXT PANEL */}
+      {showContextPanel && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setShowContextPanel(false) }}>
+          <div style={{ width: '100%', maxWidth: 480, background: 'rgba(10,10,18,0.99)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 18, padding: '28px 28px 24px', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(30,142,240,0.5),transparent)', borderRadius: '18px 18px 0 0' }}/>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue2)" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <div style={{ fontFamily: 'var(--display)', fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>Brand Brain — Email</div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--t4)', marginBottom: 10, fontFamily: 'var(--sans)' }}>What's the objective?</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                {['Cold outreach', 'Follow-up', 'Partnership', 'Sales pitch', 'Thank you', 'Newsletter'].map(obj => (
+                  <button key={obj} onClick={() => setEmailObjective(obj === emailObjective ? '' : obj)}
+                    style={{ padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all 0.15s', background: emailObjective === obj ? 'rgba(30,142,240,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${emailObjective === obj ? 'rgba(30,142,240,0.4)' : 'rgba(255,255,255,0.1)'}`, color: emailObjective === obj ? 'var(--blue2)' : 'var(--t3)' }}>
+                    {obj}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--t4)', marginBottom: 8, fontFamily: 'var(--sans)' }}>Context (optional)</div>
+              <textarea
+                value={emailContext}
+                onChange={e => setEmailContext(e.target.value)}
+                placeholder="What should Nexa know? e.g. recipient's company, what they do, why you're reaching out..."
+                rows={3}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#fff', fontFamily: 'var(--sans)', outline: 'none', resize: 'none', lineHeight: 1.65, boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowContextPanel(false)}
+                style={{ padding: '9px 18px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                Cancel
+              </button>
+              <button onClick={writeWithBrandBrain}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--blue)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'var(--display)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Generate email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
