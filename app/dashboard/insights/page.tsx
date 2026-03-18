@@ -168,14 +168,7 @@ function Donut({ pct, color, size=88 }: { pct:number; color:string; size?:number
 function HeroStat({ icon, label, value, rawData, color, trend }: any) {
   const isPos = trend > 0; const isNeg = trend < 0
   return (
-    <div style={{
-      padding:'18px 20px',
-      background:'rgba(255,255,255,0.025)',
-      border:'1px solid rgba(255,255,255,0.08)',
-      borderRadius:16,
-      position:'relative',
-      overflow:'hidden',
-    }}>
+    <div className="nexa-card" style={{ padding:'18px 20px', position:'relative', overflow:'hidden' }}>
       {/* Subtle color wash */}
       <div style={{ position:'absolute', top:-20, right:-20, width:80, height:80, borderRadius:'50%', background:`${color}18`, filter:'blur(20px)', pointerEvents:'none' }}/>
       <div style={{ position:'relative' }}>
@@ -185,7 +178,7 @@ function HeroStat({ icon, label, value, rawData, color, trend }: any) {
             <div style={{ width:28, height:28, borderRadius:8, background:`${color}14`, border:`1px solid ${color}25`, display:'flex', alignItems:'center', justifyContent:'center', color, flexShrink:0 }}>
               {icon}
             </div>
-            <span style={{ fontSize:11, color:'rgba(255,255,255,0.38)', fontWeight:500 }}>{label}</span>
+            <span className="nexa-label">{label}</span>
           </div>
           {trend !== undefined && (
             <div style={{ display:'flex', alignItems:'center', gap:3, padding:'3px 8px', borderRadius:100, background:isPos?'rgba(52,211,153,0.1)':isNeg?'rgba(255,87,87,0.1)':'rgba(255,255,255,0.05)', border:`1px solid ${isPos?'rgba(52,211,153,0.2)':isNeg?'rgba(255,87,87,0.2)':'rgba(255,255,255,0.08)'}` }}>
@@ -197,7 +190,7 @@ function HeroStat({ icon, label, value, rawData, color, trend }: any) {
           )}
         </div>
         {/* Big number */}
-        <div style={{ fontFamily:'var(--display)', fontSize:32, fontWeight:800, letterSpacing:'-0.05em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:10 }}>
+        <div className="nexa-num" style={{ fontSize:32, lineHeight:1, marginBottom:10 }}>
           {value}
         </div>
         {/* Sparkline */}

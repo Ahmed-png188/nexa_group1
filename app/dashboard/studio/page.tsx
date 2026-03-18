@@ -83,7 +83,7 @@ const ANGLES = [
 
 function SLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.22)', marginBottom:9 }}>
+    <div className="nexa-label" style={{ marginBottom:9 }}>
       {children}
     </div>
   )
@@ -477,9 +477,9 @@ function StudioInner() {
             {TABS.map(t => {
               const active = tab===t.id
               const locked = !!(t.requiredPlan && !planAccess[t.id as 'image'|'video'|'voice'])
-              const tbg = active?('linear-gradient(160deg,'+t.color+'18 0%,'+t.color+'08 100%)'):'transparent'
-              const tbd = '1px solid '+(active?t.color+'30':'transparent')
-              const tcl = active?t.color:(locked?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.3)')
+              const tbg = active?'var(--bg3)':'transparent'
+              const tbd = '1px solid '+(active?'var(--line2)':'transparent')
+              const tcl = active?'var(--t1)':(locked?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.3)')
               return (
                 <button key={t.id} onClick={()=>setTab(t.id)}
                   style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,padding:'11px 6px',borderRadius:12,background:tbg,border:tbd,color:tcl,cursor:'pointer',fontFamily:'var(--sans)',transition:'all 0.16s',opacity:locked?0.7:1 }}>
@@ -540,7 +540,7 @@ function StudioInner() {
                     <ActBtn icon={sched?Ic.check:Ic.cal} label={sched?'Queued':'Schedule'} onClick={schedulePost} active={sched} color="#FFB547"/>
                   </div>
                 </div>
-                <div style={{ padding:'26px 28px',background:'linear-gradient(160deg,rgba(77,159,255,0.07) 0%,rgba(0,0,0,0.4) 100%)',border:'1px solid rgba(77,159,255,0.2)',borderRadius:18,fontSize:15,color:'rgba(255,255,255,0.9)',lineHeight:1.92,whiteSpace:'pre-wrap',letterSpacing:'-0.015em',boxShadow:'0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(77,159,255,0.1)',position:'relative',overflow:'hidden' }}>
+                <div className="nexa-card" style={{ padding:'26px 28px',background:'linear-gradient(160deg,rgba(77,159,255,0.07) 0%,rgba(0,0,0,0.4) 100%)',border:'1px solid rgba(77,159,255,0.2)',borderRadius:18,fontSize:15,color:'rgba(255,255,255,0.9)',lineHeight:1.92,whiteSpace:'pre-wrap',letterSpacing:'-0.015em',position:'relative',overflow:'hidden' }}>
                   {result}
                 </div>
               </div>

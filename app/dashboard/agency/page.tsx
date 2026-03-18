@@ -168,9 +168,9 @@ export default function AgencyPage() {
           { label:'Active since',     value:sel.created_at?.slice(0,10)||'—', color:'#4D9FFF' },
           { label:'Status',           value:sel.status||'active',           color:sel.status==='active'?'#34D399':'#FFB547' },
         ].map(s => (
-          <div key={s.label} style={{ padding:'14px 16px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:13 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:6 }}>{s.label}</div>
-            <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.03em', color:s.color, lineHeight:1 }}>{s.value}</div>
+          <div key={s.label} className="nexa-card" style={{ padding:'14px 16px', borderRadius:13 }}>
+            <div className="nexa-label" style={{ marginBottom:6 }}>{s.label}</div>
+            <div className="nexa-num" style={{ fontSize:18, color:s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -233,11 +233,11 @@ export default function AgencyPage() {
             { label:'Monthly revenue', value:`$${totalMRR.toLocaleString()}`,    color:'#4D9FFF', icon:Ic.dollar },
             { label:'Total clients',   value:clients.length,                     color:'#A78BFA', icon:Ic.chart  },
           ].map(s => (
-            <div key={s.label} style={{ padding:'14px 18px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, display:'flex', alignItems:'center', gap:11 }}>
+            <div key={s.label} className="nexa-card" style={{ padding:'14px 18px', borderRadius:14, display:'flex', alignItems:'center', gap:11 }}>
               <div style={{ width:32, height:32, borderRadius:9, background:`${s.color}12`, border:`1px solid ${s.color}22`, display:'flex', alignItems:'center', justifyContent:'center', color:s.color, flexShrink:0 }}>{s.icon}</div>
               <div>
-                <div style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:s.color, lineHeight:1 }}>{s.value}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:3, fontWeight:500 }}>{s.label}</div>
+                <div className="nexa-num" style={{ fontSize:20, color:s.color }}>{s.value}</div>
+                <div className="nexa-label" style={{ marginTop:3 }}>{s.label}</div>
               </div>
             </div>
           ))}
@@ -253,9 +253,8 @@ export default function AgencyPage() {
               {clients.map(c => (
                 <div key={c.id}
                   onClick={() => setSel(c)}
-                  style={{ padding:'20px 22px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, cursor:'pointer', transition:'all 0.18s' }}
-                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.045)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 28px rgba(0,0,0,0.25)'}}
-                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.08)';(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='none'}}>
+                  className="nexa-card"
+                  style={{ padding:'20px 22px', borderRadius:18, cursor:'pointer' }}>
                   {/* Top row */}
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -385,7 +384,7 @@ export default function AgencyPage() {
             <button onClick={addClient} disabled={!cName.trim()||creating}
               style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:cName.trim()?'#4D9FFF':'rgba(255,255,255,0.04)', color:cName.trim()?'#000':'rgba(255,255,255,0.2)', border:'none', borderRadius:12, cursor:cName.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, marginTop:8, transition:'all 0.18s', boxShadow:cName.trim()?'0 4px 22px rgba(77,159,255,0.38)':'none' }}>
               {creating
-                ? <><div style={{ width:15,height:15,border:'2px solid rgba(0,0,0,0.2)',borderTopColor:'#000',borderRadius:'50%',animation:'pageSpin 0.7s linear infinite' }}/>Adding client…</>
+                ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Adding client…</>
                 : <><span style={{ display:'flex' }}>{Ic.plus}</span>Add client</>}
             </button>
           </div>

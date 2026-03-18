@@ -37,7 +37,7 @@ function Dot({ platform, size=6 }: { platform:string; size?:number }) {
 }
 
 function SLabel({ children }: any) {
-  return <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:9 }}>{children}</div>
+  return <div className="nexa-label" style={{ marginBottom:9 }}>{children}</div>
 }
 
 /* ─── Inner page ─── */
@@ -99,7 +99,7 @@ function Inner() {
         setSaved(true); toast_('Post scheduled — it\'s in the queue')
         setFBody('')
         setTimeout(()=>{ setModal(false); setSaved(false) },1400)
-      } else toast_('Failed to schedule','error' as any)
+      } else toast_('Something went wrong — try again','error' as any)
     } catch { toast_('Something went wrong','error' as any) }
     setSaving(false)
   }
@@ -148,7 +148,7 @@ function Inner() {
             <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
               {upcoming.length > 0
                 ? `${upcoming.length} post${upcoming.length!==1?'s':''} queued · ${connPlats.length} platform${connPlats.length!==1?'s':''} connected`
-                : 'Plan and publish your content across every platform'}
+                : 'Everything you create, everywhere it needs to go.'}
             </p>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -164,7 +164,7 @@ function Inner() {
             {/* New post */}
             <button
               onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:10, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s' }}
+              style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#0EA5FF', color:'#000', border:'none', borderRadius:10, cursor:'pointer', boxShadow:'0 4px 18px rgba(14,165,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2)', transition:'all 0.18s' }}
               onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLElement).style.boxShadow='0 7px 24px rgba(77,159,255,0.45)'}}
               onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 18px rgba(77,159,255,0.35)'}}>
               <span style={{ display:'flex' }}>{Ic.plus}</span>New post
@@ -183,7 +183,7 @@ function Inner() {
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)'}>
                 {Ic.chevL}
               </button>
-              <div style={{ fontFamily:'var(--display)', fontSize:17, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.9)' }}>
+              <div style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
                 {format(month,'MMMM yyyy')}
               </div>
               <button onClick={()=>setMonth(addMonths(month,1))}
@@ -197,7 +197,7 @@ function Inner() {
             {/* Day headers */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:5 }}>
               {DOW.map(d => (
-                <div key={d} style={{ textAlign:'center', fontSize:9.5, fontWeight:700, color:'rgba(255,255,255,0.22)', letterSpacing:'0.07em', textTransform:'uppercase', padding:'4px 0' }}>{d}</div>
+                <div key={d} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.2)', letterSpacing:'0.09em', textTransform:'uppercase', padding:'4px 0' }}>{d}</div>
               ))}
             </div>
 
@@ -211,11 +211,12 @@ function Inner() {
                 return (
                   <div key={day.toISOString()}
                     onClick={() => openForDay(day)}
-                    style={{ minHeight:90, padding:'8px 7px', borderRadius:11, background:today?'rgba(255,255,255,0.04)':'rgba(255,255,255,0.02)', border:`1px solid ${today?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.06)'}`, cursor:'pointer', transition:'all 0.15s', opacity:inMon?1:0.3 }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.055)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.13)'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(255,255,255,0.04)':'rgba(255,255,255,0.02)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.06)'}}>
+                    style={{ minHeight:96, padding:'9px 8px', borderRadius:12, background:today?'rgba(14,165,255,0.06)':'rgba(255,255,255,0.018)', border:`1px solid ${today?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.055)'}`, cursor:'pointer', transition:'all 0.18s cubic-bezier(0.22,1,0.36,1)', opacity:inMon?1:0.28, position:'relative', overflow:'hidden' }}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(14,165,255,0.09)':'rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(14,165,255,0.3)':'rgba(255,255,255,0.11)';(e.currentTarget as HTMLElement).style.transform='translateY(-1px)'}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(14,165,255,0.06)':'rgba(255,255,255,0.018)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.055)';(e.currentTarget as HTMLElement).style.transform='translateY(0)'}}>
+                    {today && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#0EA5FF,#38BFFF)', borderRadius:'12px 12px 0 0' }}/>}
                     {/* Day number */}
-                    <div style={{ width:26, height:26, borderRadius:8, background:today?'#4D9FFF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:12, fontWeight:today?800:600, color:today?'#000':'rgba(255,255,255,0.58)', marginBottom:6, letterSpacing:'-0.02em' }}>
+                    <div style={{ width:24, height:24, borderRadius:7, background:today?'#0EA5FF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:11.5, fontWeight:today?800:500, color:today?'#000':'rgba(255,255,255,0.5)', marginBottom:7, letterSpacing:'-0.02em' }}>
                       {format(day,'d')}
                     </div>
                     {/* Posts */}
@@ -260,9 +261,8 @@ function Inner() {
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {upcoming.map(post => (
                     <div key={post.id}
-                      style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 16px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:13, transition:'all 0.15s' }}
-                      onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.045)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}}
-                      onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'}}>
+                      className="nexa-card"
+                      style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:14 }}>
                       <Dot platform={post.platform} size={8}/>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.82)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
@@ -276,6 +276,11 @@ function Inner() {
                         </div>
                       </div>
                       <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                        {post.platform === 'instagram' && (
+                          <div style={{ fontSize:10, color:'rgba(255,181,71,0.7)', marginBottom:4, lineHeight:1.4 }}>
+                            Saved to calendar - post manually on Instagram
+                          </div>
+                        )}
                         <button onClick={() => publishNow(post.id)}
                           style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.22)', color:'#34D399', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s' }}>
                           <span style={{ display:'flex' }}>{Ic.check}</span>Publish now
@@ -365,7 +370,7 @@ function Inner() {
                     {conn ? (
                       <>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginBottom:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {conn.account_name||conn.account_id||'Connected'}
+                          {conn.platform_username||conn.account_name||conn.platform_name||'Connected'}
                         </div>
                         <div style={{ padding:'9px 12px', background:'rgba(0,0,0,0.25)', borderRadius:9, textAlign:'center' }}>
                           <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'rgba(255,255,255,0.78)', letterSpacing:'-0.03em', lineHeight:1 }}>
@@ -375,7 +380,7 @@ function Inner() {
                         </div>
                       </>
                     ) : (
-                      <a href={`/api/oauth/${plat}`}
+                      <a href={`/api/oauth/${plat}?workspace_id=${ws?.id}`}
                         style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'9px 14px', borderRadius:10, fontSize:12, fontWeight:700, background:`${color}0e`, border:`1px solid ${color}22`, color, textDecoration:'none', transition:'all 0.15s' }}
                         onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=`${color}18`;(e.currentTarget as HTMLElement).style.borderColor=`${color}38`}}
                         onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=`${color}0e`;(e.currentTarget as HTMLElement).style.borderColor=`${color}22`}}>
@@ -429,12 +434,17 @@ function Inner() {
         <div
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(14px)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
           onClick={e => { if(e.target===e.currentTarget) setModal(false) }}>
-          <div style={{ background:'rgba(11,11,18,0.98)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:20, padding:'26px', width:'100%', maxWidth:500, boxShadow:'0 32px 80px rgba(0,0,0,0.85)', animation:'pageUp 0.22s ease both' }}>
+          <div style={{ background:'rgba(10,10,16,0.99)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:22, padding:'30px', width:'100%', maxWidth:520, boxShadow:'0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)', position:'relative', overflow:'hidden', animation:'pageUp 0.22s ease both' }}>
 
+            {/* Top accent */}
+            <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(77,159,255,0.5),transparent)' }}/>
             {/* Header */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:22 }}>
-              <div style={{ fontFamily:'var(--display)', fontSize:17, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)' }}>
-                Schedule a post
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
+              <div>
+                <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.95)', marginBottom:3 }}>
+                  Schedule a post
+                </div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>It publishes automatically at the time you set.</div>
               </div>
               <button onClick={()=>setModal(false)}
                 style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.38)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -492,10 +502,10 @@ function Inner() {
             <button onClick={schedule} disabled={!ready||saving}
               style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:ready?'#4D9FFF':'rgba(255,255,255,0.04)', color:ready?'#000':'rgba(255,255,255,0.2)', border:'none', borderRadius:12, cursor:ready?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, transition:'all 0.18s', boxShadow:ready?'0 4px 22px rgba(77,159,255,0.38)':'none' }}>
               {saving
-                ? <><div style={{ width:15,height:15,border:'2px solid rgba(0,0,0,0.2)',borderTopColor:'#000',borderRadius:'50%',animation:'pageSpin 0.7s linear infinite' }}/>Scheduling…</>
+                ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Scheduling…</>
                 : saved
                 ? <><span style={{ display:'flex' }}>{Ic.check}</span>Scheduled!</>
-                : <><span style={{ display:'flex' }}>{Ic.cal}</span>{fDate?`Schedule for ${format(new Date(fDate+'T12:00:00'),'MMM d')} at ${fTime}`:'Schedule post'}</>}
+                : <><span style={{ display:'flex' }}>{Ic.cal}</span>{fDate?`Schedule for ${format(new Date(fDate+'T12:00:00'),'MMM d')} at ${fTime}`:'Add to queue'}</>}
             </button>
           </div>
         </div>

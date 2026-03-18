@@ -147,7 +147,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
             {step.type === 'email' && (
               <div style={{ display:'flex', flexDirection:'column', gap:10, paddingTop:14 }}>
                 <div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Subject line</div>
+                  <div className="nexa-label" style={{ marginBottom:7 }}>Subject line</div>
                   <input
                     value={step.config.subject || ''}
                     onChange={e => onChange({...step.config, subject:e.target.value})}
@@ -158,7 +158,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Tone & angle</div>
+                  <div className="nexa-label" style={{ marginBottom:7 }}>Tone & angle</div>
                   <input
                     value={step.config.tone || ''}
                     onChange={e => onChange({...step.config, tone:e.target.value})}
@@ -175,7 +175,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
             )}
             {step.type === 'wait' && (
               <div style={{ paddingTop:14 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Wait duration</div>
+                <div className="nexa-label" style={{ marginBottom:7 }}>Wait duration</div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {[1,2,3,5,7,14,21,30].map(d => (
                     <button key={d} onClick={() => onChange({...step.config, days:d})}
@@ -188,7 +188,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
             )}
             {step.type === 'post' && (
               <div style={{ paddingTop:14 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Platform</div>
+                <div className="nexa-label" style={{ marginBottom:7 }}>Platform</div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {['instagram','linkedin','x','tiktok','email'].map(p => (
                     <button key={p} onClick={() => onChange({...step.config, platform:p})}
@@ -201,7 +201,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
             )}
             {step.type === 'tag' && (
               <div style={{ paddingTop:14 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Tag name</div>
+                <div className="nexa-label" style={{ marginBottom:7 }}>Tag name</div>
                 <input
                   value={step.config.tag || ''}
                   onChange={e => onChange({...step.config, tag:e.target.value})}
@@ -212,7 +212,7 @@ function StepNode({ step, index, total, onRemove, onChange }: {
             )}
             {step.type === 'condition' && (
               <div style={{ paddingTop:14 }}>
-                <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>Condition</div>
+                <div className="nexa-label" style={{ marginBottom:7 }}>Condition</div>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {['Opened last email','Clicked link','Has tag','Did not open'].map(c => (
                     <button key={c} onClick={() => onChange({...step.config, condition:c})}
@@ -272,7 +272,7 @@ function AddStepPicker({ onAdd }: { onAdd: (type: StepType) => void }) {
           borderRadius:14, overflow:'hidden', boxShadow:'0 16px 48px rgba(0,0,0,0.65)',
           animation:'pageUp 0.18s ease both',
         }}>
-          <div style={{ padding:'12px 14px 8px', fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase' }}>
+          <div className="nexa-label" style={{ padding:'12px 14px 8px' }}>
             Add a step
           </div>
           {STEP_TYPES.map(s => (
@@ -331,7 +331,7 @@ export default function AutomatePage() {
     const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
     const w = (m as any)?.workspaces; setWs(w)
     const [{ data:s },{ data:wh },{ data:r }] = await Promise.all([
-      supabase.from('sequences').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}),
+      supabase.from('email_sequences').select('*, agents(status,stats)').eq('workspace_id',w?.id).order('created_at',{ascending:false}),
       supabase.from('webhooks').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}),
       supabase.from('agent_runs').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}).limit(20),
     ])
@@ -360,7 +360,9 @@ export default function AutomatePage() {
     if (!bName.trim() || creating) return
     setCreating(true)
     try {
-      const r = await fetch('/api/create-sequence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,name:bName,trigger:bTrigger,steps:bSteps,steps_count:bSteps.length,template:bTemplate})})
+      // Build a goal from the trigger and name so the API generates real AI emails
+      const goal = `${bName} — triggered by: ${bTrigger}`
+      const r = await fetch('/api/create-sequence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,name:bName,goal,audience:ws?.brand_audience||'target audience',num_emails:Math.max(bSteps.length,3),generate_with_ai:true,trigger:bTrigger,template:bTemplate})})
       const d = await r.json()
       if (d.success) {
         toast_('Sequence created and ready')
@@ -373,13 +375,18 @@ export default function AutomatePage() {
 
   async function toggleStatus(seq: any) {
     const next = seq.status === 'active' ? 'paused' : 'active'
-    await supabase.from('sequences').update({status:next}).eq('id',seq.id)
+    const updateData: any = { status: next }
+    // Set started_at when first activated so sequence runner knows day 0
+    if (next === 'active' && !seq.started_at) {
+      updateData.started_at = new Date().toISOString()
+    }
+    await supabase.from('email_sequences').update(updateData).eq('id',seq.id)
     toast_(`Sequence ${next}`); load()
     if (selSeq?.id === seq.id) setSelSeq({...seq, status:next})
   }
 
   async function del(id: string) {
-    await supabase.from('sequences').delete().eq('id',id)
+    await supabase.from('email_sequences').delete().eq('id',id)
     toast_('Deleted'); load()
     if (selSeq?.id === id) { setSelSeq(null); setPanel('list') }
   }
@@ -408,7 +415,7 @@ export default function AutomatePage() {
           <div style={{ padding:'20px 18px 14px', borderBottom:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <div>
-                <div style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.9)', lineHeight:1, marginBottom:2 }}>Automate</div>
+                <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:2 }}>Sequences</div>
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>{sequences.length} sequence{sequences.length!==1?'s':''}</div>
               </div>
               <button
@@ -425,9 +432,9 @@ export default function AutomatePage() {
                 { label:'Active',    value:sequences.filter(s=>s.status==='active').length,  color:'#34D399' },
                 { label:'Paused',    value:sequences.filter(s=>s.status==='paused').length,  color:'#FFB547' },
               ].map(s=>(
-                <div key={s.label} style={{ padding:'8px 11px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:9, textAlign:'center' }}>
-                  <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.04em', color:s.color, lineHeight:1 }}>{s.value}</div>
-                  <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.label}</div>
+                <div key={s.label} className="nexa-card" style={{ padding:'10px 11px', textAlign:'center' }}>
+                  <div className="nexa-num" style={{ fontSize:18, color:s.color, lineHeight:1 }}>{s.value}</div>
+                  <div className="nexa-label" style={{ marginTop:2 }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -443,9 +450,10 @@ export default function AutomatePage() {
                   key={seq.id}
                   onClick={() => { setSelSeq(seq); setPanel('list') }}
                   style={{
-                    padding:'11px 12px', borderRadius:11, marginBottom:4,
-                    background:isActive?'rgba(77,159,255,0.08)':'transparent',
-                    border:`1px solid ${isActive?'rgba(77,159,255,0.2)':'transparent'}`,
+                    padding:'12px 13px', borderRadius:12, marginBottom:5,
+                    background:isActive?'rgba(14,165,255,0.08)':'rgba(255,255,255,0.015)',
+                    border:`1px solid ${isActive?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.05)'}`,
+                    boxShadow:isActive?'0 2px 12px rgba(0,0,0,0.4)':'none',
                     cursor:'pointer', transition:'all 0.14s',
                   }}
                   onMouseEnter={e=>{ if(!isActive){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.08)'} }}
@@ -519,7 +527,7 @@ export default function AutomatePage() {
                     disabled={!bName.trim() || bSteps.length === 0 || creating}
                     style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 18px', borderRadius:9, fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:bName.trim()&&bSteps.length>0?'#4D9FFF':'rgba(255,255,255,0.04)', color:bName.trim()&&bSteps.length>0?'#000':'rgba(255,255,255,0.2)', border:'none', cursor:bName.trim()&&bSteps.length>0?'pointer':'not-allowed', transition:'all 0.18s', boxShadow:bName.trim()&&bSteps.length>0?'0 4px 18px rgba(77,159,255,0.35)':'none' }}>
                     {creating
-                      ? <><div style={{ width:13,height:13,border:'2px solid rgba(0,0,0,0.2)',borderTopColor:'#000',borderRadius:'50%',animation:'pageSpin 0.7s linear infinite' }}/>Saving…</>
+                      ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Saving…</>
                       : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Save sequence</>}
                   </button>
                 </div>
@@ -690,7 +698,7 @@ export default function AutomatePage() {
                 {[
                   { label:'Status',   value:selSeq.status||'draft',           color:STATUS_COLOR[selSeq.status]||'rgba(255,255,255,0.4)' },
                   { label:'Steps',    value:String(selSeq.steps_count||0),    color:'#4D9FFF' },
-                  { label:'Enrolled', value:String(selSeq.enrolled||0),       color:'#A78BFA' },
+                  { label:'Contacts',  value:String(selSeq.total_contacts||0), color:'#A78BFA' },
                   { label:'Sent',     value:String(selSeq.emails_sent||0),    color:'#34D399' },
                 ].map(s=>(
                   <div key={s.label} style={{ padding:'13px 16px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
@@ -731,7 +739,7 @@ export default function AutomatePage() {
                 {Ic.bolt}
               </div>
               <h3 style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>
-                {sequences.length > 0 ? 'Select a sequence' : 'Automate your brand'}
+                {sequences.length > 0 ? 'Select a sequence' : 'Nothing running yet'}
               </h3>
               <p style={{ fontSize:13, color:'rgba(255,255,255,0.32)', lineHeight:1.75, maxWidth:360, marginBottom:24 }}>
                 {sequences.length > 0

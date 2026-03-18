@@ -640,7 +640,7 @@ export default function BrandPage() {
               boxShadow:dragOver?'0 0 32px rgba(255,181,71,0.08)':'none',
             }}>
             <div style={{ width:52, height:52, borderRadius:16, background:dragOver?'rgba(255,181,71,0.14)':'rgba(255,181,71,0.07)', border:`1px solid ${dragOver?'rgba(255,181,71,0.35)':'rgba(255,181,71,0.18)'}`, display:'flex', alignItems:'center', justifyContent:'center', color:'#FFB547', margin:'0 auto 16px', transition:'all 0.15s' }}>
-              {uploading ? <div style={{ width:18,height:18,border:'2px solid rgba(255,181,71,0.3)',borderTopColor:'#FFB547',borderRadius:'50%',animation:'pageSpin .8s linear infinite' }}/> : Ic.upload}
+              {uploading ? <div className="nexa-spinner" style={{ width:14, height:14 }}/> : Ic.upload}
             </div>
             <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:700, color:'rgba(255,255,255,0.78)', marginBottom:5, letterSpacing:'-0.02em' }}>
               {uploading ? 'Uploading…' : dragOver ? 'Drop it here' : 'Drop files or click to upload'}
