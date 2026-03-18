@@ -233,8 +233,8 @@ export default function OnboardingPage() {
           {step === 'workspace' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
-              <h1 style={h1}>Set up your brand</h1>
-              <p style={sub}>Takes 2 minutes. This powers everything Nexa creates for you.</p>
+              <h1 style={h1}>What business are you building?</h1>
+              <p style={sub}>Takes 2 minutes. This powers everything Nexa creates to grow it.</p>
               <form onSubmit={handleCreateWorkspace} style={{ display:'flex', flexDirection:'column', gap:14, marginTop:26 }}>
                 <div>
                   <label style={lbl}>Brand name <span style={req}>required</span></label>
@@ -257,16 +257,16 @@ export default function OnboardingPage() {
           {step === 'voice' && (
             <div className="ob-card" style={card}>
               <div style={topLine}/>
-              <h1 style={h1}>Define your voice</h1>
-              <p style={sub}>This is the minimum Nexa needs to write like you.</p>
+              <h1 style={h1}>Define your market position</h1>
+              <p style={sub}>This is the minimum Nexa needs to write like you and win clients.</p>
               <form onSubmit={handleVoiceContinue} style={{ display:'flex', flexDirection:'column', gap:18, marginTop:26 }}>
                 <div>
-                  <label style={lbl}>How would you describe your brand voice? <span style={req}>required</span></label>
-                  <textarea className="ob-ta" placeholder="e.g. Direct, no-fluff, confident. Short sentences, never corporate language." value={brandVoice} onChange={e => setBrandVoice(e.target.value)} required rows={4} style={{ ...inp, resize:'vertical', lineHeight:1.65, padding:'12px 14px' }}/>
+                  <label style={lbl}>How do you want to show up in your market? <span style={req}>required</span></label>
+                  <textarea className="ob-ta" placeholder="e.g. Direct, no-fluff, confident. The person who tells the truth other coaches won't. Short sentences, never corporate language." value={brandVoice} onChange={e => setBrandVoice(e.target.value)} required rows={4} style={{ ...inp, resize:'vertical', lineHeight:1.65, padding:'12px 14px' }}/>
                 </div>
                 <div>
-                  <label style={lbl}>Who is your target audience? <span style={req}>required</span></label>
-                  <textarea className="ob-ta" placeholder="e.g. Founders building B2B companies. 28-45, ambitious, want tactics that work." value={brandAudience} onChange={e => setBrandAudience(e.target.value)} required rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.65, padding:'12px 14px' }}/>
+                  <label style={lbl}>Who is your ideal client or customer? <span style={req}>required</span></label>
+                  <textarea className="ob-ta" placeholder="e.g. B2B founders, 28-45, building real companies. They've tried generic advice. They want tactics that actually close deals." value={brandAudience} onChange={e => setBrandAudience(e.target.value)} required rows={3} style={{ ...inp, resize:'vertical', lineHeight:1.65, padding:'12px 14px' }}/>
                 </div>
                 <button type="submit" className="ob-btn-primary" style={{ ...btnPrimary, opacity: (brandVoice.trim().length > 10 && brandAudience.trim().length > 10) ? 1 : 0.5 }}>
                   Continue →
