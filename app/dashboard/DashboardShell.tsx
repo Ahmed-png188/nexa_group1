@@ -42,6 +42,7 @@ const Ic = {
   strategy: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
   schedule: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
   automate: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  amplify:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
   insights: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
   agency:        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   integrations:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/><rect x="13" y="13" width="9" height="9" rx="2"/></svg>,
@@ -70,6 +71,7 @@ const NAV = [
   { id:'strategy', href:'/dashboard/strategy', icon:'strategy', label:'Strategy',    color:'#FFB547' },
   { id:'schedule', href:'/dashboard/schedule', icon:'schedule', label:'Schedule',    color:'#4D9FFF' },
   { id:'automate',     href:'/dashboard/automate',     icon:'automate',     label:'Automate',      color:'#FF5757' },
+  { id:'amplify',      href:'/dashboard/amplify',      icon:'amplify',      label:'Amplify',       color:'#F97316' },
   { id:'integrations', href:'/dashboard/integrations', icon:'integrations', label:'Integrations',  color:'#A855F7' },
   { id:'insights',     href:'/dashboard/insights',     icon:'insights',     label:'Insights',      color:'#38BFFF' },
   { id:'agency',   href:'/dashboard/agency',   icon:'agency',   label:'Agency',      color:'#FF7A40' },
@@ -240,7 +242,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:`linear-gradient(90deg, transparent, ${item.color}50, transparent)` }}/>
                     <div style={{ padding:'10px 14px' }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2, fontFamily:'var(--sans)' }}>{item.label}</div>
-                      <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.35)', lineHeight:1.4, fontFamily:'var(--sans)' }}>{item.id === 'home' ? 'Morning brief + agents' : item.id === 'studio' ? 'Create in your voice' : item.id === 'brand' ? 'Your brand DNA' : item.id === 'strategy' ? '30-day content plan' : item.id === 'schedule' ? 'Publish everywhere' : item.id === 'automate' ? 'Sequences & flows' : item.id === 'insights' ? "What's working" : 'Client workspaces'}</div>
+                      <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.35)', lineHeight:1.4, fontFamily:'var(--sans)' }}>{item.id === 'home' ? 'Morning brief + agents' : item.id === 'studio' ? 'Create in your voice' : item.id === 'brand' ? 'Your brand DNA' : item.id === 'strategy' ? '30-day content plan' : item.id === 'schedule' ? 'Publish everywhere' : item.id === 'automate' ? 'Sequences & flows' : item.id === 'amplify' ? 'Run Meta Ads' : item.id === 'insights' ? "What's working" : 'Client workspaces'}</div>
                     </div>
                   </div>
                 )}
@@ -328,6 +330,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                 { label:'Strategy',    href:'/dashboard/strategy',     desc:'Your complete 30-day content blueprint',      color:'#FFB547' },
                 { label:'Schedule',    href:'/dashboard/schedule',     desc:'Publish everywhere, automatically',        color:'#4D9FFF' },
                 { label:'Automate',      href:'/dashboard/automate',     desc:'Sequences that run while you sleep',           color:'#FF5757' },
+                { label:'Amplify',       href:'/dashboard/amplify',      desc:'Run Meta Ads from your Brand Brain',            color:'#F97316' },
                 { label:'Integrations', href:'/dashboard/integrations', desc:'Connect your tools, CRMs, and platforms',       color:'#A855F7' },
                 { label:'Insights',     href:'/dashboard/insights',     desc:'What worked. What didn\'t. What to do next.',  color:'#38BFFF' },
                 { label:'Agency',      href:'/dashboard/agency',       desc:'Manage clients and deliver at scale',      color:'#FF7A40' },
