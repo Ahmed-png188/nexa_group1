@@ -175,6 +175,7 @@ function AmplifyInner() {
         .single()
       if (!member) return
       setWorkspaceId(member.workspace_id)
+      console.log('[Amplify] workspaceId loaded:', member.workspace_id)
 
       const { data: connection } = await supabase
         .from('meta_connections')
@@ -320,6 +321,7 @@ function AmplifyInner() {
           </div>
           <button
             onClick={() => {
+              console.log('[Amplify] Launching OAuth with workspaceId:', workspaceId)
               const metaOAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${process.env.NEXT_PUBLIC_META_APP_ID}&redirect_uri=https%3A%2F%2Fnexaa.cc%2Fapi%2Fmeta%2Fconnect&scope=ads_management,ads_read,pages_read_engagement&response_type=code&state=${workspaceId}`
               window.open(metaOAuthUrl, '_blank')
             }}
