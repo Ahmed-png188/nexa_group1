@@ -33,8 +33,9 @@ export async function GET(request: NextRequest) {
     )
     const accountsData = await accountsRes.json()
     console.log('[Meta Connect] Step 3 - adaccounts raw:', JSON.stringify(accountsData).slice(0, 200))
-    const firstAccount = accountsData.data?.[0]
-    const adAccountId = firstAccount?.id || null
+    const activeAccount = accountsData.data?.find((a: any) => a.account_status === 1) || accountsData.data?.[0]
+    const adAccountId = activeAccount?.id || null
+    console.log('[Meta Connect] Step 3b - selected account:', adAccountId, 'status:', activeAccount?.account_status)
 
     // Get pages
     const pagesRes = await fetch(
@@ -47,23 +48,28 @@ export async function GET(request: NextRequest) {
 
     console.log('[Meta Connect] Step 5 - upserting workspace_id:', workspaceId, '| ad_account_id:', adAccountId, '| page_id:', pageId)
 
-    // Save to Supabase
-    const { error } = await supabase
+    // Delete existing connection first to avoid unique constraint conflicts
+    await supabase
       .from('meta_connections')
-      .upsert({
+      .delete()
+      .eq('workspace_id', workspaceId)
+
+    // Then insert fresh
+    const { error: insertError } = await supabase
+      .from('meta_connections')
+      .insert({
         workspace_id: workspaceId,
         access_token: tokenData.access_token,
         ad_account_id: adAccountId,
         page_id: pageId,
-        business_name: firstAccount?.name || firstPage?.name || 'Meta Account',
+        business_name: activeAccount?.name || firstPage?.name || 'Meta Account',
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'workspace_id' })
+      })
 
-    console.log('[Meta Connect] Step 6 - upsert error:', JSON.stringify(error))
+    console.log('[Meta Connect] Step 6 - insert error:', insertError?.message, insertError?.code, insertError?.details)
 
-    if (error) {
-      console.error('[Meta Connect] Save error:', error)
-      return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=save_failed')
+    if (insertError) {
+      return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?error=save_failed&reason=' + encodeURIComponent(insertError.message))
     }
 
     return NextResponse.redirect('https://nexaa.cc/dashboard/amplify?connected=true')

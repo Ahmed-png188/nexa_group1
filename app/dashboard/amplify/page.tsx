@@ -109,6 +109,9 @@ function AmplifyInner() {
   const searchParams = useSearchParams()
   const boostContentId = searchParams.get('content_id')
   const isBoost = searchParams.get('boost') === 'true'
+  const oauthConnected = searchParams.get('connected')
+  const oauthError = searchParams.get('error')
+  const oauthReason = searchParams.get('reason')
 
   const [loading, setLoading] = useState(true)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -154,6 +157,16 @@ function AmplifyInner() {
     setMounted(true)
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (oauthConnected === 'true') {
+      loadData()
+    }
+    if (oauthError) {
+      console.error('[Amplify] OAuth error:', oauthError, oauthReason)
+      alert(`Meta connection failed: ${oauthError}${oauthReason ? ' — ' + oauthReason : ''}`)
+    }
+  }, [oauthConnected, oauthError])
 
   useEffect(() => {
     if (isBoost && boostContentId) {
