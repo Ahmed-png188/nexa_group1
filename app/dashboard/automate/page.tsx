@@ -94,9 +94,13 @@ export default function AutomatePage() {
         setView('sent')
         loadData()
       } else {
-        setSendError(data.error || 'Failed to send')
+        const errMsg = data.error || 'Failed to send'
+        const errCode = data.code ? ` (code: ${data.code})` : ''
+        alert(`Email send failed: ${errMsg}${errCode}`)
+        setSendError(errMsg)
       }
     } catch {
+      alert('Email send failed: network error')
       setSendError('Failed to send email')
     } finally {
       setSending(false)
@@ -149,40 +153,34 @@ Recipient: ${composeTo || 'the recipient'}
 Context/Topic: ${context || composeSubject || 'general outreach'}
 
 Rules:
-- Return ONLY the email body text, nothing else
-- No "Here's your email:" preamble
-- No "---" separators
-- No meta-commentary or instructions in asterisks
-- Write as if I am writing it personally
 - No more than 150 words
 - Conversational, direct, human tone
-- End with my name: Ahmed`,
+- Write as if I am writing it personally
+- End with my name: Ahmed
+
+Return your response in EXACTLY this format:
+SUBJECT: [subject line here]
+BODY:
+[email body here]`,
         }),
       })
       const data = await res.json()
       const raw = data.reply || data.message || data.content || ''
-      const cleaned = raw
+
+      const subjectMatch = raw.match(/^SUBJECT:\s*(.+)$/im)
+      const bodyMatch = raw.match(/^BODY:\s*\n([\s\S]+)$/im)
+
+      const parsedSubject = subjectMatch?.[1]?.trim() || ''
+      const parsedBody = (bodyMatch?.[1] || raw)
         .replace(/^here'?s? (your |the )?email:?\s*/i, '')
         .replace(/^---+\s*/gm, '')
         .replace(/\*[^*]+\*/g, '')
         .replace(/^\s*drop in.*$/gim, '')
+        .replace(/^subject:.*$/gim, '')
         .trim()
-      setComposeBody(cleaned)
 
-      // Auto-generate subject if empty
-      if (!composeSubject && cleaned) {
-        const subjectRes = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            workspace_id: workspaceId,
-            message: `Write a short, compelling email subject line for this email. Return ONLY the subject line, nothing else, no quotes:\n\n${cleaned}`,
-          }),
-        })
-        const subjectData = await subjectRes.json()
-        const subject = (subjectData.reply || subjectData.message || subjectData.content || '').replace(/^["']|["']$/g, '').trim()
-        if (subject) setComposeSubject(subject)
-      }
+      setComposeBody(parsedBody)
+      if (parsedSubject && !composeSubject) setComposeSubject(parsedSubject)
     } catch (e) {
       console.error('[BrandBrain Email] Error:', e instanceof Error ? e.message : 'Unknown')
     } finally {

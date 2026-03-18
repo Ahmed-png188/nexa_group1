@@ -41,12 +41,19 @@ export async function POST(request: NextRequest) {
       `From: ${emailAccount.name} <${emailAccount.email}>`,
       `To: ${to}`,
       `Subject: ${subject}`,
-      `Content-Type: text/html; charset=utf-8`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/plain; charset=utf-8`,
       ``,
-      body.replace(/\n/g, '<br>'),
+      body,
     ].join('\r\n')
 
-    const encodedEmail = Buffer.from(emailContent).toString('base64url')
+    const encodedEmail = Buffer.from(emailContent)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
+
+    console.log('[Email Send] Sending to:', to, 'subject:', subject, 'from:', emailAccount.email)
 
     // Send via Gmail API
     const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
@@ -59,10 +66,13 @@ export async function POST(request: NextRequest) {
     })
 
     const sendData = await sendRes.json()
+    console.log('[Email Send] Gmail response status:', sendRes.status, 'id:', sendData.id, 'error:', sendData.error?.message)
 
-    if (!sendData.id) {
-      console.error('[Email Send] Gmail error:', sendData.error?.message)
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+    if (sendData.error || !sendData.id) {
+      const gmailErr = sendData.error?.message || 'Unknown Gmail error'
+      const gmailCode = sendData.error?.code || sendRes.status
+      console.error('[Email Send] Gmail error:', gmailErr, 'code:', gmailCode)
+      return NextResponse.json({ error: gmailErr, code: gmailCode }, { status: 500 })
     }
 
     // Save to emails_sent
