@@ -244,7 +244,12 @@ function SettingsInner() {
     }
   }
 
-  if (loading) return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.28)',fontSize:13 }}>Loading…</div>
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+      <div className="nexa-spinner" style={{ width:22, height:22 }}/>
+      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
+    </div>
+  )
 
   const initial = (user?.full_name?.[0]||user?.email?.[0]||'U').toUpperCase()
   const currentPlan = ws?.plan||'spark'

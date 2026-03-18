@@ -125,6 +125,13 @@ function Inner() {
     setFDate(format(new Date(),'yyyy-MM-dd')); setModal(true)
   }
 
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+      <div className="nexa-spinner" style={{ width:22, height:22 }}/>
+      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
+    </div>
+  )
+
   const days     = eachDayOfInterval({ start:startOfMonth(month), end:endOfMonth(month) })
   const pad      = days[0].getDay()
   const onDay    = (d:Date) => posts.filter(p=>p.scheduled_for&&isSameDay(parseISO(p.scheduled_for),d))

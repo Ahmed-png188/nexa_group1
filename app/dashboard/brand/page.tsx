@@ -242,9 +242,13 @@ export default function BrandPage() {
   ]
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14 }}>
-      <div className="nexa-spinner" style={{ width:20, height:20 }}/>
-      <div style={{ fontSize:12, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.04em' }}>Loading Brand Brain...</div>
+    <div style={{
+      display:'flex', alignItems:'center', justifyContent:'center',
+      height:'calc(100vh - var(--topbar-h))',
+      flexDirection:'column', gap:16, background:'#000',
+    }}>
+      <div className="nexa-spinner" style={{ width:22, height:22 }}/>
+      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
     </div>
   )
 
@@ -256,20 +260,23 @@ export default function BrandPage() {
       {/* Full-bleed hero */}
       <div style={{ position:'relative', overflow:'hidden', padding:'56px 40px 48px', textAlign:'center' }}>
         {/* Background atmosphere */}
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #060a14 0%, #080618 40%, #140614 70%, #0c0808 100%)' }}/>
+        <div style={{ position:'absolute', inset:0, background:'#000000' }}/>
         <div style={{ position:'absolute', top:-80, left:'20%', width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle, rgba(167,139,250,0.25) 0%, transparent 65%)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', top:-40, right:'15%', width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle, rgba(77,159,255,0.18) 0%, transparent 65%)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', bottom:-60, left:'35%', width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle, rgba(52,211,153,0.12) 0%, transparent 65%)', pointerEvents:'none' }}/>
 
         <div style={{ position:'relative', zIndex:1 }}>
-          {/* Orbital rings decoration */}
-          <div style={{ position:'relative', width:96, height:96, margin:'0 auto 28px' }}>
-            <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(167,139,250,0.12)' }}/>
-            <div style={{ position:'absolute', inset:10, borderRadius:'50%', border:'1px solid rgba(167,139,250,0.2)' }}/>
-            <div style={{ position:'absolute', inset:20, borderRadius:'50%', border:'1px solid rgba(167,139,250,0.3)' }}/>
-            <div style={{ position:'absolute', inset:30, borderRadius:'50%', background:'rgba(167,139,250,0.1)', border:'1px solid rgba(167,139,250,0.4)', display:'flex', alignItems:'center', justifyContent:'center', color:'#A78BFA' }}>
-              {Ic.brain}
-            </div>
+          <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+            <svg width="48" height="48" viewBox="0 0 36 36" fill="none">
+              <defs>
+                <linearGradient id="bb-grad" x1="3" y1="3" x2="33" y2="33" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#4DABF7"/>
+                  <stop offset="100%" stopColor="#0C5FBF"/>
+                </linearGradient>
+              </defs>
+              <polygon points="3,33 9,3 17,3 11,33" fill="url(#bb-grad)"/>
+              <polygon points="19,3 27,3 33,33 25,33" fill="url(#bb-grad)"/>
+            </svg>
           </div>
 
           <h1 style={{ fontFamily:'var(--display)', fontSize:36, fontWeight:800, letterSpacing:'-0.05em', color:'#ffffff', marginBottom:14, lineHeight:1.05 }}>
@@ -297,20 +304,45 @@ export default function BrandPage() {
           <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
             <button
               onClick={() => setTab('assets')}
-              style={{ display:'flex', alignItems:'center', gap:9, padding:'13px 28px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#A78BFA', color:'#000', border:'none', borderRadius:12, cursor:'pointer', boxShadow:'0 4px 28px rgba(167,139,250,0.4)', transition:'all 0.18s' }}
-              onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 36px rgba(167,139,250,0.5)'}}
-              onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 28px rgba(167,139,250,0.4)'}}>
+              style={{
+                display:'inline-flex', alignItems:'center', gap:8,
+                padding:'12px 24px',
+                background:'transparent',
+                border:'1px solid rgba(255,255,255,0.14)',
+                borderRadius:9,
+                fontSize:14, fontWeight:600,
+                fontFamily:'var(--display)',
+                color:'rgba(255,255,255,0.7)',
+                cursor:'pointer',
+                transition:'all 0.15s',
+                letterSpacing:'-0.01em',
+              }}>
               <span style={{ display:'flex' }}>{Ic.upload}</span>
               Upload brand assets
             </button>
             {assets.length > 0 && (
-              <div className="nexa-ring-wrap">
-                <button onClick={analyze} disabled={analyzing} className="nexa-ring-body" style={{ cursor:analyzing?'not-allowed':'pointer', opacity:analyzing?0.7:1 }}>
-                  {analyzing
-                    ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Analyzing…</>
-                    : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze {assets.length} asset{assets.length!==1?'s':''}</>}
-                </button>
-              </div>
+              <button
+                onClick={analyze}
+                disabled={analyzing}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:8,
+                  padding:'12px 24px',
+                  background:'var(--blue)',
+                  border:'none',
+                  borderRadius:9,
+                  fontSize:14, fontWeight:700,
+                  fontFamily:'var(--display)',
+                  color:'#ffffff',
+                  cursor:analyzing?'not-allowed':'pointer',
+                  opacity:analyzing?0.7:1,
+                  transition:'all 0.15s',
+                  letterSpacing:'-0.01em',
+                  boxShadow:'0 0 24px rgba(30,142,240,0.25)',
+                }}>
+                {analyzing
+                  ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Analyzing…</>
+                  : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze {assets.length} asset{assets.length!==1?'s':''}</>}
+              </button>
             )}
           </div>
         </div>

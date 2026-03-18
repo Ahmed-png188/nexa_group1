@@ -11,7 +11,7 @@ export function NexaPageLoader({ label = 'Loading' }: { label?: string }) {
   return (
     <div style={{
       position:'fixed', inset:0, zIndex:9999,
-      background:'var(--bg)',
+      background:'#000000',
       display:'flex', flexDirection:'column',
       alignItems:'center', justifyContent:'center',
       gap:20,

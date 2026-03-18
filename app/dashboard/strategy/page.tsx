@@ -153,11 +153,9 @@ export default function StrategyPage() {
   }
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16 }}>
-      <div style={{ width:44, height:44, borderRadius:13, background:'rgba(255,181,71,0.07)', border:'1px solid rgba(255,181,71,0.18)', display:'flex', alignItems:'center', justifyContent:'center', animation:'glow-breathe 2s ease-in-out infinite' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB547" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 17.5L21 21M14 17.5h7"/></svg>
-      </div>
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600 }}>Loading your blueprint</div>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+      <div className="nexa-spinner" style={{ width:22, height:22 }}/>
+      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
     </div>
   )
 

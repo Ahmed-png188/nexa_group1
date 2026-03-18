@@ -438,9 +438,9 @@ export default function InsightsPage() {
       </div>
 
       {loading && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14 }}>
-          <div className="nexa-spinner" style={{ width:20, height:20 }}/>
-          <div style={{ fontSize:12, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.04em' }}>Loading analytics...</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+          <div className="nexa-spinner" style={{ width:22, height:22 }}/>
+          <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
         </div>
       )}
 
