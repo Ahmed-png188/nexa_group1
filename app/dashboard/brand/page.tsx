@@ -256,96 +256,156 @@ export default function BrandPage() {
      UNTRAINED STATE — the invitation
   ───────────────────────────────────────────────── */
   if (!profile && tab !== 'assets') return (
-    <div style={{ height:'calc(100vh - var(--topbar-h))', overflowY:'auto' }}>
-      {/* Full-bleed hero */}
-      <div style={{ position:'relative', overflow:'hidden', padding:'56px 40px 48px', textAlign:'center' }}>
-        {/* Background atmosphere */}
-        <div style={{ position:'absolute', inset:0, background:'#000000' }}/>
-        <div style={{ position:'absolute', top:-80, left:'20%', width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle, rgba(167,139,250,0.25) 0%, transparent 65%)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', top:-40, right:'15%', width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle, rgba(77,159,255,0.18) 0%, transparent 65%)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:-60, left:'35%', width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle, rgba(52,211,153,0.12) 0%, transparent 65%)', pointerEvents:'none' }}/>
+    <div style={{
+      position:'relative',
+      minHeight:'calc(100vh - var(--topbar-h))',
+      display:'flex',
+      flexDirection:'column',
+      alignItems:'center',
+      justifyContent:'center',
+      padding:'60px 40px',
+      overflow:'hidden',
+      background:'#000',
+    }}>
+      {/* Hidden file input */}
+      <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" style={{ display:'none' }} onChange={e => e.target.files?.[0] && upload(e.target.files[0])}/>
 
-        <div style={{ position:'relative', zIndex:1 }}>
-          <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
-            <svg width="48" height="48" viewBox="0 0 36 36" fill="none">
-              <defs>
-                <linearGradient id="bb-grad" x1="3" y1="3" x2="33" y2="33" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#4DABF7"/>
-                  <stop offset="100%" stopColor="#0C5FBF"/>
-                </linearGradient>
-              </defs>
-              <polygon points="3,33 9,3 17,3 11,33" fill="url(#bb-grad)"/>
-              <polygon points="19,3 27,3 33,33 25,33" fill="url(#bb-grad)"/>
-            </svg>
-          </div>
+      {/* Geometric grid background */}
+      <div style={{
+        position:'absolute', inset:0,
+        backgroundImage:`linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)`,
+        backgroundSize:'48px 48px',
+        maskImage:'radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 80%)',
+        WebkitMaskImage:'radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 80%)',
+        pointerEvents:'none',
+      }}/>
 
-          <h1 style={{ fontFamily:'var(--display)', fontSize:36, fontWeight:800, letterSpacing:'-0.05em', color:'#ffffff', marginBottom:14, lineHeight:1.05 }}>
-            Your Brand Brain is waiting
-          </h1>
-          <p style={{ fontSize:14, color:'rgba(255,255,255,0.42)', lineHeight:1.85, maxWidth:520, margin:'0 auto 36px' }}>
-            Upload your best content, logos, and brand documents. Nexa reads everything, extracts your voice, understands your audience, and builds a deep brand profile that makes every generation feel unmistakably <em style={{ color:'rgba(255,255,255,0.65)', fontStyle:'normal' }}>you</em>.
-          </p>
+      {/* Blue center glow */}
+      <div style={{
+        position:'absolute', top:'50%', left:'50%',
+        transform:'translate(-50%, -50%)',
+        width:500, height:400, borderRadius:'50%',
+        background:'radial-gradient(ellipse, rgba(30,142,240,0.08) 0%, transparent 70%)',
+        pointerEvents:'none',
+      }}/>
 
-          {/* What happens after training */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, maxWidth:580, margin:'0 auto 36px', textAlign:'left' }}>
-            {[
-              { color:'#4D9FFF', icon:Ic.mic,    title:'Voice calibrated', desc:'Every output now sounds like you wrote it' },
-              { color:'#34D399', icon:Ic.users,  title:'Audience known',  desc:'Nexa writes to your specific people, not the general internet' },
-              { color:'#A78BFA', icon:Ic.eye,    title:'Style captured',  desc:'Visual and aesthetic direction guides image generation' },
-            ].map(f => (
-              <div key={f.title} style={{ padding:'16px', background:'rgba(255,255,255,0.03)', border:`1px solid ${f.color}20`, borderRadius:14 }}>
-                <div style={{ width:28, height:28, borderRadius:8, background:`${f.color}14`, border:`1px solid ${f.color}25`, display:'flex', alignItems:'center', justifyContent:'center', color:f.color, marginBottom:10 }}>{f.icon}</div>
-                <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.82)', marginBottom:4, letterSpacing:'-0.01em' }}>{f.title}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', lineHeight:1.55 }}>{f.desc}</div>
+      {/* Content */}
+      <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:560 }}>
+
+        {/* Eyebrow */}
+        <div style={{
+          display:'inline-flex', alignItems:'center', gap:6,
+          padding:'4px 12px',
+          background:'rgba(30,142,240,0.07)',
+          border:'1px solid rgba(30,142,240,0.16)',
+          borderRadius:20, marginBottom:28,
+        }}>
+          <div style={{ width:5, height:5, borderRadius:'50%', background:'#4DABF7' }}/>
+          <span style={{ fontSize:11, color:'#4DABF7', fontFamily:'var(--sans)', letterSpacing:'0.02em' }}>Brand Brain · Not trained yet</span>
+        </div>
+
+        {/* Headline */}
+        <h1 style={{
+          fontFamily:'var(--display)',
+          fontSize:'clamp(32px, 4vw, 48px)',
+          fontWeight:800, letterSpacing:'-0.035em', lineHeight:1.1,
+          color:'#fff', marginBottom:16,
+        }}>
+          Your Brand Brain<br/>is waiting.
+        </h1>
+
+        {/* Subline */}
+        <p style={{
+          fontFamily:'var(--serif)', fontStyle:'italic',
+          fontSize:18, color:'rgba(255,255,255,0.4)',
+          lineHeight:1.7, maxWidth:440, margin:'0 auto 40px',
+        }}>
+          Upload your best content, logos, and brand documents. Nexa reads everything and builds a profile that makes every generation sound unmistakably you.
+        </p>
+
+        {/* Three feature points */}
+        <div style={{
+          display:'grid', gridTemplateColumns:'repeat(3,1fr)',
+          gap:1, background:'rgba(255,255,255,0.06)',
+          border:'1px solid rgba(255,255,255,0.06)',
+          borderRadius:12, overflow:'hidden', marginBottom:40,
+        }}>
+          {[
+            {
+              icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DABF7" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>,
+              title:'Voice calibrated', desc:'Every output sounds like you wrote it',
+            },
+            {
+              icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DABF7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+              title:'Audience known', desc:'Writes to your specific clients, not the internet',
+            },
+            {
+              icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DABF7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
+              title:'Style captured', desc:'Visual direction guides every image',
+            },
+          ].map((item,i) => (
+            <div key={i} style={{ background:'#000', padding:'20px 16px', textAlign:'center' }}>
+              <div style={{
+                width:36, height:36, borderRadius:9,
+                background:'rgba(30,142,240,0.07)',
+                border:'1px solid rgba(30,142,240,0.12)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                margin:'0 auto 10px',
+              }}>
+                {item.icon}
               </div>
-            ))}
-          </div>
+              <div style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:600, color:'#fff', letterSpacing:'-0.01em', marginBottom:4 }}>{item.title}</div>
+              <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'rgba(255,255,255,0.35)', lineHeight:1.5 }}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
 
-          <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
+        {/* Buttons */}
+        <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+          <button
+            onClick={() => fileRef.current?.click()}
+            style={{
+              display:'inline-flex', alignItems:'center', gap:8,
+              padding:'12px 24px',
+              background:'transparent',
+              border:'1px solid rgba(255,255,255,0.14)',
+              borderRadius:9,
+              fontSize:14, fontWeight:600,
+              fontFamily:'var(--display)',
+              color:'rgba(255,255,255,0.65)',
+              cursor:'pointer', letterSpacing:'-0.01em', transition:'all 0.15s',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload brand assets
+          </button>
+
+          {assets.length > 0 && (
             <button
-              onClick={() => setTab('assets')}
+              onClick={analyze}
+              disabled={analyzing}
               style={{
                 display:'inline-flex', alignItems:'center', gap:8,
                 padding:'12px 24px',
-                background:'transparent',
-                border:'1px solid rgba(255,255,255,0.14)',
-                borderRadius:9,
-                fontSize:14, fontWeight:600,
+                background:'var(--blue)', border:'none', borderRadius:9,
+                fontSize:14, fontWeight:700,
                 fontFamily:'var(--display)',
-                color:'rgba(255,255,255,0.7)',
-                cursor:'pointer',
-                transition:'all 0.15s',
+                color:'#fff',
+                cursor:analyzing?'not-allowed':'pointer',
+                opacity:analyzing?0.7:1,
                 letterSpacing:'-0.01em',
-              }}>
-              <span style={{ display:'flex' }}>{Ic.upload}</span>
-              Upload brand assets
+                boxShadow:'0 0 28px rgba(30,142,240,0.3)',
+                transition:'all 0.15s',
+              }}
+            >
+              {analyzing
+                ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Analyzing...</>
+                : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Analyze {assets.length} asset{assets.length!==1?'s':''}</>
+              }
             </button>
-            {assets.length > 0 && (
-              <button
-                onClick={analyze}
-                disabled={analyzing}
-                style={{
-                  display:'inline-flex', alignItems:'center', gap:8,
-                  padding:'12px 24px',
-                  background:'var(--blue)',
-                  border:'none',
-                  borderRadius:9,
-                  fontSize:14, fontWeight:700,
-                  fontFamily:'var(--display)',
-                  color:'#ffffff',
-                  cursor:analyzing?'not-allowed':'pointer',
-                  opacity:analyzing?0.7:1,
-                  transition:'all 0.15s',
-                  letterSpacing:'-0.01em',
-                  boxShadow:'0 0 24px rgba(30,142,240,0.25)',
-                }}>
-                {analyzing
-                  ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Analyzing…</>
-                  : <><span style={{ display:'flex' }}>{Ic.bolt}</span>Analyze {assets.length} asset{assets.length!==1?'s':''}</>}
-              </button>
-            )}
-          </div>
+          )}
         </div>
+
       </div>
     </div>
   )
