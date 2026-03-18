@@ -196,31 +196,87 @@ export default function LandingPage() {
               <div style={{ display: 'flex', gap: 6 }}>
                 {['#ff5f57','#ffbd2e','#28c840'].map((c,i) => <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />)}
               </div>
-              <div style={{ flex: 1, background: '#1a1a1a', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontFamily: MONO, color: T3, textAlign: 'center' }}>app.nexaa.cc/dashboard</div>
+              <div style={{ flex: 1, background: '#1a1a1a', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontFamily: MONO, color: T3, textAlign: 'center' }}>nexaa.cc/dashboard</div>
             </div>
             {/* Dashboard preview */}
-            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', minHeight: 360 }}>
-              {/* Sidebar */}
-              <div style={{ borderRight: `1px solid ${LINE}`, padding: '16px 0' }}>
-                {['Brand Brain', 'Studio', 'Strategy', 'Automate', 'Integrations', 'Insights'].map((item, i) => (
-                  <div key={item} style={{ padding: '8px 20px', fontSize: 12, fontFamily: SANS, color: i === 1 ? T1 : T3, background: i === 1 ? 'rgba(255,255,255,0.06)' : 'transparent', borderLeft: i === 1 ? `2px solid ${BLUE}` : '2px solid transparent', marginBottom: 2 }}>
-                    {item}
+            <div style={{
+              background: 'linear-gradient(135deg, #050510 0%, #07071A 35%, #0A0720 65%, #0F0710 100%)',
+              borderLeft: '1px solid rgba(255,255,255,0.07)',
+              borderRight: '1px solid rgba(255,255,255,0.07)',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: '0 0 12px 12px',
+              padding: '28px 24px',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: 440,
+            }}>
+              <div style={{ position:'absolute', top:-80, left:-40, width:380, height:280, borderRadius:'50%', background:'#5B21B6', filter:'blur(130px)', opacity:0.18, pointerEvents:'none' }}/>
+              <div style={{ position:'absolute', top:-20, right:-60, width:300, height:220, borderRadius:'50%', background:'#C2410C', filter:'blur(120px)', opacity:0.12, pointerEvents:'none' }}/>
+              <div style={{ position:'absolute', bottom:-40, left:'40%', width:260, height:180, borderRadius:'50%', background:'#0C5FBF', filter:'blur(100px)', opacity:0.08, pointerEvents:'none' }}/>
+
+              <div style={{ position:'relative', zIndex:1 }}>
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', fontFamily:"'DM Sans',sans-serif", marginBottom:6 }}>Good morning · Wednesday, March 18</div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
+                    <div style={{ fontFamily:"'Bricolage Grotesque',system-ui,sans-serif", fontSize:34, fontWeight:800, color:'#fff', letterSpacing:'-0.035em', lineHeight:1 }}>Ahmed</div>
+                    <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', fontFamily:"'DM Sans',sans-serif" }}>Command Center</div>
                   </div>
-                ))}
-              </div>
-              {/* Main content */}
-              <div style={{ padding: 24 }}>
-                <div style={{ fontSize: 11, fontFamily: MONO, color: T3, marginBottom: 16 }}>STUDIO — CONTENT GENERATION</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  {['LinkedIn post drafted', 'Instagram caption ready', 'Email sequence queued', 'Strategy updated'].map((item, i) => (
-                    <div key={item} style={{ padding: '12px 16px', background: '#111', borderRadius: 10, border: `1px solid ${LINE}`, fontSize: 12, fontFamily: SANS, color: T2 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 6, background: `rgba(77,171,247,${0.1 + i * 0.05})`, marginBottom: 8 }} />
-                      {item}
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', borderTop:'1px solid rgba(255,255,255,0.07)', paddingTop:16, marginBottom:20 }}>
+                  {[
+                    {label:'Credits', value:'491', tag:'agency', tagColor:'#4DABF7'},
+                    {label:'Built', value:'8', tag:'0 published', tagColor:'#4ADE80'},
+                    {label:'Scheduled', value:'1', tag:'upcoming', tagColor:'#4DABF7'},
+                    {label:'Streak', value:'14', tag:'days', tagColor:'rgba(255,255,255,0.2)'},
+                    {label:'Voice', value:'94', tag:'% match', tagColor:'#4DABF7'},
+                  ].map((s,i) => (
+                    <div key={i} style={{ paddingRight:i<4?16:0, paddingLeft:i>0?16:0, borderRight:i<4?'1px solid rgba(255,255,255,0.07)':'none' }}>
+                      <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', fontFamily:"'DM Sans',sans-serif", marginBottom:6 }}>{s.label}</div>
+                      <div style={{ fontFamily:"'Geist Mono',monospace", fontSize:22, fontWeight:300, color:'#fff', letterSpacing:'-0.04em', lineHeight:1, marginBottom:5 }}>{s.value}</div>
+                      <div style={{ fontSize:9, color:s.tagColor, fontFamily:"'DM Sans',sans-serif", padding:'1px 6px', background:`${s.tagColor}18`, border:`1px solid ${s.tagColor}28`, borderRadius:3, display:'inline-block' }}>{s.tag}</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ padding: '14px 20px', background: 'rgba(77,171,247,0.06)', border: `1px solid rgba(77,171,247,0.2)`, borderRadius: 10, fontSize: 12, fontFamily: MONO, color: BLUE }}>
-                  ✓ 3 posts published today · 14 scheduled this week · 94% avg engagement lift
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)', position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(77,171,247,0.3),transparent)' }}/>
+                    <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:13, fontWeight:700, color:'#fff', letterSpacing:'-0.01em', marginBottom:3 }}>Agents</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:"'DM Sans',sans-serif", marginBottom:12 }}>One click. Nexa executes.</div>
+                    {[['Content Agent','Last run 2 hours ago'],['Timing Agent','Best: 9AM, 7PM'],['Insights Agent','Weekly digest ready']].map(([name,sub],i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8, marginBottom:5 }}>
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:500, color:'rgba(255,255,255,0.72)', fontFamily:"'DM Sans',sans-serif" }}>{name}</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontFamily:"'DM Sans',sans-serif" }}>{sub}</div>
+                        </div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', padding:'3px 8px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:5, fontFamily:"'DM Sans',sans-serif", display:'flex', alignItems:'center', gap:4 }}>
+                          <svg width="7" height="7" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M5 3l14 9-14 9V3z"/></svg>Run
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(30,142,240,0.2)', borderRadius:12, padding:16, boxShadow:'0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(30,142,240,0.07), inset 0 1px 0 rgba(30,142,240,0.12)', position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(30,142,240,0.5),transparent)' }}/>
+                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'#1E8EF0', filter:'blur(50px)', opacity:0.08, pointerEvents:'none' }}/>
+                    <div style={{ position:'relative', zIndex:1 }}>
+                      <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:13, fontWeight:700, color:'#fff', letterSpacing:'-0.01em', marginBottom:3 }}>Brand Brain</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:"'DM Sans',sans-serif", marginBottom:14 }}>Intelligence layer · Active</div>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:6 }}>
+                        <span style={{ fontFamily:"'Geist Mono',monospace", fontSize:40, fontWeight:300, color:'#fff', letterSpacing:'-0.05em', lineHeight:1 }}>94</span>
+                        <span style={{ fontSize:12, color:'rgba(255,255,255,0.35)', fontFamily:"'DM Sans',sans-serif" }}>% voice match</span>
+                      </div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', fontFamily:"'DM Sans',sans-serif", marginBottom:14 }}>12 assets trained · Last analyzed 2h ago</div>
+                      <div style={{ height:1, background:'rgba(255,255,255,0.07)', marginBottom:12 }}/>
+                      {[['Voice consistency','98%'],['Tone accuracy','91%'],['Vocabulary match','94%']].map(([label,val],i) => (
+                        <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                          <span style={{ fontSize:11, color:'rgba(255,255,255,0.38)', fontFamily:"'DM Sans',sans-serif" }}>{label}</span>
+                          <span style={{ fontFamily:"'Geist Mono',monospace", fontSize:11, fontWeight:300, color:'#4DABF7' }}>{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -269,12 +325,24 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: LINE, borderRadius: 12, overflow: 'hidden' }}>
           {[
-            { icon: '⏱', title: 'No time', body: 'You know you need to post consistently. But between client work, operations, and everything else — content keeps getting pushed to tomorrow.' },
-            { icon: '🔁', title: 'No consistency', body: "You post for a week, then disappear for three. Your audience doesn't grow because your presence isn't steady enough to build trust." },
-            { icon: '🎭', title: 'No voice', body: "Generic AI tools produce generic output. It doesn't sound like you. So you rewrite everything — which takes as long as writing from scratch." },
+            {
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+              title: 'No time',
+              body: 'You know you need to post consistently. But between client work, operations, and everything else — content keeps getting pushed to tomorrow.',
+            },
+            {
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+              title: 'No consistency',
+              body: "You post for a week, then disappear for three. Your audience doesn't grow because your presence isn't steady enough to build trust.",
+            },
+            {
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
+              title: 'No voice',
+              body: "Generic AI tools produce generic output. It doesn't sound like you. So you rewrite everything — which takes as long as writing from scratch.",
+            },
           ].map(({ icon, title, body }) => (
             <div key={title} style={{ background: '#070707', padding: '36px 32px', borderTop: '2px solid rgba(255,80,80,0.5)' }}>
-              <div style={{ fontSize: 28, marginBottom: 16 }}>{icon}</div>
+              <div style={{ marginBottom: 16 }}>{icon}</div>
               <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 20, color: T1, marginBottom: 10, letterSpacing: '-0.03em' }}>{title}</div>
               <p style={{ fontSize: 14, color: T3, lineHeight: 1.7, fontFamily: SANS }}>{body}</p>
             </div>
