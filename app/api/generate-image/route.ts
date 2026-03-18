@@ -5,6 +5,10 @@ import { persistFile } from '@/lib/storage'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
 import { enhanceImagePrompt } from '@/lib/prompt-enhancer'
+import { fal } from '@fal-ai/client'
+
+// Configure fal client
+fal.config({ credentials: process.env.FAL_KEY })
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +16,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, prompt, style, aspect_ratio = '1:1', model = 'flux-pro' } = await request.json()
+    const { workspace_id, prompt, style, aspect_ratio = '1:1' } = await request.json()
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
       p_amount: 5,
       p_action: 'image_gen',
       p_user_id: user.id,
-      p_description: `Image generation — ${model}`,
+      p_description: 'Image generation — Nano Banana 2',
     })
 
     if (!deducted) {
@@ -55,49 +59,32 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    // Inject brand visual context and AI enhancement into every image prompt
+    // Enhance prompt with brand context and AI art direction
     const brand = await getBrandContext(workspace_id)
-    const brandPrefix = brand?.profile?.visual?.aesthetic
-      ? `${brand.profile.visual.aesthetic}, ${brand.profile.visual.photography_style || 'professional photography'}, `
-      : ''
-    const basePrompt = style
-      ? `${brandPrefix}${prompt}, ${style} style`
-      : `${brandPrefix}${prompt}`
-    let enhancedPrompt = basePrompt
+    const basePrompt = style ? `${prompt}, ${style} style` : prompt
+    let finalPrompt = basePrompt
     try {
-      enhancedPrompt = await enhanceImagePrompt(basePrompt, brand)
-    } catch {
-      enhancedPrompt = `${basePrompt}, professional quality, clean composition, brand photography`
+      finalPrompt = await enhanceImagePrompt(basePrompt, brand)
+      console.log('[Nexa] Image prompt enhanced:', finalPrompt)
+    } catch (e) {
+      console.error('[Nexa] Enhancer failed, using original:', e)
+      finalPrompt = basePrompt
     }
 
-    const falResponse = await fetch('https://fal.run/fal-ai/flux/dev', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Key ${process.env.FAL_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: enhancedPrompt,
-        image_size: aspect_ratio === '16:9' ? 'landscape_16_9' :
-                    aspect_ratio === '9:16' ? 'portrait_16_9' :
-                    aspect_ratio === '4:5' ? 'portrait_4_5' : 'square_hd',
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+    // Call Nano Banana 2 via fal SDK
+    const result = await fal.subscribe('fal-ai/nano-banana-2', {
+      input: {
+        prompt: finalPrompt,
+        resolution: '1K',
+        output_format: 'png',
         num_images: 1,
-        enable_safety_checker: true,
-      }),
+      },
+      logs: false,
+      onQueueUpdate: () => {},
     })
 
-    if (!falResponse.ok) {
-      const err = await falResponse.text()
-      const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
-      await supabase.from('credits').update({ balance: (cr?.balance ?? 0) + 5 }).eq('workspace_id', workspace_id)
-      return NextResponse.json({ error: 'Image generation failed', details: err }, { status: 500 })
-    }
-
-    const falData = await falResponse.json()
-    const tempUrl = falData.images?.[0]?.url
-    if (!tempUrl) return NextResponse.json({ error: 'No image returned' }, { status: 500 })
+    const imageUrl = (result as any).data?.images?.[0]?.url
+    if (!imageUrl) throw new Error('No image returned from Nano Banana 2')
 
     // Save to DB first to get ID
     const { data: savedContent } = await supabase.from('content').insert({
@@ -106,18 +93,18 @@ export async function POST(request: NextRequest) {
       type: 'image',
       platform: 'general',
       status: 'draft',
-      image_url: tempUrl,
-      prompt: enhancedPrompt,
+      image_url: imageUrl,
+      prompt: finalPrompt,
       credits_used: 5,
-      ai_model: `fal-ai/${model}`,
-      metadata: { aspect_ratio, style, original_prompt: prompt, fal_seed: falData.seed },
+      ai_model: 'fal-ai/nano-banana-2',
+      metadata: { aspect_ratio, style, original_prompt: prompt },
     }).select().single()
 
     // Persist to Supabase Storage (permanent URL)
-    const permanentUrl = await persistFile(tempUrl, workspace_id, 'image', savedContent?.id)
+    const permanentUrl = await persistFile(imageUrl, workspace_id, 'image', savedContent?.id)
 
     // Update with permanent URL
-    if (savedContent?.id && permanentUrl !== tempUrl) {
+    if (savedContent?.id && permanentUrl !== imageUrl) {
       await supabase.from('content').update({ image_url: permanentUrl }).eq('id', savedContent.id)
     }
 
