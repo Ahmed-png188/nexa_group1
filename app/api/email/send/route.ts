@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as serviceClient } from '@supabase/supabase-js'
 
 async function getValidToken(emailAccount: any, service: any): Promise<string> {
-  // If token expires within 5 minutes, refresh it
   if (emailAccount.token_expires_at) {
     const expiresAt = new Date(emailAccount.token_expires_at).getTime()
     const fiveMinutes = 5 * 60 * 1000
@@ -68,15 +67,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No email account connected' }, { status: 400 })
     }
 
-    // Build RFC 2822 email
+    const accessToken = await getValidToken(emailAccount, service)
+
+    // Save a draft record first to get the tracking ID
+    const { data: draftRecord } = await service.from('emails_sent').insert({
+      workspace_id: member.workspace_id,
+      contact_id: contactId || null,
+      from_email: emailAccount.email,
+      to_email: to,
+      subject,
+      body,
+      status: 'sending',
+      opened_count: 0,
+      sent_at: new Date().toISOString(),
+    }).select('id').single()
+
+    // Build email with tracking pixel
+    const trackingPixel = draftRecord?.id
+      ? `<img src="https://nexaa.cc/api/email/track/open?id=${draftRecord.id}" width="1" height="1" style="display:none"/>`
+      : ''
+
+    const bodyWithTracking = trackingPixel ? `${body}\r\n\r\n${trackingPixel}` : body
+
     const emailContent = [
       `From: ${emailAccount.name} <${emailAccount.email}>`,
       `To: ${to}`,
       `Subject: ${subject}`,
       `MIME-Version: 1.0`,
-      `Content-Type: text/plain; charset=utf-8`,
+      `Content-Type: text/html; charset=utf-8`,
       ``,
-      body,
+      bodyWithTracking,
     ].join('\r\n')
 
     const encodedEmail = Buffer.from(emailContent)
@@ -85,7 +105,6 @@ export async function POST(request: NextRequest) {
       .replace(/\//g, '_')
       .replace(/=+$/, '')
 
-    const accessToken = await getValidToken(emailAccount, service)
     console.log('[Email Send] Sending to:', to, 'subject:', subject, 'from:', emailAccount.email)
 
     // Send via Gmail API
@@ -105,22 +124,19 @@ export async function POST(request: NextRequest) {
       const gmailErr = sendData.error?.message || 'Unknown Gmail error'
       const gmailCode = sendData.error?.code || sendRes.status
       console.error('[Email Send] Gmail error:', gmailErr, 'code:', gmailCode)
+      // Clean up draft record
+      if (draftRecord?.id) await service.from('emails_sent').delete().eq('id', draftRecord.id)
       return NextResponse.json({ error: gmailErr, code: gmailCode }, { status: 500 })
     }
 
-    // Save to emails_sent
-    await service.from('emails_sent').insert({
-      workspace_id: member.workspace_id,
-      contact_id: contactId || null,
-      from_email: emailAccount.email,
-      to_email: to,
-      subject,
-      body,
-      thread_id: sendData.threadId,
-      message_id: sendData.id,
-      status: 'sent',
-      sent_at: new Date().toISOString(),
-    })
+    // Update draft record with real message/thread IDs
+    if (draftRecord?.id) {
+      await service.from('emails_sent').update({
+        thread_id: sendData.threadId,
+        message_id: sendData.id,
+        status: 'sent',
+      }).eq('id', draftRecord.id)
+    }
 
     return NextResponse.json({ success: true, messageId: sendData.id })
   } catch (error: unknown) {

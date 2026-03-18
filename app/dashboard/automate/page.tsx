@@ -7,6 +7,7 @@ type Contact = { id: string; email: string; name: string; company: string; tags:
 type EmailAccount = { id: string; email: string; name: string; provider: string }
 type Sequence = { id: string; name: string; status: string; created_at: string }
 type SentEmail = { id: string; to_email: string; subject: string; body: string; status: string; opened_count: number; sent_at: string; contact_id: string }
+type InboxMessage = { id: string; threadId: string; subject: string; fromName: string; fromEmail: string; from: string; fromFull: string; date: string; snippet: string; unread: boolean }
 
 export default function AutomatePage() {
   const supabase = createClient()
@@ -36,10 +37,25 @@ export default function AutomatePage() {
   const [emailContext, setEmailContext] = useState('')
 
   // Inbox state
-  type InboxMessage = { id: string; threadId: string; subject: string; fromName: string; fromEmail: string; date: string; snippet: string; unread: boolean }
   const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([])
   const [inboxLoading, setInboxLoading] = useState(false)
   const [selectedInboxMessage, setSelectedInboxMessage] = useState<InboxMessage | null>(null)
+
+  // Reply state
+  const [replyBody, setReplyBody] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
+
+  // Sequence builder state
+  const [selectedSequence, setSelectedSequence] = useState<any>(null)
+  const [sequenceSteps, setSequenceSteps] = useState<any[]>([])
+  const [newSequenceName, setNewSequenceName] = useState('')
+  const [buildingStep, setBuildingStep] = useState(false)
+  const [editingStep, setEditingStep] = useState<any>(null)
+
+  // Enrollment state
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const [enrolling, setEnrolling] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -76,7 +92,11 @@ export default function AutomatePage() {
     try {
       const res = await fetch('/api/email/inbox')
       const data = await res.json()
-      setInboxMessages(data.messages || [])
+      setInboxMessages((data.messages || []).map((m: any) => ({
+        ...m,
+        from: m.fromName || m.fromEmail,
+        fromFull: m.fromName ? `"${m.fromName}" <${m.fromEmail}>` : m.fromEmail,
+      })))
     } catch (e) {
       console.error('[Inbox] Load error:', e instanceof Error ? e.message : 'Unknown')
     } finally {
@@ -146,6 +166,36 @@ export default function AutomatePage() {
     }
   }
 
+  async function handleReply() {
+    if (!selectedInboxMessage || !replyBody.trim()) return
+    setSendingReply(true)
+    try {
+      const res = await fetch('/api/email/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadId: selectedInboxMessage.threadId,
+          to: selectedInboxMessage.fromFull,
+          subject: `Re: ${selectedInboxMessage.subject}`,
+          body: replyBody,
+          messageId: selectedInboxMessage.id,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setReplyBody('')
+        setSelectedInboxMessage(null)
+        loadInbox()
+      } else {
+        alert('Reply failed: ' + (data.error || 'Unknown error'))
+      }
+    } catch (e) {
+      console.error('[Reply]', e)
+    } finally {
+      setSendingReply(false)
+    }
+  }
+
   async function handleCSVImport(file: File) {
     const text = await file.text()
     const lines = text.split('\n').filter(l => l.trim())
@@ -178,17 +228,12 @@ export default function AutomatePage() {
     }
   }
 
-  async function writeWithBrandBrain() {
+  async function writeWithBrandBrain(promptOverride?: string) {
     setShowContextPanel(false)
     setWritingEmail(true)
     const context = [emailObjective, emailContext].filter(Boolean).join(' — ')
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          message: `Write a professional outreach email in my exact brand voice.
+      const message = promptOverride || `Write a professional outreach email in my exact brand voice.
 
 Recipient: ${composeTo || 'the recipient'}
 Objective: ${emailObjective || 'general outreach'}
@@ -202,8 +247,12 @@ Rules:
 Return your response in EXACTLY this format:
 SUBJECT: [subject line here]
 BODY:
-[email body here]`,
-        }),
+[email body here]`
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspaceId, message }),
       })
       const data = await res.json()
       const raw = data.reply || data.message || data.content || ''
@@ -212,7 +261,7 @@ BODY:
       const bodyMatch = raw.match(/^BODY:\s*\n([\s\S]+)$/im)
 
       const parsedSubject = subjectMatch?.[1]?.trim() || ''
-      const parsedBody = (bodyMatch?.[1] || raw)
+      const cleaned = (bodyMatch?.[1] || raw)
         .replace(/^here'?s? (your |the )?email:?\s*/i, '')
         .replace(/^---+\s*/gm, '')
         .replace(/\*[^*]+\*/g, '')
@@ -220,16 +269,138 @@ BODY:
         .replace(/^subject:.*$/gim, '')
         .trim()
 
-      setComposeBody(parsedBody)
-      if (parsedSubject && !composeSubject) setComposeSubject(parsedSubject)
+      if (view === 'inbox' && selectedInboxMessage) {
+        setReplyBody(cleaned)
+      } else {
+        setComposeBody(cleaned)
+        if (parsedSubject && !composeSubject) setComposeSubject(parsedSubject)
+      }
     } catch (e) {
       console.error('[BrandBrain Email] Error:', e instanceof Error ? e.message : 'Unknown')
     } finally {
       setWritingEmail(false)
-      setEmailObjective('')
-      setEmailContext('')
+      if (!promptOverride) {
+        setEmailObjective('')
+        setEmailContext('')
+      }
     }
   }
+
+  // ── Sequence builder functions ──────────────────────────────────────────
+
+  async function createSequence() {
+    if (!newSequenceName.trim() || !workspaceId) return
+    const { data } = await supabase
+      .from('email_sequences')
+      .insert({ workspace_id: workspaceId, name: newSequenceName, status: 'draft' })
+      .select()
+      .single()
+    if (data) {
+      setSequences(prev => [data, ...prev])
+      setSelectedSequence(data)
+      setSequenceSteps([])
+      setNewSequenceName('')
+    }
+  }
+
+  async function loadSequenceSteps(sequenceId: string) {
+    const { data } = await supabase
+      .from('sequence_steps')
+      .select('*')
+      .eq('sequence_id', sequenceId)
+      .order('step_number', { ascending: true })
+    setSequenceSteps(data || [])
+  }
+
+  async function addStep(type: 'email' | 'wait' | 'condition') {
+    if (!selectedSequence) return
+    const stepNumber = sequenceSteps.length + 1
+
+    if (type === 'wait') {
+      const { data } = await supabase
+        .from('sequence_steps')
+        .insert({ sequence_id: selectedSequence.id, step_number: stepNumber, step_type: 'wait', delay_days: 3, subject: '', body: '' })
+        .select()
+        .single()
+      if (data) setSequenceSteps(prev => [...prev, data])
+      return
+    }
+
+    if (type === 'condition') {
+      const { data } = await supabase
+        .from('sequence_steps')
+        .insert({ sequence_id: selectedSequence.id, step_number: stepNumber, step_type: 'condition', condition: 'opened', subject: '', body: '' })
+        .select()
+        .single()
+      if (data) setSequenceSteps(prev => [...prev, data])
+      return
+    }
+
+    // Email step — generate with Brand Brain
+    setBuildingStep(true)
+    try {
+      const objective = selectedSequence.name || 'nurture'
+      const stepContext = stepNumber === 1
+        ? `First email in a sequence called "${objective}". This is the introduction.`
+        : `Email ${stepNumber} in a sequence called "${objective}". Previous steps: ${sequenceSteps.length} emails sent.`
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Write email ${stepNumber} for an email sequence.
+
+Sequence goal: ${objective}
+Context: ${stepContext}
+
+Return EXACTLY in this format:
+SUBJECT: [subject line]
+BODY:
+[email body, max 150 words, end with my name]`,
+        }),
+      })
+      const data = await res.json()
+      const raw = data.message || data.content || data.reply || ''
+      const subjectMatch = raw.match(/^SUBJECT:\s*(.+)$/im)
+      const bodyMatch = raw.match(/^BODY:\s*\n([\s\S]+)$/im)
+
+      const { data: step } = await supabase
+        .from('sequence_steps')
+        .insert({
+          sequence_id: selectedSequence.id,
+          step_number: stepNumber,
+          step_type: 'email',
+          delay_days: stepNumber === 1 ? 0 : 3,
+          subject: subjectMatch?.[1]?.trim() || `Follow up ${stepNumber}`,
+          body: bodyMatch?.[1]?.trim() || raw,
+        })
+        .select()
+        .single()
+
+      if (step) setSequenceSteps(prev => [...prev, step])
+    } finally {
+      setBuildingStep(false)
+    }
+  }
+
+  async function updateStep(stepId: string, updates: any) {
+    await supabase.from('sequence_steps').update(updates).eq('id', stepId)
+    setSequenceSteps(prev => prev.map(s => s.id === stepId ? { ...s, ...updates } : s))
+  }
+
+  async function deleteStep(stepId: string) {
+    await supabase.from('sequence_steps').delete().eq('id', stepId)
+    setSequenceSteps(prev => prev.filter(s => s.id !== stepId))
+  }
+
+  async function activateSequence() {
+    if (!selectedSequence || sequenceSteps.length === 0) return
+    await supabase.from('email_sequences').update({ status: 'active' }).eq('id', selectedSequence.id)
+    setSelectedSequence((prev: any) => ({ ...prev, status: 'active' }))
+    setSequences(prev => prev.map(s => s.id === selectedSequence.id ? { ...s, status: 'active' } : s))
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14, background:'#000' }}>
@@ -557,37 +728,250 @@ BODY:
 
         {/* SEQUENCES VIEW */}
         {view === 'sequences' && (
-          <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', marginBottom: 4 }}>Sequences</div>
-                <div style={{ fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Automated email flows</div>
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+            {/* Sequence list sidebar */}
+            <div style={{ width: 260, borderRight: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+              <div style={{ padding: '14px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ fontFamily: 'var(--display)', fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Sequences</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={newSequenceName}
+                    onChange={e => setNewSequenceName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && createSequence()}
+                    placeholder="New sequence name..."
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: '#fff', fontFamily: 'var(--sans)', outline: 'none' }}
+                  />
+                  <button
+                    onClick={createSequence}
+                    disabled={!newSequenceName.trim()}
+                    style={{ padding: '7px 10px', background: 'var(--blue)', border: 'none', borderRadius: 7, fontSize: 12, fontFamily: 'var(--display)', fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0 }}
+                  >+</button>
+                </div>
               </div>
-              <button
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: 'var(--blue)', border: 'none', borderRadius: 8, fontFamily: 'var(--display)', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                New sequence
-              </button>
+
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {sequences.length === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>
+                    No sequences yet. Create your first one above.
+                  </div>
+                ) : sequences.map(seq => (
+                  <div
+                    key={seq.id}
+                    onClick={() => {
+                      setSelectedSequence(seq)
+                      loadSequenceSteps(seq.id)
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      cursor: 'pointer',
+                      background: selectedSequence?.id === seq.id ? 'rgba(30,142,240,0.06)' : 'transparent',
+                      transition: 'background 0.1s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: '#fff', fontFamily: 'var(--sans)' }}>{seq.name}</div>
+                      <span style={{
+                        padding: '2px 7px', borderRadius: 4,
+                        fontSize: 9, fontWeight: 600,
+                        background: seq.status === 'active' ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${seq.status === 'active' ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                        color: seq.status === 'active' ? '#4ADE80' : 'var(--t4)',
+                        fontFamily: 'var(--sans)',
+                      }}>
+                        {seq.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {sequences.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>No sequences yet</div>
-                <div style={{ fontSize: 14, color: 'var(--t4)', marginBottom: 8, fontFamily: 'var(--sans)' }}>Build an automated email sequence.</div>
-                <div style={{ fontSize: 13, color: 'var(--t4)', marginBottom: 24, fontFamily: 'var(--sans)' }}>Import contacts first, then create a sequence to enroll them.</div>
-              </div>
-            ) : sequences.map(seq => (
-              <div key={seq.id} style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 20px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--display)', fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 3 }}>{seq.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Created {new Date(seq.created_at).toLocaleDateString()}</div>
+            {/* Sequence builder */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+              {!selectedSequence ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.37"/></svg>
+                  <div style={{ fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>Select or create a sequence</div>
                 </div>
-                <span style={{ padding: '3px 9px', background: seq.status === 'active' ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.05)', border: `1px solid ${seq.status === 'active' ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 5, fontSize: 10, fontWeight: 600, color: seq.status === 'active' ? '#4ADE80' : 'var(--t4)', fontFamily: 'var(--sans)' }}>
-                  {seq.status}
-                </span>
-              </div>
-            ))}
+              ) : (
+                <div style={{ maxWidth: 680 }}>
+                  {/* Sequence header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                    <div>
+                      <div style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', marginBottom: 4 }}>
+                        {selectedSequence.name}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>
+                        {sequenceSteps.length} steps · {selectedSequence.status}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {selectedSequence.status === 'active' && (
+                        <button
+                          onClick={() => setShowEnrollModal(true)}
+                          style={{ padding: '9px 18px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, fontFamily: 'var(--display)', fontSize: 12, fontWeight: 700, color: '#4ADE80', cursor: 'pointer' }}
+                        >
+                          Enroll contacts →
+                        </button>
+                      )}
+                      {selectedSequence.status === 'draft' && sequenceSteps.length > 0 && (
+                        <button
+                          onClick={activateSequence}
+                          style={{ padding: '9px 18px', background: 'var(--blue)', border: 'none', borderRadius: 8, fontFamily: 'var(--display)', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                        >
+                          Activate →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Steps */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {sequenceSteps.map((step, i) => (
+                      <div key={step.id}>
+                        <div style={{
+                          background: '#0A0A0A',
+                          border: `1px solid ${step.step_type === 'condition' ? 'rgba(251,146,60,0.2)' : step.step_type === 'wait' ? 'rgba(255,255,255,0.07)' : 'rgba(30,142,240,0.15)'}`,
+                          borderRadius: 10, padding: '14px 16px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                              background: step.step_type === 'email' ? 'rgba(30,142,240,0.1)' : step.step_type === 'wait' ? 'rgba(255,255,255,0.05)' : 'rgba(251,146,60,0.1)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {step.step_type === 'email' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4DABF7" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>}
+                              {step.step_type === 'wait' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                              {step.step_type === 'condition' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FB923C" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
+                            </div>
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {step.step_type === 'wait' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 13, color: 'var(--t3)', fontFamily: 'var(--sans)' }}>Wait</span>
+                                  <input
+                                    type="number"
+                                    value={step.delay_days}
+                                    onChange={e => updateStep(step.id, { delay_days: parseInt(e.target.value) || 1 })}
+                                    min={1} max={30}
+                                    style={{ width: 48, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '4px 8px', fontSize: 13, color: '#fff', fontFamily: 'var(--mono)', textAlign: 'center', outline: 'none' }}
+                                  />
+                                  <span style={{ fontSize: 13, color: 'var(--t3)', fontFamily: 'var(--sans)' }}>days before next step</span>
+                                </div>
+                              ) : step.step_type === 'condition' ? (
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: '#FB923C', fontFamily: 'var(--display)', marginBottom: 6 }}>Condition</div>
+                                  <select
+                                    value={step.condition || 'opened'}
+                                    onChange={e => updateStep(step.id, { condition: e.target.value })}
+                                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: '#fff', fontFamily: 'var(--sans)', outline: 'none', cursor: 'pointer' }}
+                                  >
+                                    <option value="opened">If previous email was opened → continue</option>
+                                    <option value="not_opened">If previous email was NOT opened → send follow-up</option>
+                                    <option value="clicked">If link was clicked → continue</option>
+                                    <option value="replied">If they replied → stop sequence</option>
+                                    <option value="not_replied">If no reply → send follow-up</option>
+                                  </select>
+                                </div>
+                              ) : (
+                                <div>
+                                  {editingStep?.id === step.id ? (
+                                    <div>
+                                      <input
+                                        value={editingStep.subject}
+                                        onChange={e => setEditingStep((prev: any) => ({ ...prev, subject: e.target.value }))}
+                                        placeholder="Subject line..."
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '8px 12px', fontSize: 13, color: '#fff', fontFamily: 'var(--sans)', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+                                      />
+                                      <textarea
+                                        value={editingStep.body}
+                                        onChange={e => setEditingStep((prev: any) => ({ ...prev, body: e.target.value }))}
+                                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '8px 12px', fontSize: 13, color: '#fff', fontFamily: 'var(--sans)', outline: 'none', resize: 'vertical' as const, minHeight: 120, lineHeight: 1.65, boxSizing: 'border-box' }}
+                                      />
+                                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                        <button
+                                          onClick={() => {
+                                            updateStep(step.id, { subject: editingStep.subject, body: editingStep.body })
+                                            setEditingStep(null)
+                                          }}
+                                          style={{ padding: '6px 14px', background: 'var(--blue)', border: 'none', borderRadius: 6, fontSize: 12, fontFamily: 'var(--display)', fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                                        >Save</button>
+                                        <button
+                                          onClick={() => setEditingStep(null)}
+                                          style={{ padding: '6px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12, color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+                                        >Cancel</button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', fontFamily: 'var(--display)', letterSpacing: '-0.01em', marginBottom: 3 }}>{step.subject || 'No subject'}</div>
+                                      <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                                        {step.body || 'No body'}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                                        <button
+                                          onClick={() => setEditingStep({ ...step })}
+                                          style={{ padding: '4px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, fontSize: 11, color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+                                        >Edit</button>
+                                        {step.delay_days > 0 && (
+                                          <span style={{ fontSize: 11, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>
+                                            Sends {step.delay_days} day{step.delay_days !== 1 ? 's' : ''} after previous
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => deleteStep(step.id)}
+                              style={{ padding: '4px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', cursor: 'pointer', flexShrink: 0 }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {i < sequenceSteps.length - 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+                            <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.07)' }}/>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add step buttons */}
+                  <div style={{ marginTop: sequenceSteps.length > 0 ? 16 : 0, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                    <button
+                      onClick={() => addStep('email')}
+                      disabled={buildingStep}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(30,142,240,0.07)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 8, fontSize: 12, fontFamily: 'var(--display)', fontWeight: 600, color: '#4DABF7', cursor: buildingStep ? 'not-allowed' : 'pointer' }}
+                    >
+                      {buildingStep ? <><div className="nexa-spinner" style={{ width: 11, height: 11 }}/>Writing...</> : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add email</>}
+                    </button>
+                    <button
+                      onClick={() => addStep('wait')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontSize: 12, fontFamily: 'var(--sans)', fontWeight: 500, color: 'var(--t3)', cursor: 'pointer' }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Add delay
+                    </button>
+                    <button
+                      onClick={() => addStep('condition')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.2)', borderRadius: 8, fontSize: 12, fontFamily: 'var(--sans)', fontWeight: 500, color: '#FB923C', cursor: 'pointer' }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                      Add condition
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -614,7 +998,7 @@ BODY:
               ) : inboxMessages.map(msg => (
                 <div
                   key={msg.id}
-                  onClick={() => setSelectedInboxMessage(msg)}
+                  onClick={() => { setSelectedInboxMessage(msg); setReplyBody('') }}
                   style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', background: selectedInboxMessage?.id === msg.id ? 'rgba(30,142,240,0.05)' : 'transparent', transition: 'background 0.1s' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, gap: 8 }}>
@@ -623,7 +1007,6 @@ BODY:
                   </div>
                   <div style={{ fontSize: 12, color: msg.unread ? 'rgba(255,255,255,0.7)' : 'var(--t3)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--sans)' }}>{msg.subject}</div>
                   <div style={{ fontSize: 11, color: 'var(--t4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--sans)' }}>{msg.snippet}</div>
-                  {msg.unread && <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--blue)', position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}/>}
                 </div>
               ))}
             </div>
@@ -637,18 +1020,42 @@ BODY:
                     <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>From: <span style={{ color: 'var(--t2)' }}>{selectedInboxMessage.fromName} {selectedInboxMessage.fromEmail ? `<${selectedInboxMessage.fromEmail}>` : ''}</span></div>
                     <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>{selectedInboxMessage.date}</div>
                   </div>
-                  <div style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontFamily: 'var(--sans)', whiteSpace: 'pre-wrap' }}>
+                  <div style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontFamily: 'var(--sans)', whiteSpace: 'pre-wrap', marginBottom: 20 }}>
                     {selectedInboxMessage.snippet}
                     <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(30,142,240,0.05)', border: '1px solid rgba(30,142,240,0.12)', borderRadius: 7, fontSize: 12, color: 'var(--t4)' }}>
                       Open Gmail to read full message →
                     </div>
                   </div>
-                  <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-                    <button onClick={() => { setComposeTo(selectedInboxMessage.fromEmail); setView('compose') }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--blue2)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
-                      Reply
-                    </button>
+
+                  {/* Reply area */}
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--t4)', marginBottom: 8, fontFamily: 'var(--sans)' }}>Reply</div>
+                    <textarea
+                      value={replyBody}
+                      onChange={e => setReplyBody(e.target.value)}
+                      placeholder={`Reply to ${selectedInboxMessage.from}...`}
+                      style={{ width: '100%', background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#fff', fontFamily: 'var(--sans)', outline: 'none', resize: 'vertical' as const, minHeight: 120, lineHeight: 1.65, boxSizing: 'border-box' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <button
+                        onClick={() => writeWithBrandBrain(`Reply to this email from ${selectedInboxMessage.from}: "${selectedInboxMessage.snippet}". Keep it short, direct, and in my voice.`)}
+                        disabled={writingEmail}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 6, fontSize: 11, color: 'var(--blue2)', cursor: writingEmail ? 'not-allowed' : 'pointer', fontFamily: 'var(--sans)' }}
+                      >
+                        {writingEmail ? (
+                          <><div className="nexa-spinner" style={{ width: 10, height: 10 }}/>Writing...</>
+                        ) : (
+                          <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Write with Brand Brain</>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleReply}
+                        disabled={sendingReply || !replyBody.trim()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', background: replyBody.trim() ? 'var(--blue)' : 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 8, fontFamily: 'var(--display)', fontSize: 13, fontWeight: 700, color: replyBody.trim() ? '#fff' : 'var(--t5)', cursor: replyBody.trim() ? 'pointer' : 'not-allowed' }}
+                      >
+                        {sendingReply ? <><div className="nexa-spinner" style={{ width: 13, height: 13 }}/>Sending...</> : <>Send reply →</>}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -676,7 +1083,7 @@ BODY:
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--t4)', marginBottom: 10, fontFamily: 'var(--sans)' }}>What's the objective?</div>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--t4)', marginBottom: 10, fontFamily: 'var(--sans)' }}>What&apos;s the objective?</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                 {['Cold outreach', 'Follow-up', 'Partnership', 'Sales pitch', 'Thank you', 'Newsletter'].map(obj => (
                   <button key={obj} onClick={() => setEmailObjective(obj === emailObjective ? '' : obj)}
@@ -703,10 +1110,119 @@ BODY:
                 style={{ padding: '9px 18px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
                 Cancel
               </button>
-              <button onClick={writeWithBrandBrain}
+              <button onClick={() => writeWithBrandBrain()}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--blue)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'var(--display)' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 Generate email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLLMENT MODAL */}
+      {showEnrollModal && selectedSequence && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: 24, width: '100%', maxWidth: 480,
+            maxHeight: '80vh', overflow: 'auto',
+          }}>
+            <div style={{ fontFamily: 'var(--display)', fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+              Enroll contacts
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)', marginBottom: 16 }}>
+              Select contacts to enroll in &ldquo;{selectedSequence.name}&rdquo;
+            </div>
+
+            {contacts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 13, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>
+                No contacts yet. Import contacts first.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <button
+                    onClick={() => setSelectedContacts(contacts.map((c: Contact) => c.id))}
+                    style={{ padding: '5px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontSize: 11, color: 'var(--t3)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+                  >Select all ({contacts.length})</button>
+                  <button
+                    onClick={() => setSelectedContacts([])}
+                    style={{ padding: '5px 12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, fontSize: 11, color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+                  >Clear</button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
+                  {contacts.map((contact: Contact) => (
+                    <div
+                      key={contact.id}
+                      onClick={() => setSelectedContacts(prev =>
+                        prev.includes(contact.id) ? prev.filter(id => id !== contact.id) : [...prev, contact.id]
+                      )}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: selectedContacts.includes(contact.id) ? 'rgba(30,142,240,0.06)' : 'transparent',
+                        border: `1px solid ${selectedContacts.includes(contact.id) ? 'rgba(30,142,240,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                        transition: 'all 0.1s',
+                      }}
+                    >
+                      <div style={{
+                        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                        background: selectedContacts.includes(contact.id) ? 'var(--blue)' : 'transparent',
+                        border: `1.5px solid ${selectedContacts.includes(contact.id) ? 'var(--blue)' : 'rgba(255,255,255,0.2)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {selectedContacts.includes(contact.id) && (
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#fff', fontFamily: 'var(--sans)' }}>{contact.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>{contact.email}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setShowEnrollModal(false); setSelectedContacts([]) }}
+                style={{ padding: '9px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)' }}
+              >Cancel</button>
+              <button
+                onClick={async () => {
+                  if (selectedContacts.length === 0) return
+                  setEnrolling(true)
+                  try {
+                    await fetch('/api/email/sequences/enroll', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ sequence_id: selectedSequence.id, contact_ids: selectedContacts }),
+                    })
+                    setShowEnrollModal(false)
+                    setSelectedContacts([])
+                  } finally {
+                    setEnrolling(false)
+                  }
+                }}
+                disabled={selectedContacts.length === 0 || enrolling}
+                style={{
+                  padding: '9px 20px',
+                  background: selectedContacts.length > 0 ? 'var(--blue)' : 'rgba(255,255,255,0.05)',
+                  border: 'none', borderRadius: 8,
+                  fontFamily: 'var(--display)', fontSize: 13, fontWeight: 700,
+                  color: selectedContacts.length > 0 ? '#fff' : 'var(--t5)',
+                  cursor: selectedContacts.length > 0 ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {enrolling ? 'Enrolling...' : `Enroll ${selectedContacts.length} contact${selectedContacts.length !== 1 ? 's' : ''} →`}
               </button>
             </div>
           </div>
