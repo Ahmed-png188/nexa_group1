@@ -320,7 +320,7 @@ function AmplifyInner() {
           </div>
           <button
             onClick={() => {
-              const metaOAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${process.env.NEXT_PUBLIC_META_APP_ID}&redirect_uri=https%3A%2F%2Fnexaa.cc%2Fapi%2Fmeta%2Fconnect&scope=ads_management,ads_read,pages_read_engagement&response_type=code`
+              const metaOAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${process.env.NEXT_PUBLIC_META_APP_ID}&redirect_uri=https%3A%2F%2Fnexaa.cc%2Fapi%2Fmeta%2Fconnect&scope=ads_management,ads_read,pages_read_engagement&response_type=code&state=${workspaceId}`
               window.open(metaOAuthUrl, '_blank')
             }}
             style={{ padding:'9px 18px', background:'#F97316', border:'none', borderRadius:7, fontFamily:'var(--display)', fontSize:12, fontWeight:700, color:'#fff', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}
