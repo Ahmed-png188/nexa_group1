@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createClient as serviceClient } from '@supabase/supabase-js'
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .single()
+    if (!member) return NextResponse.json({ error: 'No workspace' }, { status: 403 })
+
+    const body = await request.json()
+    const { contacts } = body
+
+    if (!Array.isArray(contacts) || contacts.length === 0) {
+      return NextResponse.json({ error: 'No contacts provided' }, { status: 400 })
+    }
+
+    const service = serviceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const toInsert = contacts
+      .filter((c: any) => c.email && c.email.includes('@'))
+      .map((c: any) => ({
+        workspace_id: member.workspace_id,
+        email: c.email.toLowerCase().trim(),
+        name: c.name || c.email,
+        first_name: c.first_name || c.name?.split(' ')[0] || '',
+        last_name: c.last_name || c.name?.split(' ').slice(1).join(' ') || '',
+        company: c.company || '',
+        tags: c.tags || [],
+        source: 'csv',
+      }))
+
+    const { data, error } = await service
+      .from('contacts')
+      .upsert(toInsert, { onConflict: 'workspace_id,email' })
+      .select()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, imported: data?.length || 0 })
+  } catch (error: unknown) {
+    console.error('[Contacts Import] Error:', error instanceof Error ? error.message : 'Unknown error')
+    return NextResponse.json({ error: 'Import failed' }, { status: 500 })
+  }
+}
