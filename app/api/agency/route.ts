@@ -54,13 +54,39 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ clients: clientsWithStats, invites: invites ?? [] })
 }
 
-// POST — create a new client workspace
+// POST — create a new client workspace OR switch active workspace
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { agency_workspace_id, client_name, client_email, brand_name, monthly_retainer } = await request.json()
+  const body = await request.json()
+  const { action } = body
+
+  // ── Switch active workspace ──
+  if (action === 'switch_workspace') {
+    const { workspace_id } = body
+    if (!workspace_id) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
+
+    // Verify user is a member of the target workspace
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('workspace_id', workspace_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!membership) return NextResponse.json({ error: 'Access denied to this workspace' }, { status: 403 })
+
+    // Update user's active workspace in their profile
+    await supabase.from('profiles')
+      .update({ active_workspace_id: workspace_id })
+      .eq('id', user.id)
+
+    return NextResponse.json({ success: true, workspace_id })
+  }
+
+  const { agency_workspace_id, client_name, client_email, brand_name, monthly_retainer } = body
 
   // Check agency plan
   const { data: agencyWs } = await supabase.from('workspaces').select('plan').eq('id', agency_workspace_id).single()

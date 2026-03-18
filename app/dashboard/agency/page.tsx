@@ -212,13 +212,13 @@ export default function AgencyPage() {
         {/* Header */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:28 }}>
           <div>
-            <h1 style={{ fontFamily:'var(--display)', fontSize:24, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>Agency</h1>
+            <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>Agency</h1>
             <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
               {activeCount} active client{activeCount!==1?'s':''} · ${totalMRR.toLocaleString()} MRR
             </p>
           </div>
           <button onClick={() => setShowNew(true)}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s' }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', fontFamily:'var(--display)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s' }}
             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLElement).style.boxShadow='0 7px 24px rgba(77,159,255,0.45)'}}
             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 18px rgba(77,159,255,0.35)'}}>
             <span style={{ display:'flex' }}>{Ic.plus}</span>Add client
@@ -236,8 +236,8 @@ export default function AgencyPage() {
             <div key={s.label} className="nexa-card" style={{ padding:'14px 18px', borderRadius:14, display:'flex', alignItems:'center', gap:11 }}>
               <div style={{ width:32, height:32, borderRadius:9, background:`${s.color}12`, border:`1px solid ${s.color}22`, display:'flex', alignItems:'center', justifyContent:'center', color:s.color, flexShrink:0 }}>{s.icon}</div>
               <div>
-                <div className="nexa-num" style={{ fontSize:20, color:s.color }}>{s.value}</div>
-                <div className="nexa-label" style={{ marginTop:3 }}>{s.label}</div>
+                <div className="nexa-num" style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:28, letterSpacing:'-0.04em', color:s.color }}>{s.value}</div>
+                <div className="nexa-label" style={{ fontFamily:'var(--sans)', fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--t4)', marginTop:3 }}>{s.label}</div>
               </div>
             </div>
           ))}
@@ -260,7 +260,7 @@ export default function AgencyPage() {
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                       <Avatar name={c.client_name} size={40}/>
                       <div>
-                        <div style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2 }}>{c.client_name}</div>
+                        <div style={{ fontFamily:'var(--display)', fontWeight:600, fontSize:14, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2 }}>{c.client_name}</div>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,0.38)' }}>{c.brand_name||'No brand set'}</div>
                       </div>
                     </div>
@@ -273,7 +273,7 @@ export default function AgencyPage() {
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div>
                       {c.monthly_retainer > 0 ? (
-                        <div style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, color:'rgba(255,255,255,0.72)', letterSpacing:'-0.04em', lineHeight:1 }}>
+                        <div style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:13, color:'rgba(255,255,255,0.72)', letterSpacing:0, lineHeight:1 }}>
                           ${c.monthly_retainer?.toLocaleString()}
                           <span style={{ fontSize:11, fontWeight:400, color:'rgba(255,255,255,0.3)', letterSpacing:0 }}>/mo</span>
                         </div>
@@ -301,12 +301,12 @@ export default function AgencyPage() {
             <div style={{ width:56, height:56, borderRadius:16, background:'rgba(77,159,255,0.07)', border:'1px solid rgba(77,159,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#4D9FFF', marginBottom:20 }}>
               {Ic.users}
             </div>
-            <h3 style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>No clients yet</h3>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,0.32)', lineHeight:1.75, maxWidth:360, marginBottom:22 }}>
+            <h3 style={{ fontFamily:'var(--display)', fontWeight:700, fontSize:20, letterSpacing:'-0.02em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>No clients yet</h3>
+            <p style={{ fontFamily:'var(--sans)', fontSize:14, lineHeight:1.75, color:'rgba(255,255,255,0.32)', maxWidth:360, marginBottom:22 }}>
               Add your first client to start managing their brand, content, and workspace from one place.
             </p>
             <button onClick={() => setShowNew(true)}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontFamily:'var(--display)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}>
               <span style={{ display:'flex' }}>{Ic.plus}</span>Add first client
             </button>
           </div>

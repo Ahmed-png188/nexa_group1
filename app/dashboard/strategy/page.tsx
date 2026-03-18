@@ -39,7 +39,7 @@ function StatCard({ icon, label, value, color }: any) {
     <div style={{ padding:'14px 18px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, display:'flex', alignItems:'center', gap:12 }}>
       <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, border:`1px solid ${color}25`, display:'flex', alignItems:'center', justifyContent:'center', color, flexShrink:0 }}>{icon}</div>
       <div>
-        <div className="nexa-num" style={{ fontSize:22 }}>{value}</div>
+        <div className="nexa-num" style={{ fontSize:28, fontFamily:'var(--mono)', fontWeight:300, letterSpacing:'-0.04em' }}>{value}</div>
         <div className="nexa-label" style={{ marginTop:4 }}>{label}</div>
       </div>
     </div>
@@ -191,7 +191,7 @@ export default function StrategyPage() {
             </div>
           )}
           <div className="nexa-ring-wrap">
-            <button onClick={generateStrategy} className="nexa-ring-body" style={{ padding:'12px 32px', fontSize:15 }}>
+            <button onClick={generateStrategy} className="nexa-ring-body" style={{ padding:'12px 32px', fontSize:15, fontFamily:'var(--display)', fontWeight:800 }}>
               <span style={{ display:'flex' }}>{Ic.bolt}</span>
               Build my strategy
             </button>
@@ -235,7 +235,7 @@ export default function StrategyPage() {
         transition:'opacity 0.45s ease, transform 0.45s ease',
       }}>
         <div>
-          <h1 style={{ fontFamily:'var(--display)', fontSize:28, fontWeight:800, letterSpacing:'-0.05em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
+          <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
             Strategy
           </h1>
           <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
@@ -268,7 +268,7 @@ export default function StrategyPage() {
           const on = tab === t.id
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              style={{ flex:1, padding:'8px 4px', borderRadius:10, border:`1px solid ${on?`${t.color}25`:'transparent'}`, background:on?`${t.color}0e`:'transparent', color:on?t.color:'rgba(255,255,255,0.32)', cursor:'pointer', fontSize:11.5, fontWeight:on?700:500, fontFamily:'var(--sans)', transition:'all 0.15s', whiteSpace:'nowrap' }}
+              style={{ flex:1, padding:'8px 4px', borderRadius:10, border:`1px solid ${on?`${t.color}25`:'transparent'}`, background:on?`${t.color}0e`:'transparent', color:on?t.color:'rgba(255,255,255,0.32)', cursor:'pointer', fontSize:13, fontWeight:500, fontFamily:'var(--sans)', transition:'all 0.15s', whiteSpace:'nowrap' }}
               onMouseEnter={e => { if(!on)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
               onMouseLeave={e => { if(!on)(e.currentTarget as HTMLElement).style.background='transparent' }}>
               {t.label}
@@ -439,7 +439,7 @@ export default function StrategyPage() {
                         position:'relative', overflow:'hidden',
                       }}>
                       {isOpen && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:wkCol, borderRadius:'12px 12px 0 0' }}/>}
-                      <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:isOpen?wkCol:'rgba(255,255,255,0.55)', lineHeight:1, marginBottom:6, letterSpacing:'-0.04em' }}>
+                      <div style={{ fontFamily:'var(--mono)', fontSize:13, fontWeight:300, color:isOpen?wkCol:'rgba(255,255,255,0.55)', lineHeight:1, marginBottom:6, letterSpacing:'-0.04em' }}>
                         {String(num).padStart(2,'0')}
                       </div>
                       {plat && (

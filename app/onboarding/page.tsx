@@ -204,15 +204,15 @@ export default function OnboardingPage() {
         @keyframes pulse-ring { 0% { transform:scale(1);opacity:0.5 } 100% { transform:scale(1.6);opacity:0 } }
         .ob-card { animation: fadeUp 0.45s ease both }
         .ob-inp:focus { border-color: rgba(0,170,255,0.4) !important; box-shadow: 0 0 0 3px rgba(0,170,255,0.08) !important; }
-        .ob-inp::placeholder { color: rgba(240,237,232,0.22) }
-        .ob-inp { caret-color: #00AAFF }
-        .ob-ta::placeholder { color: rgba(240,237,232,0.22) }
-        .ob-ta { caret-color: #00AAFF }
-        .ob-btn-primary:hover { background: #22BBFF !important; transform: translateY(-1px) }
+        .ob-inp::placeholder { color: rgba(255,255,255,0.25) }
+        .ob-inp { caret-color: #1E8EF0 }
+        .ob-ta::placeholder { color: rgba(255,255,255,0.25) }
+        .ob-ta { caret-color: #1E8EF0 }
+        .ob-btn-primary:hover { background: #4DABF7 !important; transform: translateY(-1px) }
         .ob-btn-sec:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.18) !important }
       `}</style>
 
-      <div style={{ minHeight:'100vh', background:'#08080D', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative', overflow:'hidden' }}>
+      <div style={{ minHeight:'100vh', background:'#000000', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'fixed', top:0, left:'50%', transform:'translateX(-50%)', width:900, height:600, background:'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,130,255,0.08) 0%, transparent 70%)', pointerEvents:'none' }}/>
 
         <div style={{ width:'100%', maxWidth:500, position:'relative', zIndex:1 }}>
@@ -220,13 +220,13 @@ export default function OnboardingPage() {
           {/* Logo */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:9, marginBottom:28 }}>
             <img src="/favicon.png" alt="Nexa" style={{ width:28, height:28, borderRadius:7 }} />
-            <span style={{ fontFamily:'var(--display)', fontWeight:800, fontSize:16, color:'#F0EDE8', letterSpacing:'-0.03em' }}>Nexa</span>
+            <span style={{ fontFamily:'var(--display)', fontWeight:800, fontSize:16, color:'#ffffff', letterSpacing:'-0.03em' }}>Nexa</span>
           </div>
 
           {/* Progress dots */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:24 }}>
             {STEPS.map((s, i) => (
-              <div key={s} style={{ height:3, borderRadius:2, width: step===s ? 28 : 8, background: i < stepIndex ? 'rgba(0,170,255,0.55)' : step===s ? '#00AAFF' : 'rgba(255,255,255,0.1)', transition:'all 0.35s ease' }}/>
+              <div key={s} style={{ height:3, borderRadius:2, width: step===s ? 28 : 8, background: i < stepIndex ? 'rgba(30,142,240,0.55)' : step===s ? '#1E8EF0' : 'rgba(255,255,255,0.1)', transition:'all 0.35s ease' }}/>
             ))}
           </div>
 
@@ -280,23 +280,23 @@ export default function OnboardingPage() {
               <div style={topLine}/>
               <h1 style={h1}>Upload brand assets</h1>
               <p style={{ ...sub, marginBottom:22 }}>Logo, sample posts, brand doc. Optional — you can add more later.</p>
-              <div onDrop={handleDrop} onDragOver={e => { e.preventDefault(); setIsDragging(true) }} onDragLeave={() => setIsDragging(false)} onClick={() => fileRef.current?.click()} style={{ padding: files.length > 0 ? '14px 16px 10px' : '28px 20px', border:`1px dashed ${isDragging ? '#00AAFF' : files.length > 0 ? 'rgba(0,170,255,0.3)' : 'rgba(255,255,255,0.12)'}`, borderRadius:12, textAlign:'center', cursor:'pointer', transition:'all .18s', background: isDragging ? 'rgba(0,170,255,0.05)' : 'transparent', marginBottom:12 }}>
+              <div onDrop={handleDrop} onDragOver={e => { e.preventDefault(); setIsDragging(true) }} onDragLeave={() => setIsDragging(false)} onClick={() => fileRef.current?.click()} style={{ padding: files.length > 0 ? '14px 16px 10px' : '28px 20px', border:`1px dashed ${isDragging ? '#1E8EF0' : files.length > 0 ? 'rgba(30,142,240,0.3)' : 'rgba(255,255,255,0.12)'}`, borderRadius:12, textAlign:'center', cursor:'pointer', transition:'all .18s', background: isDragging ? 'rgba(30,142,240,0.05)' : 'transparent', marginBottom:12 }}>
                 {files.length === 0 ? (
                   <>
-                    <div style={{ fontSize:13, color:'rgba(240,237,232,0.55)', fontWeight:600, marginBottom:4 }}>Click or drag files here</div>
-                    <div style={{ fontSize:11, color:'rgba(240,237,232,0.25)' }}>PNG, JPG, PDF, DOCX</div>
+                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.65)', fontWeight:600, marginBottom:4 }}>Click or drag files here</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>PNG, JPG, PDF, DOCX</div>
                   </>
                 ) : (
-                  <div style={{ fontSize:12, color:'rgba(240,237,232,0.4)' }}>+ Add more files</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>+ Add more files</div>
                 )}
                 <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.docx,.txt" onChange={e => addFiles(e.target.files)} onClick={e => { (e.target as HTMLInputElement).value = '' }} style={{ display:'none' }}/>
               </div>
               {files.length > 0 && (
                 <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:16 }}>
                   {files.map((f, i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 12px', background:'rgba(0,170,255,0.04)', border:'1px solid rgba(0,170,255,0.12)', borderRadius:8 }}>
-                      <span style={{ flex:1, fontSize:12, color:'rgba(240,237,232,0.7)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
-                      <button onClick={e => { e.stopPropagation(); removeFile(i) }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(240,237,232,0.3)', padding:2 }}>✕</button>
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 12px', background:'rgba(30,142,240,0.04)', border:'1px solid rgba(30,142,240,0.12)', borderRadius:8 }}>
+                      <span style={{ flex:1, fontSize:12, color:'rgba(255,255,255,0.75)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
+                      <button onClick={e => { e.stopPropagation(); removeFile(i) }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.35)', padding:2 }}>✕</button>
                     </div>
                   ))}
                 </div>
@@ -312,34 +312,34 @@ export default function OnboardingPage() {
             <div className="ob-card" style={{ ...card, textAlign:'center' }}>
               <div style={topLine}/>
               <div style={{ position:'relative', width:72, height:72, margin:'0 auto 24px' }}>
-                <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(0,170,255,0.3)', animation:'pulse-ring 2s ease-out infinite' }}/>
-                <div style={{ position:'relative', width:72, height:72, borderRadius:'50%', background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.22)', display:'flex', alignItems:'center', justifyContent:'center', animation:'breathe 2.5s ease-in-out infinite' }}>
-                  <span style={{ fontSize:26, color:'#00AAFF' }}>✦</span>
+                <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(30,142,240,0.3)', animation:'pulse-ring 2s ease-out infinite' }}/>
+                <div style={{ position:'relative', width:72, height:72, borderRadius:'50%', background:'rgba(30,142,240,0.08)', border:'1px solid rgba(30,142,240,0.22)', display:'flex', alignItems:'center', justifyContent:'center', animation:'breathe 2.5s ease-in-out infinite' }}>
+                  <span style={{ fontSize:26, color:'#1E8EF0' }}>✦</span>
                 </div>
               </div>
               <h1 style={{ ...h1, marginBottom:6 }}>Building your Brand Brain...</h1>
-              <p style={{ fontSize:13, color:'rgba(240,237,232,0.4)', marginBottom:28, minHeight:20 }}>{analysisStage}</p>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:28, minHeight:20 }}>{analysisStage}</p>
               <div style={{ background:'rgba(255,255,255,0.06)', borderRadius:100, height:5, overflow:'hidden', marginBottom:8 }}>
-                <div style={{ height:'100%', width:`${analysisProgress}%`, background:'linear-gradient(90deg,rgba(0,110,255,0.9),#00AAFF,#00FFB2)', borderRadius:100, transition:'width 1s ease' }}/>
+                <div style={{ height:'100%', width:`${analysisProgress}%`, background:'linear-gradient(90deg,#0C5FBF,#1E8EF0,#4DABF7)', borderRadius:100, transition:'width 1s ease' }}/>
               </div>
-              <div style={{ fontSize:12, color:'rgba(240,237,232,0.3)' }}>{Math.round(analysisProgress)}%</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>{Math.round(analysisProgress)}%</div>
             </div>
           )}
 
           {step === 'done' && analysis && (
             <div className="ob-card" style={card}>
-              <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,#00AAFF,#00FFB2,transparent)', borderRadius:'18px 18px 0 0' }}/>
-              <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(0,170,255,0.1)', border:'1px solid rgba(0,170,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,#1E8EF0,#4DABF7,transparent)', borderRadius:'18px 18px 0 0' }}/>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(30,142,240,0.1)', border:'1px solid rgba(30,142,240,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E8EF0" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
               </div>
               <h1 style={{ ...h1, marginBottom:4 }}>Nexa knows your brand.</h1>
-              <p style={{ fontSize:13, color:'rgba(240,237,232,0.45)', textAlign:'center', lineHeight:1.65, maxWidth:380, margin:'0 auto 22px' }}>{analysis.brand_voice}</p>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,0.55)', textAlign:'center', lineHeight:1.65, maxWidth:380, margin:'0 auto 22px' }}>{analysis.brand_voice}</p>
               <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:18 }}>
-                {([['Voice match', scores.voice, '#00AAFF'], ['Audience fit', scores.audience, 'rgba(0,210,155,0.9)'], ['Visual style', scores.visual, 'rgba(255,184,0,0.9)']] as [string,number,string][]).map(([label, val, color]) => (
+                {([['Voice match', scores.voice, '#1E8EF0'], ['Audience fit', scores.audience, 'rgba(0,210,155,0.9)'], ['Visual style', scores.visual, 'rgba(255,184,0,0.9)']] as [string,number,string][]).map(([label, val, color]) => (
                   <div key={label}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:12, color:'rgba(240,237,232,0.5)' }}>{label}</span>
-                      <span style={{ fontSize:12, fontWeight:700, color:'rgba(240,237,232,0.8)' }}>{val}%</span>
+                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{label}</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>{val}%</span>
                     </div>
                     <div style={{ height:4, background:'rgba(255,255,255,0.06)', borderRadius:4, overflow:'hidden' }}>
                       <div style={{ width:`${val}%`, height:'100%', background:color, borderRadius:4, transition:'width 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}/>
@@ -349,13 +349,13 @@ export default function OnboardingPage() {
               </div>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center', marginBottom:18 }}>
                 {analysis.content_pillars.map((p, i) => (
-                  <span key={i} style={{ fontSize:11, fontWeight:600, padding:'4px 11px', background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.2)', borderRadius:100, color:'#00AAFF' }}>{p}</span>
+                  <span key={i} style={{ fontSize:11, fontWeight:600, padding:'4px 11px', background:'rgba(30,142,240,0.08)', border:'1px solid rgba(30,142,240,0.2)', borderRadius:100, color:'#4DABF7' }}>{p}</span>
                 ))}
               </div>
-              <div style={{ padding:'14px 16px', background:'rgba(0,170,255,0.04)', border:'1px solid rgba(0,170,255,0.12)', borderRadius:11, marginBottom:22 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#00AAFF', letterSpacing:'.07em', textTransform:'uppercase', marginBottom:8 }}>First post — written in your voice</div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#F0EDE8', marginBottom:5, lineHeight:1.45 }}>{analysis.first_post_hook}</div>
-                <div style={{ fontSize:12, color:'rgba(240,237,232,0.5)', lineHeight:1.65 }}>{analysis.first_post_body}</div>
+              <div style={{ padding:'14px 16px', background:'rgba(30,142,240,0.04)', border:'1px solid rgba(30,142,240,0.12)', borderRadius:11, marginBottom:22 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#4DABF7', letterSpacing:'.07em', textTransform:'uppercase', marginBottom:8 }}>First post — written in your voice</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#ffffff', marginBottom:5, lineHeight:1.45 }}>{analysis.first_post_hook}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.65 }}>{analysis.first_post_body}</div>
               </div>
               <button onClick={handleEnterDashboard} className="ob-btn-primary" style={btnPrimary}>Enter your workspace →</button>
             </div>
@@ -367,13 +367,13 @@ export default function OnboardingPage() {
   )
 }
 
-const card:       React.CSSProperties = { background:'rgba(13,13,20,0.94)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, padding:'34px 30px', backdropFilter:'blur(24px)', position:'relative', overflow:'hidden' }
-const topLine:    React.CSSProperties = { position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent 10%,rgba(0,170,255,0.3) 45%,rgba(0,170,255,0.1) 70%,transparent 90%)' }
-const h1:         React.CSSProperties = { fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'#F0EDE8', textAlign:'center', marginBottom:8 }
-const sub:        React.CSSProperties = { fontSize:13, color:'rgba(240,237,232,0.42)', textAlign:'center', lineHeight:1.65 }
-const lbl:        React.CSSProperties = { display:'block', fontSize:12, fontWeight:600, color:'rgba(240,237,232,0.5)', marginBottom:7 }
-const req:        React.CSSProperties = { color:'rgba(0,170,255,0.6)', fontWeight:500, marginLeft:6 }
-const opt:        React.CSSProperties = { color:'rgba(240,237,232,0.28)', fontWeight:400, marginLeft:6 }
-const inp:        React.CSSProperties = { width:'100%', padding:'11px 14px', fontSize:13.5, fontFamily:'var(--sans)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'#F0EDE8', outline:'none', transition:'border-color 0.18s, box-shadow 0.18s', boxSizing:'border-box' }
+const card:       React.CSSProperties = { background:'rgba(10,10,10,0.96)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, padding:'34px 30px', backdropFilter:'blur(24px)', position:'relative', overflow:'hidden' }
+const topLine:    React.CSSProperties = { position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent 10%,rgba(30,142,240,0.3) 45%,rgba(30,142,240,0.1) 70%,transparent 90%)' }
+const h1:         React.CSSProperties = { fontFamily:'var(--display)', fontSize:24, fontWeight:800, letterSpacing:'-0.04em', color:'#ffffff', textAlign:'center', marginBottom:8 }
+const sub:        React.CSSProperties = { fontSize:13, color:'rgba(255,255,255,0.55)', textAlign:'center', lineHeight:1.65 }
+const lbl:        React.CSSProperties = { display:'block', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.6)', marginBottom:7 }
+const req:        React.CSSProperties = { color:'rgba(30,142,240,0.7)', fontWeight:500, marginLeft:6 }
+const opt:        React.CSSProperties = { color:'rgba(255,255,255,0.3)', fontWeight:400, marginLeft:6 }
+const inp:        React.CSSProperties = { width:'100%', padding:'11px 14px', fontSize:13.5, fontFamily:'var(--sans)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'#ffffff', outline:'none', transition:'border-color 0.18s, box-shadow 0.18s', boxSizing:'border-box' }
 const errBox:     React.CSSProperties = { padding:'10px 14px', background:'rgba(255,80,80,0.07)', border:'1px solid rgba(255,80,80,0.2)', borderRadius:9, fontSize:13, color:'#ff6b6b' }
-const btnPrimary: React.CSSProperties = { width:'100%', padding:'13px', fontSize:14, fontWeight:700, fontFamily:'var(--sans)', background:'#00AAFF', color:'#000', border:'none', borderRadius:10, cursor:'pointer', letterSpacing:'-0.01em', transition:'all .18s' }
+const btnPrimary: React.CSSProperties = { width:'100%', padding:'13px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', background:'var(--blue)', color:'#000', border:'none', borderRadius:10, cursor:'pointer', letterSpacing:'-0.01em', transition:'all .18s' }

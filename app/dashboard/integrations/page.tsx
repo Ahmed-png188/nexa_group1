@@ -147,8 +147,8 @@ export default function IntegrationsPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', marginBottom: 4 }}>Integrations</h1>
-        <p style={{ fontSize: 13, color: 'var(--t4)', marginBottom: 16 }}>
+        <h1 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>Integrations</h1>
+        <p style={{ fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--t4)', marginBottom: 16 }}>
           The tools your business already uses, connected to your content engine.
         </p>
         <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
@@ -175,7 +175,7 @@ export default function IntegrationsPage() {
         </div>
         <div style={{ display: 'flex', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 9, padding: 3, gap: 2, flexShrink: 0 }}>
           {CATEGORIES.map(cat => (
-            <button key={cat.id} onClick={() => setCategory(cat.id)} style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: category === cat.id ? 'var(--glass2)' : 'transparent', color: category === cat.id ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)', whiteSpace: 'nowrap' }}>
+            <button key={cat.id} onClick={() => setCategory(cat.id)} style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: category === cat.id ? 'var(--glass2)' : 'transparent', color: category === cat.id ? 'var(--t1)' : 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>
               {cat.label}
             </button>
           ))}
@@ -198,23 +198,23 @@ export default function IntegrationsPage() {
                     <div style={{ width: 14, height: 14, borderRadius: '50%', background: integration.color }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', lineHeight: 1.2 }}>{integration.name}</div>
+                    <div style={{ fontFamily: 'var(--display)', fontWeight: 600, fontSize: 15, letterSpacing: '-0.01em', color: 'var(--t1)', lineHeight: 1.2 }}>{integration.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--t5)', marginTop: 1 }}>{integration.badge}</div>
                   </div>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 100, background: statusConf.bg, color: statusConf.color, border: `1px solid ${statusConf.border}`, flexShrink: 0 }}>
+                <span style={{ fontFamily: 'var(--sans)', fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 100, background: statusConf.bg, color: statusConf.color, border: `1px solid ${statusConf.border}`, flexShrink: 0 }}>
                   {statusConf.label}
                 </span>
               </div>
 
               {/* Description */}
-              <p style={{ fontSize: 12.5, color: 'var(--t4)', lineHeight: 1.65, marginBottom: 14, minHeight: 54 }}>
+              <p style={{ fontFamily: 'var(--sans)', fontSize: 13, lineHeight: 1.65, color: 'var(--t4)', marginBottom: 14, minHeight: 54 }}>
                 {integration.desc}
               </p>
 
               {/* Footer */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: integration.cost === 'Built in' ? '#00d68f' : integration.cost === 'Free' || integration.cost === 'Free connector' ? '#00d68f' : 'var(--cyan)' }}>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 300, fontSize: 12, color: integration.cost === 'Built in' ? '#00d68f' : integration.cost === 'Free' || integration.cost === 'Free connector' ? '#00d68f' : 'var(--cyan)' }}>
                   {integration.cost}
                 </span>
                 {integration.status === 'active' ? (
@@ -228,12 +228,12 @@ export default function IntegrationsPage() {
                       Connected
                     </span>
                   ) : (
-                    <button onClick={() => handleConnect(integration.id)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                    <button onClick={() => handleConnect(integration.id)} style={{ fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 500, color: 'var(--cyan)', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>
                       Connect
                     </button>
                   )
                 ) : (
-                  <button onClick={() => handleNotify(integration.name)} style={{ fontSize: 11, color: 'var(--t4)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                  <button onClick={() => handleNotify(integration.name)} style={{ fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 500, color: 'var(--t4)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer' }}>
                     Notify me
                   </button>
                 )}

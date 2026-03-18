@@ -19,10 +19,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const workspaces = memberships?.map(m => m.workspaces).flat() ?? []
   if (workspaces.length === 0) redirect('/onboarding')
 
-  const activeWorkspace = workspaces[0] as any
+  // Use active_workspace_id from profile if set (allows workspace switching)
+  const preferredId = profile?.active_workspace_id
+  const activeWorkspace = (preferredId
+    ? workspaces.find((w: any) => w?.id === preferredId)
+    : null) ?? workspaces[0] as any
 
   const { data: credits } = await supabase
     .from('credits').select('balance').eq('workspace_id', activeWorkspace.id).single()
+
+  // Note: trial expiry is enforced at the API level via checkPlanAccess in plan-gate.ts
+  // Settings/billing page remains accessible so users can upgrade
 
   return (
     <DashboardShell user={profile} workspace={activeWorkspace} credits={credits?.balance ?? 0}>

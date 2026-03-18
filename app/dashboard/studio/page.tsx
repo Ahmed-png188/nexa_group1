@@ -85,7 +85,7 @@ const ANGLES = [
 
 function SLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="nexa-label" style={{ marginBottom:9 }}>
+    <div className="nexa-label" style={{ marginBottom:9, fontFamily:'var(--sans)', fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--t4)' }}>
       {children}
     </div>
   )
@@ -112,7 +112,7 @@ function PlatPill({ p, active, onClick }: any) {
   const cl = active ? p.color : hov ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.38)'
   return (
     <button onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ padding:'5px 15px', borderRadius:100, fontSize:12, fontWeight:600, background:bg, border:bd, color:cl, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.14s', flexShrink:0 }}>
+      style={{ padding:'5px 15px', borderRadius:100, fontSize:12, fontWeight:500, background:bg, border:bd, color:cl, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.14s', flexShrink:0 }}>
       {p.label}
     </button>
   )
@@ -562,7 +562,7 @@ function StudioInner() {
       <div style={{ overflowY:'auto',padding:'28px 32px 48px',borderRight:'1px solid rgba(255,255,255,0.05)' }}>
 
         <div style={{ marginBottom:24,opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(12px)',transition:'opacity 0.45s ease, transform 0.45s ease' }}>
-          <h1 style={{ fontFamily:'var(--display)',fontSize:24,fontWeight:800,letterSpacing:'-0.04em',color:'rgba(255,255,255,0.92)',lineHeight:1,marginBottom:5 }}>Studio</h1>
+          <h1 style={{ fontFamily:'var(--display)',fontSize:22,fontWeight:800,letterSpacing:'-0.03em',color:'rgba(255,255,255,0.92)',lineHeight:1,marginBottom:5 }}>Studio</h1>
           <p style={{ fontSize:12,color:'rgba(255,255,255,0.3)',lineHeight:1.5 }}>
               {hasBrand
                 ? <span style={{display:'flex',alignItems:'center',gap:6}}><span style={{display:'inline-block',width:6,height:6,borderRadius:'50%',background:'#34D399',boxShadow:'0 0 6px #34D399',flexShrink:0}}/>{voiceStr}</span>
@@ -600,7 +600,7 @@ function StudioInner() {
                   style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,padding:'11px 6px',borderRadius:12,background:tbg,border:tbd,color:tcl,cursor:'pointer',fontFamily:'var(--sans)',transition:'all 0.16s',opacity:locked?0.7:1 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:6 }}>
                     <span style={{ display:'flex',opacity:active?1:0.6 }}>{t.icon}</span>
-                    <span style={{ fontSize:13,fontWeight:active?700:500 }}>{t.label}</span>
+                    <span style={{ fontSize:13,fontWeight:600,fontFamily:'var(--display)' }}>{t.label}</span>
                     {locked && <span style={{ display:'flex' }}>{Ic.lock}</span>}
                   </div>
                   <span style={{ fontSize:9.5,color:active?t.color+'80':'rgba(255,255,255,0.2)',fontWeight:500 }}>{t.sub}</span>
@@ -951,7 +951,7 @@ function StudioInner() {
                     <ActBtn icon={sched?Ic.check:Ic.cal} label={sched?'Queued':'Schedule'} onClick={schedulePost} active={sched} color="#FFB547"/>
                   </div>
                 </div>
-                <div className="nexa-card" style={{ padding:'26px 28px',background:'linear-gradient(160deg,rgba(77,159,255,0.07) 0%,rgba(0,0,0,0.4) 100%)',border:'1px solid rgba(77,159,255,0.2)',borderRadius:18,fontSize:15,color:'rgba(255,255,255,0.9)',lineHeight:1.92,whiteSpace:'pre-wrap',letterSpacing:'-0.015em',position:'relative',overflow:'hidden' }}>
+                <div className="nexa-card" style={{ padding:'26px 28px',background:'linear-gradient(160deg,rgba(77,159,255,0.07) 0%,rgba(0,0,0,0.4) 100%)',border:'1px solid rgba(77,159,255,0.2)',borderRadius:18,fontSize:15,color:'rgba(255,255,255,0.9)',lineHeight:1.8,whiteSpace:'pre-wrap',letterSpacing:'-0.015em',position:'relative',overflow:'hidden',fontFamily:'var(--serif)' }}>
                   {result}
                 </div>
               </div>

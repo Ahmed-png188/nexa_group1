@@ -239,8 +239,8 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                   <div style={{ position:'absolute', left:'calc(100% + 12px)', top:'50%', transform:'translateY(-50%)', background:'rgba(10,10,18,0.98)', border:`1px solid rgba(255,255,255,0.1)`, borderRadius:12, whiteSpace:'nowrap', zIndex:9999, pointerEvents:'none', backdropFilter:'blur(24px)', boxShadow:'0 16px 48px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.06) inset', overflow:'hidden', minWidth:140 }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:`linear-gradient(90deg, transparent, ${item.color}50, transparent)` }}/>
                     <div style={{ padding:'10px 14px' }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2 }}>{item.label}</div>
-                      <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.35)', lineHeight:1.4 }}>{item.id === 'home' ? 'Morning brief + agents' : item.id === 'studio' ? 'Create in your voice' : item.id === 'brand' ? 'Your brand DNA' : item.id === 'strategy' ? '30-day content plan' : item.id === 'schedule' ? 'Publish everywhere' : item.id === 'automate' ? 'Sequences & flows' : item.id === 'insights' ? "What's working" : 'Client workspaces'}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2, fontFamily:'var(--sans)' }}>{item.label}</div>
+                      <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.35)', lineHeight:1.4, fontFamily:'var(--sans)' }}>{item.id === 'home' ? 'Morning brief + agents' : item.id === 'studio' ? 'Create in your voice' : item.id === 'brand' ? 'Your brand DNA' : item.id === 'strategy' ? '30-day content plan' : item.id === 'schedule' ? 'Publish everywhere' : item.id === 'automate' ? 'Sequences & flows' : item.id === 'insights' ? "What's working" : 'Client workspaces'}</div>
                     </div>
                   </div>
                 )}
@@ -298,7 +298,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             {activeItem && (
               <div style={{ width:6, height:6, borderRadius:'50%', background:activeItem.color, flexShrink:0 }}/>
             )}
-            <span style={{ fontSize:12.5, fontWeight:500, color:'rgba(255,255,255,0.42)', letterSpacing:'-0.01em', whiteSpace:'nowrap' }}>
+            <span style={{ fontSize:12.5, fontWeight:500, color:'rgba(255,255,255,0.42)', letterSpacing:'-0.01em', whiteSpace:'nowrap', fontFamily:'var(--sans)' }}>
               {format(new Date(), 'EEEE, d MMM yyyy')}
             </span>
           </div>
@@ -387,7 +387,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             {/* Credits chip */}
             <div data-tour="credits" title="Post: 3cr · Hook: 2cr · Thread: 5cr · Image: 5cr · Voice: 8cr · Video: 15cr · Strategy & chat: free" style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', background:'var(--blue-dim)', border:'1px solid var(--blue-border)', borderRadius:8, cursor:'help' }}>
               <div style={{ width:4, height:4, borderRadius:'50%', background:'var(--blue2)', flexShrink:0 }}/>
-              <span className="nexa-num" style={{ fontSize:13, color:'var(--blue2)' }}>
+              <span className="nexa-num" style={{ fontSize:13, color:'var(--blue2)', fontFamily:'var(--mono)', fontWeight:300 }}>
                 {credits.toLocaleString()}
               </span>
               <span style={{ fontSize:10, color:'var(--blue-border)', fontWeight:500, letterSpacing:'0.03em' }}>cr</span>
@@ -590,7 +590,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                 {/* Message content */}
                 {m.role === 'assistant'
                   ? <div className="nexa-msg-ai" style={{ paddingLeft:29 }} dangerouslySetInnerHTML={{ __html: typeof marked.parse(m.content) === 'string' ? marked.parse(m.content) as string : '' }}/>
-                  : <div style={{ maxWidth:'88%', padding:'10px 14px', borderRadius:'16px 4px 16px 16px', background:'linear-gradient(135deg,rgba(14,165,255,0.14),rgba(14,165,255,0.07))', border:'1px solid rgba(14,165,255,0.2)', fontSize:13.5, color:'rgba(255,255,255,0.88)', lineHeight:1.7, letterSpacing:'-0.01em' }}>
+                  : <div style={{ maxWidth:'88%', padding:'10px 14px', borderRadius:'16px 4px 16px 16px', background:'linear-gradient(135deg,rgba(14,165,255,0.14),rgba(14,165,255,0.07))', border:'1px solid rgba(14,165,255,0.2)', fontSize:13, color:'rgba(255,255,255,0.88)', lineHeight:1.7, letterSpacing:'-0.01em', fontFamily:'var(--sans)' }}>
                       {m.content}
                     </div>
                 }

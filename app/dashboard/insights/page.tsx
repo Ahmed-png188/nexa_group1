@@ -224,10 +224,13 @@ export default function InsightsPage() {
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { load() }, [period])
+  // Safety timeout — force-dismiss loader after 4 s if fetch stalls
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 4000); return () => clearTimeout(t) }, [])
 
   async function load() {
+    try {
     const { data:{ user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { setLoading(false); return }
     const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
     const w = (m as any)?.workspaces; setWs(w)
     const now     = new Date()
@@ -307,6 +310,7 @@ export default function InsightsPage() {
         posts_created: trend(agg.posts_created, prevAgg.posts_created),
       }
     } : null)
+    } catch {}
     setLoading(false)
   }
 
@@ -433,7 +437,12 @@ export default function InsightsPage() {
         })}
       </div>
 
-      {loading && <div style={{ textAlign:'center', padding:'48px', color:'rgba(255,255,255,0.28)', fontSize:13 }}>Loading analytics…</div>}
+      {loading && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14 }}>
+          <div className="nexa-spinner" style={{ width:20, height:20 }}/>
+          <div style={{ fontSize:12, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.04em' }}>Loading analytics...</div>
+        </div>
+      )}
 
       {/* ── NO DATA ── */}
       {!loading && !insights && (

@@ -142,7 +142,7 @@ function Inner() {
           transition:'opacity 0.45s ease, transform 0.45s ease',
         }}>
           <div>
-            <h1 style={{ fontFamily:'var(--display)', fontSize:24, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
+            <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
               Schedule
             </h1>
             <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
@@ -183,7 +183,7 @@ function Inner() {
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)'}>
                 {Ic.chevL}
               </button>
-              <div style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
+              <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:700, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
                 {format(month,'MMMM yyyy')}
               </div>
               <button onClick={()=>setMonth(addMonths(month,1))}
@@ -197,7 +197,7 @@ function Inner() {
             {/* Day headers */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:5 }}>
               {DOW.map(d => (
-                <div key={d} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.2)', letterSpacing:'0.09em', textTransform:'uppercase', padding:'4px 0' }}>{d}</div>
+                <div key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.2)', letterSpacing:'0.08em', textTransform:'uppercase', padding:'4px 0', fontFamily:'var(--sans)' }}>{d}</div>
               ))}
             </div>
 
@@ -216,7 +216,7 @@ function Inner() {
                     onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(14,165,255,0.06)':'rgba(255,255,255,0.018)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.055)';(e.currentTarget as HTMLElement).style.transform='translateY(0)'}}>
                     {today && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#0EA5FF,#38BFFF)', borderRadius:'12px 12px 0 0' }}/>}
                     {/* Day number */}
-                    <div style={{ width:24, height:24, borderRadius:7, background:today?'#0EA5FF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:11.5, fontWeight:today?800:500, color:today?'#000':'rgba(255,255,255,0.5)', marginBottom:7, letterSpacing:'-0.02em' }}>
+                    <div style={{ width:24, height:24, borderRadius:7, background:today?'#0EA5FF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--mono)', fontSize:13, fontWeight:300, color:today?'#000':'rgba(255,255,255,0.5)', marginBottom:7, letterSpacing:'-0.02em' }}>
                       {format(day,'d')}
                     </div>
                     {/* Posts */}
@@ -265,12 +265,12 @@ function Inner() {
                       style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:14 }}>
                       <Dot platform={post.platform} size={8}/>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.82)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.82)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em', fontFamily:'var(--sans)', lineHeight:1.65 }}>
                           {post.title||post.body?.slice(0,65)||'Post'}
                         </div>
                         <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:3 }}>
                           <span style={{ fontSize:10, color:`${PC[post.platform]||'#888'}cc`, fontWeight:700 }}>{PL[post.platform]||post.platform}</span>
-                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>
+                          <span style={{ fontSize:11, color:'rgba(255,255,255,0.28)', fontFamily:'var(--mono)', fontWeight:300 }}>
                             {post.scheduled_for ? format(parseISO(post.scheduled_for),'MMM d, h:mm a') : ''}
                           </span>
                         </div>
@@ -282,7 +282,7 @@ function Inner() {
                           </div>
                         )}
                         <button onClick={() => publishNow(post.id)}
-                          style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.22)', color:'#34D399', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s' }}>
+                          style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.22)', color:'#34D399', cursor:'pointer', fontFamily:'var(--display)', transition:'all 0.15s' }}>
                           <span style={{ display:'flex' }}>{Ic.check}</span>Publish now
                         </button>
                         <button onClick={() => del(post.id)}
@@ -297,12 +297,12 @@ function Inner() {
                 </div>
               ) : (
                 <div style={{ padding:'32px 24px', background:'rgba(255,255,255,0.02)', border:'1px dashed rgba(255,255,255,0.08)', borderRadius:14, textAlign:'center' }}>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.28)', lineHeight:1.7, marginBottom:14 }}>
+                  <div style={{ fontSize:18, color:'rgba(255,255,255,0.28)', lineHeight:1.7, marginBottom:14, fontFamily:'var(--display)', fontWeight:700 }}>
                     Nothing queued yet. Pick a day on the calendar<br/>or create something new in Studio.
                   </div>
                   <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
                     <button onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
-                      style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', fontSize:12, fontWeight:700, background:'rgba(77,159,255,0.1)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', borderRadius:9, cursor:'pointer', fontFamily:'var(--sans)' }}>
+                      style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', fontSize:12, fontWeight:700, background:'rgba(77,159,255,0.1)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', borderRadius:9, cursor:'pointer', fontFamily:'var(--display)' }}>
                       <span style={{ display:'flex' }}>{Ic.plus}</span>Schedule post
                     </button>
                     <Link href="/dashboard/studio"
@@ -334,7 +334,7 @@ function Inner() {
                         </div>
                       </div>
                       <button onClick={() => openForDraft(draft)}
-                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(77,159,255,0.08)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', flexShrink:0 }}>
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(77,159,255,0.08)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--display)', transition:'all 0.15s', flexShrink:0 }}>
                         <span style={{ display:'flex' }}>{Ic.cal}</span>Schedule
                       </button>
                     </div>
@@ -412,7 +412,7 @@ function Inner() {
                             <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.52)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                               {p.title||p.body?.slice(0,38)||'Post'}
                             </div>
-                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', flexShrink:0 }}>
+                            <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', flexShrink:0, fontFamily:'var(--mono)', fontWeight:300 }}>
                               {p.scheduled_for?format(parseISO(p.scheduled_for),'MMM d'):''}
                             </div>
                           </div>

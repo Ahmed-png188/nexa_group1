@@ -59,10 +59,10 @@ function ScoreRing({ score, color, label, size=80 }: { score:number; color:strin
             style={{ transition:'stroke-dasharray 1.4s cubic-bezier(0.34,1.56,0.64,1)', filter:`drop-shadow(0 0 8px ${color}80)` }}/>
         </svg>
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column' }}>
-          <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
+          <div style={{ fontFamily:'var(--mono)', fontSize:18, fontWeight:300, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.04em', lineHeight:1 }}>{score}</div>
         </div>
       </div>
-      <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', fontWeight:600, textAlign:'center', letterSpacing:'-0.01em' }}>{label}</div>
+      <div style={{ fontSize:10, color:'var(--t4)', fontFamily:'var(--sans)', fontWeight:600, textAlign:'center', letterSpacing:'0.06em', textTransform:'uppercase' }}>{label}</div>
     </div>
   )
 }
@@ -134,19 +134,24 @@ export default function BrandPage() {
   function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),4000) }
 
   useEffect(() => { setMounted(true); load() }, [])
+  // Safety timeout — force-dismiss loader after 4 s if data fetch stalls
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 4000); return () => clearTimeout(t) }, [])
 
   async function load() {
-    const { data:{ user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
-    const w = (m as any)?.workspaces; setWs(w)
-    const [{ data:ba },{ data:lg },{ data:aa }] = await Promise.all([
-      supabase.from('brand_assets').select('analysis').eq('workspace_id',w?.id).eq('file_name','nexa_brand_intelligence.json').single(),
-      supabase.from('brand_learnings').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}).limit(30),
-      supabase.from('brand_assets').select('*').eq('workspace_id',w?.id).neq('file_name','nexa_brand_intelligence.json').order('created_at',{ascending:false}),
-    ])
-    if (ba?.analysis) setProfile(ba.analysis)
-    setLearnings(lg??[]); setAssets(aa??[]); setLoading(false)
+    try {
+      const { data:{ user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+      const { data:m } = await supabase.from('workspace_members').select('workspace_id, workspaces(*)').eq('user_id',user.id).limit(1).single()
+      const w = (m as any)?.workspaces; setWs(w)
+      const [{ data:ba },{ data:lg },{ data:aa }] = await Promise.all([
+        supabase.from('brand_assets').select('analysis').eq('workspace_id',w?.id).eq('file_name','nexa_brand_intelligence.json').single(),
+        supabase.from('brand_learnings').select('*').eq('workspace_id',w?.id).order('created_at',{ascending:false}).limit(30),
+        supabase.from('brand_assets').select('*').eq('workspace_id',w?.id).neq('file_name','nexa_brand_intelligence.json').order('created_at',{ascending:false}),
+      ])
+      if (ba?.analysis) setProfile(ba.analysis)
+      setLearnings(lg??[]); setAssets(aa??[])
+    } catch {}
+    setLoading(false)
   }
 
   async function analyze() {
@@ -237,14 +242,9 @@ export default function BrandPage() {
   ]
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:18 }}>
-      <div style={{ position:'relative', width:56, height:56 }}>
-        <div style={{ position:'absolute', inset:0, borderRadius:'50%', border:'1px solid rgba(52,211,153,0.15)', animation:'pulse-ring 2s ease-out infinite' }}/>
-        <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(52,211,153,0.07)', border:'1px solid rgba(52,211,153,0.2)', display:'flex', alignItems:'center', justifyContent:'center', animation:'glow-breathe 2.5s ease-in-out infinite' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="1.8" strokeLinecap="round"><path d="M12 2a5 5 0 0 1 5 5c0 2.76-2.24 5-5 5S7 9.76 7 7a5 5 0 0 1 5-5z"/><path d="M3 19c0-3.31 4.03-6 9-6s9 2.69 9 6"/></svg>
-        </div>
-      </div>
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600 }}>Activating Brand Brain</div>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14 }}>
+      <div className="nexa-spinner" style={{ width:20, height:20 }}/>
+      <div style={{ fontSize:12, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.04em' }}>Loading Brand Brain...</div>
     </div>
   )
 
@@ -272,7 +272,7 @@ export default function BrandPage() {
             </div>
           </div>
 
-          <h1 style={{ fontFamily:'var(--display)', fontSize:32, fontWeight:800, letterSpacing:'-0.05em', color:'#F4F0FF', marginBottom:14, lineHeight:1.1 }}>
+          <h1 style={{ fontFamily:'var(--display)', fontSize:36, fontWeight:800, letterSpacing:'-0.05em', color:'#ffffff', marginBottom:14, lineHeight:1.05 }}>
             Your Brand Brain is waiting
           </h1>
           <p style={{ fontSize:14, color:'rgba(255,255,255,0.42)', lineHeight:1.85, maxWidth:520, margin:'0 auto 36px' }}>

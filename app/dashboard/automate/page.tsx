@@ -415,7 +415,7 @@ export default function AutomatePage() {
           <div style={{ padding:'20px 18px 14px', borderBottom:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <div>
-                <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:2 }}>Sequences</div>
+                <div style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:2 }}>Sequences</div>
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>{sequences.length} sequence{sequences.length!==1?'s':''}</div>
               </div>
               <button
@@ -433,8 +433,8 @@ export default function AutomatePage() {
                 { label:'Paused',    value:sequences.filter(s=>s.status==='paused').length,  color:'#FFB547' },
               ].map(s=>(
                 <div key={s.label} className="nexa-card" style={{ padding:'10px 11px', textAlign:'center' }}>
-                  <div className="nexa-num" style={{ fontSize:18, color:s.color, lineHeight:1 }}>{s.value}</div>
-                  <div className="nexa-label" style={{ marginTop:2 }}>{s.label}</div>
+                  <div className="nexa-num" style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:24, letterSpacing:'-0.04em', color:s.color, lineHeight:1 }}>{s.value}</div>
+                  <div className="nexa-label" style={{ fontFamily:'var(--sans)', fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, marginTop:2 }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -628,7 +628,7 @@ export default function AutomatePage() {
                         onMouseEnter={e=>{ if(bTemplate!==t.id){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.045)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'} }}
                         onMouseLeave={e=>{ if(bTemplate!==t.id){(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'} }}>
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                          <div style={{ fontSize:13, fontWeight:700, color:bTemplate===t.id?t.color:'rgba(255,255,255,0.82)', letterSpacing:'-0.02em' }}>{t.name}</div>
+                          <div style={{ fontFamily:'var(--display)', fontWeight:600, fontSize:14, color:bTemplate===t.id?t.color:'rgba(255,255,255,0.82)', letterSpacing:'-0.02em' }}>{t.name}</div>
                           <span style={{ fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:100, background:`${t.color}12`, border:`1px solid ${t.color}28`, color:t.color }}>
                             {t.steps} steps
                           </span>
@@ -650,7 +650,7 @@ export default function AutomatePage() {
                             {s.icon}
                           </div>
                           <div>
-                            <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.72)', letterSpacing:'-0.01em' }}>{s.label}</div>
+                            <div style={{ fontFamily:'var(--sans)', fontSize:13, fontWeight:500, color:'rgba(255,255,255,0.72)', letterSpacing:'-0.01em' }}>{s.label}</div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{s.desc}</div>
                           </div>
                         </div>
@@ -738,17 +738,17 @@ export default function AutomatePage() {
               <div style={{ width:56, height:56, borderRadius:16, background:'rgba(77,159,255,0.07)', border:'1px solid rgba(77,159,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#4D9FFF', marginBottom:20 }}>
                 {Ic.bolt}
               </div>
-              <h3 style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>
+              <h3 style={{ fontFamily:'var(--display)', fontWeight:700, fontSize:20, letterSpacing:'-0.02em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>
                 {sequences.length > 0 ? 'Select a sequence' : 'Nothing running yet'}
               </h3>
-              <p style={{ fontSize:13, color:'rgba(255,255,255,0.32)', lineHeight:1.75, maxWidth:360, marginBottom:24 }}>
+              <p style={{ fontFamily:'var(--sans)', fontSize:14, lineHeight:1.75, color:'rgba(255,255,255,0.32)', maxWidth:360, marginBottom:24 }}>
                 {sequences.length > 0
                   ? 'Click any sequence on the left to view its stats and manage it.'
                   : 'Build sequences that automatically email, publish, and nurture your audience — all written in your brand voice, running while you sleep.'}
               </p>
               <button
                 onClick={() => { setPanel('builder'); setBName(''); setBSteps([]); setBTemplate(null) }}
-                style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontFamily:'var(--display)', fontWeight:700, fontSize:14, letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}
                 onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLElement).style.boxShadow='0 7px 28px rgba(77,159,255,0.48)'}}
                 onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 22px rgba(77,159,255,0.38)'}}>
                 <span style={{ display:'flex' }}>{Ic.plus}</span>Build first sequence

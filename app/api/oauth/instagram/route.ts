@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const workspace_id = searchParams.get('workspace_id')
   if (!workspace_id) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
+  if (!process.env.INSTAGRAM_APP_ID) {
+    return NextResponse.redirect(new URL(`/dashboard/schedule?error=instagram_not_configured`, request.url))
+  }
 
   const appId = process.env.INSTAGRAM_APP_ID
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexaa.cc'

@@ -56,7 +56,7 @@ const NAV = [
 function Field({ label, hint, children }: any) {
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.55)', marginBottom:7, letterSpacing:'-0.01em' }}>{label}</div>
+      <div style={{ fontFamily:'var(--sans)', fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.55)', marginBottom:7, letterSpacing:'-0.01em' }}>{label}</div>
       {children}
       {hint && <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', marginTop:6, lineHeight:1.55 }}>{hint}</div>}
     </div>
@@ -79,7 +79,7 @@ function Input({ value, onChange, placeholder, type='text', readOnly=false }: an
         background: readOnly ? 'rgba(255,255,255,0.02)' : focused ? 'rgba(77,159,255,0.04)' : 'rgba(255,255,255,0.04)',
         border: `1px solid ${focused ? 'rgba(77,159,255,0.32)' : 'rgba(255,255,255,0.1)'}`,
         borderRadius:11, color: readOnly ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.9)',
-        fontSize:13, fontFamily:'var(--sans)', outline:'none',
+        fontFamily:'var(--sans)', fontSize:14, outline:'none',
         transition:'all 0.18s', boxSizing:'border-box' as const,
         cursor: readOnly ? 'default' : 'text',
         boxShadow: focused ? '0 0 0 3px rgba(77,159,255,0.06)' : 'none',
@@ -288,7 +288,7 @@ function SettingsInner() {
               const on = tab === n.id
               return (
                 <button key={n.id} onClick={() => { setTab(n.id); setSaved(false) }}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:11, background:on?'rgba(77,159,255,0.08)':'transparent', border:`1px solid ${on?'rgba(77,159,255,0.18)':'transparent'}`, color:on?'#4D9FFF':'rgba(255,255,255,0.45)', cursor:'pointer', fontFamily:'var(--sans)', fontSize:13, fontWeight:on?600:400, transition:'all 0.15s', textAlign:'left', width:'100%' }}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:11, background:on?'rgba(77,159,255,0.08)':'transparent', border:`1px solid ${on?'rgba(77,159,255,0.18)':'transparent'}`, color:on?'#4D9FFF':'rgba(255,255,255,0.45)', cursor:'pointer', fontFamily:'var(--sans)', fontSize:13, fontWeight:500, transition:'all 0.15s', textAlign:'left', width:'100%' }}
                   onMouseEnter={e => { if(!on)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
                   onMouseLeave={e => { if(!on)(e.currentTarget as HTMLElement).style.background='transparent' }}>
                   <span style={{ display:'flex', opacity:on?1:0.6 }}>{n.icon}</span>
@@ -404,7 +404,7 @@ function SettingsInner() {
                 <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
                 <div>
                   <div className="nexa-label" style={{ marginBottom:6 }}>Credits remaining</div>
-                  <div className="nexa-num" style={{ fontSize:22 }}>
+                  <div className="nexa-num" style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:22 }}>
                     {credits?.balance?.toLocaleString()||0}
                   </div>
                 </div>
@@ -436,7 +436,7 @@ function SettingsInner() {
 
                       {/* Plan name + badge */}
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                        <span style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:800, letterSpacing:'-0.03em', color:isCurrent?plan.color:'rgba(255,255,255,0.82)' }}>{plan.name}</span>
+                        <span style={{ fontFamily:'var(--display)', fontWeight:700, fontSize:16, letterSpacing:'-0.03em', color:isCurrent?plan.color:'rgba(255,255,255,0.82)' }}>{plan.name}</span>
                         {isCurrent && (
                           <span style={{ fontSize:9, fontWeight:700, padding:'2px 9px', borderRadius:100, background:`${plan.color}14`, border:`1px solid ${plan.color}28`, color:plan.color, textTransform:'uppercase', letterSpacing:'0.05em' }}>Active</span>
                         )}
@@ -444,7 +444,7 @@ function SettingsInner() {
 
                       {/* Price */}
                       <div style={{ marginBottom:4 }}>
-                        <span style={{ fontFamily:'var(--display)', fontSize:28, fontWeight:800, letterSpacing:'-0.05em', color:'rgba(255,255,255,0.92)' }}>
+                        <span style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:22, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
                           {plan.price === 0 ? 'Free' : `$${plan.price}`}
                         </span>
                         {plan.price > 0 && <span style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginLeft:3 }}>/mo</span>}

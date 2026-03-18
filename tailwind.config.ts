@@ -9,11 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        display: ['DM Sans', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Syne', 'system-ui', 'sans-serif'],
       },
       colors: {
-        cyan: { DEFAULT: '#00AAFF', dark: '#0077CC', light: '#33BBFF' },
+        cyan: { DEFAULT: '#0EA5FF', dark: '#0077CC', light: '#38BFFF' },
       },
     },
   },

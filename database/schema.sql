@@ -11,12 +11,13 @@ create extension if not exists "uuid-ossp";
 -- One row per user. Extends Supabase auth.users
 -- ──────────────────────────────────────────
 create table public.profiles (
-  id            uuid references auth.users on delete cascade primary key,
-  email         text not null,
-  full_name     text,
-  avatar_url    text,
-  created_at    timestamptz default now() not null,
-  updated_at    timestamptz default now() not null
+  id                   uuid references auth.users on delete cascade primary key,
+  email                text not null,
+  full_name            text,
+  avatar_url           text,
+  active_workspace_id  uuid,
+  created_at           timestamptz default now() not null,
+  updated_at           timestamptz default now() not null
 );
 
 -- Auto-create a profile when someone signs up
@@ -60,6 +61,15 @@ create table public.workspaces (
   plan_status   text default 'trialing' check (plan_status in ('active','trialing','canceled','past_due')),
   stripe_customer_id    text unique,
   stripe_subscription_id text unique,
+  -- Engagement metrics (updated by agents)
+  posting_streak        integer default 0,
+  longest_streak        integer default 0,
+  last_posted_date      date,
+  voice_score_avg       numeric(5,2) default 0,
+  -- Morning brief cache (avoid regenerating every load)
+  brief_generated_at    timestamptz,
+  weekly_brief          jsonb,
+  top_angle             text,
   -- Timestamps
   created_at    timestamptz default now() not null,
   updated_at    timestamptz default now() not null
@@ -431,3 +441,152 @@ create index idx_messages_conversation on public.messages(conversation_id);
 create index idx_activity_workspace on public.activity(workspace_id);
 create index idx_credit_transactions_workspace on public.credit_transactions(workspace_id);
 create index idx_agents_workspace on public.agents(workspace_id);
+
+-- ══════════════════════════════════════════
+-- MISSING TABLES (referenced in app code)
+-- ══════════════════════════════════════════
+
+-- Agent run history
+create table if not exists public.agent_runs (
+  id            uuid primary key default gen_random_uuid(),
+  workspace_id  uuid not null references public.workspaces(id) on delete cascade,
+  agent_type    text not null,
+  status        text not null default 'pending', -- pending | running | completed | failed
+  result        jsonb,
+  credits_used  integer default 0,
+  created_at    timestamptz not null default now()
+);
+alter table public.agent_runs enable row level security;
+create policy "Members can manage agent_runs"
+  on public.agent_runs for all
+  using (is_workspace_member(workspace_id));
+create index idx_agent_runs_workspace on public.agent_runs(workspace_id);
+
+-- Brand learning memories (what Nexa learns from content performance)
+create table if not exists public.brand_learnings (
+  id            uuid primary key default gen_random_uuid(),
+  workspace_id  uuid not null references public.workspaces(id) on delete cascade,
+  insight_type  text not null, -- voice | audience | visual | engagement | content
+  insight       text not null,
+  source        text, -- performance_analysis | brand_analysis | user_feedback
+  confidence    numeric(3,2) default 0.8,
+  created_at    timestamptz not null default now()
+);
+alter table public.brand_learnings enable row level security;
+create policy "Members can manage brand_learnings"
+  on public.brand_learnings for all
+  using (is_workspace_member(workspace_id));
+create index idx_brand_learnings_workspace on public.brand_learnings(workspace_id);
+
+-- Webhooks (incoming automation triggers)
+create table if not exists public.webhooks (
+  id              uuid primary key default gen_random_uuid(),
+  workspace_id    uuid not null references public.workspaces(id) on delete cascade,
+  name            text not null,
+  secret          text not null unique default encode(gen_random_bytes(32), 'hex'),
+  trigger_type    text not null default 'incoming',
+  sequence_id     uuid references public.email_sequences(id) on delete set null,
+  status          text not null default 'active', -- active | paused
+  total_received  integer default 0,
+  last_received   timestamptz,
+  created_at      timestamptz not null default now()
+);
+alter table public.webhooks enable row level security;
+create policy "Members can manage webhooks"
+  on public.webhooks for all
+  using (is_workspace_member(workspace_id));
+create index idx_webhooks_workspace on public.webhooks(workspace_id);
+
+-- Email subscribers
+create table if not exists public.email_subscribers (
+  id            uuid primary key default gen_random_uuid(),
+  workspace_id  uuid not null references public.workspaces(id) on delete cascade,
+  email         text not null,
+  name          text,
+  tags          text[] default '{}',
+  status        text not null default 'active', -- active | unsubscribed | bounced
+  source        text, -- webhook | manual | import
+  metadata      jsonb default '{}',
+  created_at    timestamptz not null default now(),
+  unique(workspace_id, email)
+);
+alter table public.email_subscribers enable row level security;
+create policy "Members can manage email_subscribers"
+  on public.email_subscribers for all
+  using (is_workspace_member(workspace_id));
+create index idx_email_subscribers_workspace on public.email_subscribers(workspace_id);
+
+-- Sequence contacts (tracks subscriber progress through sequences)
+create table if not exists public.sequence_contacts (
+  id            uuid primary key default gen_random_uuid(),
+  sequence_id   uuid not null references public.email_sequences(id) on delete cascade,
+  workspace_id  uuid not null references public.workspaces(id) on delete cascade,
+  subscriber_id uuid references public.email_subscribers(id) on delete set null,
+  email         text not null,
+  current_step  integer default 0,
+  status        text not null default 'active', -- active | completed | unsubscribed | paused
+  enrolled_at   timestamptz not null default now(),
+  next_send_at  timestamptz,
+  metadata      jsonb default '{}'
+);
+alter table public.sequence_contacts enable row level security;
+create policy "Members can manage sequence_contacts"
+  on public.sequence_contacts for all
+  using (is_workspace_member(workspace_id));
+create index idx_sequence_contacts_workspace on public.sequence_contacts(workspace_id);
+create index idx_sequence_contacts_next_send on public.sequence_contacts(next_send_at) where status = 'active';
+
+-- Client workspaces (agency → client relationships)
+create table if not exists public.client_workspaces (
+  id                    uuid primary key default gen_random_uuid(),
+  agency_workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  client_workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  status                text not null default 'active', -- active | paused | ended
+  retainer_amount       numeric(10,2),
+  notes                 text,
+  created_at            timestamptz not null default now(),
+  unique(agency_workspace_id, client_workspace_id)
+);
+alter table public.client_workspaces enable row level security;
+create policy "Agency members can manage client_workspaces"
+  on public.client_workspaces for all
+  using (is_workspace_member(agency_workspace_id));
+create index idx_client_workspaces_agency on public.client_workspaces(agency_workspace_id);
+
+-- Client invites (pending invitations sent by agency)
+create table if not exists public.client_invites (
+  id                    uuid primary key default gen_random_uuid(),
+  agency_workspace_id   uuid not null references public.workspaces(id) on delete cascade,
+  email                 text not null,
+  name                  text,
+  status                text not null default 'pending', -- pending | accepted | declined | expired
+  token                 text not null unique default encode(gen_random_bytes(16), 'hex'),
+  retainer_amount       numeric(10,2),
+  message               text,
+  expires_at            timestamptz default (now() + interval '7 days'),
+  created_at            timestamptz not null default now()
+);
+alter table public.client_invites enable row level security;
+create policy "Agency members can manage client_invites"
+  on public.client_invites for all
+  using (is_workspace_member(agency_workspace_id));
+create index idx_client_invites_agency on public.client_invites(agency_workspace_id);
+
+-- Agency activity log
+create table if not exists public.agency_activity (
+  id                  uuid primary key default gen_random_uuid(),
+  agency_workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  type                text not null,
+  title               text not null,
+  metadata            jsonb default '{}',
+  created_at          timestamptz not null default now()
+);
+alter table public.agency_activity enable row level security;
+create policy "Agency members can view agency_activity"
+  on public.agency_activity for all
+  using (is_workspace_member(agency_workspace_id));
+create index idx_agency_activity_workspace on public.agency_activity(agency_workspace_id);
+
+-- Additional indexes for new tables
+create index idx_agent_runs_created on public.agent_runs(created_at desc);
+create index idx_brand_learnings_created on public.brand_learnings(created_at desc);

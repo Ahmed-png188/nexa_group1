@@ -194,8 +194,8 @@ export default function HomePage() {
                 {greeting} · {format(new Date(),'EEEE, MMMM d')}
               </div>
               <div style={{display:'flex',alignItems:'baseline',gap:12,marginBottom:8}}>
-                <div style={{fontFamily:'var(--serif)',fontSize:36,fontWeight:400,letterSpacing:'-0.01em',color:'var(--t1)',lineHeight:1}}>{firstName}</div>
-                <div style={{fontSize:10,fontWeight:500,color:'var(--t4)',letterSpacing:'0.06em',textTransform:'uppercase',paddingBottom:2}}>command center</div>
+                <div style={{fontFamily:'var(--display)',fontSize:38,fontWeight:800,letterSpacing:'-0.04em',color:'var(--t1)',lineHeight:1}}>{firstName}</div>
+                <div style={{fontSize:10,fontWeight:600,color:'var(--t4)',fontFamily:'var(--sans)',letterSpacing:'0.1em',textTransform:'uppercase',paddingBottom:2}}>command center</div>
               </div>
 
               {/* Morning brief headline */}
@@ -299,7 +299,7 @@ export default function HomePage() {
                     {s.tag}
                   </span>
                 </div>
-                <div className="nexa-num" style={{fontSize:28}}>{s.value}</div>
+                <div className="nexa-num" style={{fontSize:28,fontFamily:'var(--mono)',fontWeight:300,letterSpacing:'-0.04em'}}>{s.value}</div>
               </a>
             ))}
           </div>
@@ -313,8 +313,8 @@ export default function HomePage() {
         <div style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:18,padding:'20px 22px',opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(12px)',transition:'opacity 0.5s ease 0.08s, transform 0.5s ease 0.08s'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
             <div>
-              <div style={{fontFamily:'var(--display)',fontSize:16,fontWeight:800,color:'rgba(255,255,255,0.92)',letterSpacing:'-0.03em',marginBottom:2}}>Agents</div>
-              <div style={{fontSize:11,color:'rgba(255,255,255,0.32)'}}>One click. Nexa executes.</div>
+              <div style={{fontFamily:'var(--display)',fontSize:17,fontWeight:800,color:'rgba(255,255,255,0.92)',letterSpacing:'-0.03em',marginBottom:2}}>Agents</div>
+              <div style={{fontSize:13,color:'var(--t4)',fontFamily:'var(--sans)'}}>One click. Nexa executes.</div>
             </div>
             <a href="/dashboard/automate" style={{fontSize:11,fontWeight:600,color:'#4D9FFF',textDecoration:'none',display:'flex',alignItems:'center',gap:4,opacity:0.75,transition:'opacity 0.15s'}}
               onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='1'}
@@ -378,8 +378,8 @@ export default function HomePage() {
           <div style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:18,padding:'20px 22px',flex:1,opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(12px)',transition:'opacity 0.5s ease 0.14s, transform 0.5s ease 0.14s'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
               <div>
-                <div style={{fontFamily:'var(--display)',fontSize:15,fontWeight:700,color:'rgba(255,255,255,0.88)',letterSpacing:'-0.02em',marginBottom:2}}>Queue</div>
-                <div style={{fontSize:11,color:'rgba(255,255,255,0.32)'}}>{scheduled.length>0?`${scheduled.length} post${scheduled.length!==1?'s':''} scheduled`:'Queue is clear'}</div>
+                <div style={{fontFamily:'var(--display)',fontSize:17,fontWeight:700,color:'rgba(255,255,255,0.88)',letterSpacing:'-0.02em',marginBottom:2}}>Queue</div>
+                <div style={{fontSize:11,color:'var(--t4)',fontFamily:'var(--sans)'}}>{scheduled.length>0?`${scheduled.length} post${scheduled.length!==1?'s':''} scheduled`:'Queue is clear'}</div>
               </div>
               <a href="/dashboard/schedule" style={{fontSize:11,fontWeight:600,color:'#FFB547',textDecoration:'none',opacity:0.75,transition:'opacity 0.15s'}} onMouseEnter={e=>(e.currentTarget as HTMLElement).style.opacity='1'} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.opacity='0.75'}>Manage</a>
             </div>
@@ -432,8 +432,8 @@ export default function HomePage() {
         {/* Activity */}
         <div style={{background:'rgba(255,255,255,0.025)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:18,padding:'20px 22px',opacity:mounted?1:0,transform:mounted?'translateY(0)':'translateY(12px)',transition:'opacity 0.5s ease 0.22s, transform 0.5s ease 0.22s'}}>
           <div style={{marginBottom:16}}>
-            <div style={{fontFamily:'var(--display)',fontSize:15,fontWeight:700,color:'rgba(255,255,255,0.88)',letterSpacing:'-0.02em',marginBottom:2}}>Activity</div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,0.32)'}}>Everything happening in real time</div>
+            <div style={{fontFamily:'var(--display)',fontSize:17,fontWeight:800,color:'#ffffff',letterSpacing:'-0.03em',marginBottom:2}}>Activity</div>
+            <div style={{fontFamily:'var(--sans)',fontSize:10,fontWeight:600,color:'var(--t4)',letterSpacing:'0.1em',textTransform:'uppercase' as const}}>Everything happening in real time</div>
           </div>
           {activity.length>0 ? (
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
