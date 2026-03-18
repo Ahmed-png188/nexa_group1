@@ -11,7 +11,7 @@ export default async function LeadPage({ params }: { params: { username: string 
 
   const { data: ws } = await supabase
     .from('workspaces')
-    .select('id, name, brand_name, niche, lead_page_custom_question')
+    .select('id, name, brand_name, niche, lead_page_custom_question, segment')
     .eq('slug', username)
     .single()
 

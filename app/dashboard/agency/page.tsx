@@ -68,7 +68,7 @@ export default function AgencyPage() {
   async function addClient() {
     if (!cName.trim()||creating) return; setCreating(true)
     try {
-      const r = await fetch('/api/agency',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'invite_client',agency_workspace_id:ws.id,client_name:cName,client_email:cEmail,brand_name:cBrand,monthly_retainer:parseFloat(cRetainer)||0})})
+      const r = await fetch('/api/agency/create-client',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_name:cName,client_email:cEmail,brand_name:cBrand,agency_workspace_id:ws.id,monthly_retainer:parseFloat(cRetainer)||0})})
       const d = await r.json()
       if (d.success) { toast_('Client added'); setShowNew(false); setCName(''); setCEmail(''); setCBrand(''); setCRetainer(''); load() }
       else toast_(d.error||'Failed', false)

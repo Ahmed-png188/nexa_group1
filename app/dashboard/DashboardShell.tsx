@@ -97,11 +97,16 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   const [chatLoading, setChatLoading] = useState(false)
   const [files,       setFiles]       = useState<any[]>([])
   const [uploading,   setUploading]   = useState(false)
-  const [pillOpen,    setPillOpen]    = useState(false)
-  const [notifOpen,   setNotifOpen]   = useState(false)
-  const [notifs,      setNotifs]      = useState<any[]>([])
-  const [unread,      setUnread]      = useState(0)
-  const [hoverId,     setHoverId]     = useState<string|null>(null)
+  const [pillOpen,              setPillOpen]              = useState(false)
+  const [notifOpen,             setNotifOpen]             = useState(false)
+  const [notifs,                setNotifs]                = useState<any[]>([])
+  const [unread,                setUnread]                = useState(0)
+  const [hoverId,               setHoverId]               = useState<string|null>(null)
+  const [isAgency,              setIsAgency]              = useState(false)
+  const [clientWorkspaces,      setClientWorkspaces]      = useState<any[]>([])
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false)
+  const [activeWorkspaceName,   setActiveWorkspaceName]   = useState('My workspace')
+  const [ownWorkspaceId,        setOwnWorkspaceId]        = useState<string|null>(null)
   const [searchQ,     setSearchQ]     = useState('')
   const [searchOpen,  setSearchOpen]  = useState(false)
 
@@ -121,7 +126,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('[data-dd]')) { setPillOpen(false); setNotifOpen(false) }
+      if (!(e.target as HTMLElement).closest('[data-dd]')) { setPillOpen(false); setNotifOpen(false); setShowWorkspaceSwitcher(false) }
     }
     document.addEventListener('mousedown', fn)
     return () => document.removeEventListener('mousedown', fn)
@@ -140,6 +145,16 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   }, [])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }) }, [msgs])
+
+  useEffect(() => {
+    if (!workspace?.id) return
+    if (workspace?.plan === 'agency' || workspace?.is_agency) {
+      setIsAgency(true)
+      setOwnWorkspaceId(workspace.id)
+      supabase.from('client_workspaces').select('client_workspace_id, client_name').eq('agency_workspace_id', workspace.id)
+        .then(({ data }) => setClientWorkspaces(data || []))
+    }
+  }, [workspace?.id])
 
   useEffect(() => {
     if (!workspace?.id) return
@@ -162,6 +177,15 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   }
 
   async function signOut() { await supabase.auth.signOut(); router.push('/') }
+
+  async function switchWorkspace(id: string, name: string) {
+    setShowWorkspaceSwitcher(false)
+    setActiveWorkspaceName(name)
+    try {
+      await fetch('/api/agency', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'switch_workspace', workspace_id: id }) })
+      router.push('/dashboard')
+    } catch {}
+  }
 
   async function send() {
     if ((!input.trim() && files.length === 0) || chatLoading) return
@@ -386,6 +410,43 @@ export default function DashboardShell({ user, workspace, credits: init, childre
               }}>
                 {trialDaysLeft === 0 ? '⚠ Trial expired' : `Trial · ${trialDaysLeft}d left`}
               </a>
+            )}
+
+            {/* Workspace switcher — agency only */}
+            {isAgency && clientWorkspaces.length > 0 && (
+              <div style={{ position:'relative' }} data-dd>
+                <button
+                  onClick={() => { setShowWorkspaceSwitcher(o => !o); setPillOpen(false); setNotifOpen(false) }}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', background:'rgba(249,115,22,0.06)', border:'1px solid rgba(249,115,22,0.2)', borderRadius:8, fontSize:12, fontWeight:600, color:'#F97316', cursor:'pointer', fontFamily:'var(--display)' }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  {activeWorkspaceName}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {showWorkspaceSwitcher && (
+                  <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:6, minWidth:200, zIndex:1000, boxShadow:'0 8px 24px rgba(0,0,0,0.5)', animation:'pageUp 0.15s ease both' }}>
+                    <div
+                      onClick={() => switchWorkspace(ownWorkspaceId!, 'My workspace')}
+                      style={{ padding:'8px 12px', borderRadius:7, cursor:'pointer', fontSize:12, color:'#fff', fontFamily:'var(--sans)', transition:'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}
+                    >
+                      My workspace
+                    </div>
+                    {clientWorkspaces.map((cw: any) => (
+                      <div
+                        key={cw.client_workspace_id}
+                        onClick={() => switchWorkspace(cw.client_workspace_id, cw.client_name)}
+                        style={{ padding:'8px 12px', borderRadius:7, cursor:'pointer', fontSize:12, color:'rgba(255,255,255,0.7)', fontFamily:'var(--sans)', transition:'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.06)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}
+                      >
+                        {cw.client_name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Credits chip */}

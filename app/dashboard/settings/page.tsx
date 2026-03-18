@@ -162,9 +162,13 @@ function SettingsInner() {
   const [pwErr,      setPwErr]      = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
-  const [slug,       setSlug]       = useState('')
-  const [customQ,    setCustomQ]    = useState('')
-  const [copied,     setCopied]     = useState(false)
+  const [slug,           setSlug]           = useState('')
+  const [customQ,        setCustomQ]        = useState('')
+  const [copied,         setCopied]         = useState(false)
+  const [leadAutoEnroll, setLeadAutoEnroll] = useState(false)
+  const [leadSequenceId, setLeadSequenceId] = useState('')
+  const [kitApiKey,      setKitApiKey]      = useState('')
+  const [sequences,      setSequences]      = useState<any[]>([])
 
   function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),4000) }
 
@@ -197,7 +201,13 @@ function SettingsInner() {
     setWsName(w?.name||''); setNiche(w?.niche||'')
     setVoice(w?.brand_voice||''); setTone(w?.brand_tone||'')
     setAudience(w?.brand_audience||'')
-    setSlug(w?.slug || generateSlug(w?.brand_name || w?.name || '')); setCustomQ(w?.lead_page_custom_question||'')
+    setSlug(w?.slug || generateSlug(w?.brand_name || w?.name || ''))
+    setCustomQ(w?.lead_page_custom_question || '')
+    setLeadAutoEnroll(w?.lead_page_auto_enroll || false)
+    setLeadSequenceId(w?.lead_page_sequence_id || '')
+    setKitApiKey(w?.kit_api_key ? '••••••••' : '')
+    const { data: seqData } = await supabase.from('email_sequences').select('id, name').eq('workspace_id', (m as any)?.workspace_id).eq('status', 'active')
+    setSequences(seqData || [])
     setLoading(false)
   }
 
@@ -511,47 +521,150 @@ function SettingsInner() {
 
           {/* ════ LEAD PAGE ════ */}
           {tab === 'leadpage' && (
-            <div style={{ maxWidth:520, animation:'pageUp 0.35s ease both' }}>
-              <div style={{ marginBottom:28 }}>
-                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Lead page</h2>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Your public page at nexaa.cc/[slug] — captures leads directly into your contacts</p>
+            <div style={{ maxWidth:560, animation:'pageUp 0.35s ease both' }}>
+              <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.03em', marginBottom:4 }}>Lead page</div>
+              <div style={{ fontSize:13, color:'var(--t4)', fontFamily:'var(--sans)', marginBottom:24 }}>
+                Your public page captures leads from your content 24/7
               </div>
 
-              <Field label="Page slug" hint="Your public URL: nexaa.cc/your-slug">
-                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                  <span style={{ fontSize:13, color:'rgba(255,255,255,0.35)', flexShrink:0 }}>nexaa.cc/</span>
-                  <Input value={slug} onChange={setSlug} placeholder="your-brand"/>
-                </div>
-              </Field>
-
-              {slug && (
-                <div style={{ marginBottom:20 }}>
-                  <div style={{ display:'flex', gap:8, alignItems:'center', padding:'10px 14px', background:'rgba(52,211,153,0.05)', border:'1px solid rgba(52,211,153,0.18)', borderRadius:10 }}>
-                    <span style={{ fontSize:12, color:'rgba(52,211,153,0.8)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      nexaa.cc/{slug}
-                    </span>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(`https://nexaa.cc/${slug}`); setCopied(true); setTimeout(()=>setCopied(false),2000) }}
-                      style={{ fontSize:11, fontWeight:700, color:copied?'#34D399':'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 0' }}>
-                      {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                    <a href={`https://nexaa.cc/${slug}`} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize:11, fontWeight:700, color:'#4D9FFF', textDecoration:'none', flexShrink:0 }}>
-                      Preview →
-                    </a>
+              {/* Slug section */}
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>Your lead page URL</div>
+                <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+                  <div style={{ display:'flex', alignItems:'center', flex:1, background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, overflow:'hidden' }}>
+                    <div style={{ padding:'10px 12px', fontSize:13, color:'rgba(255,255,255,0.3)', fontFamily:'var(--mono)', fontWeight:300, borderRight:'1px solid rgba(255,255,255,0.07)', whiteSpace:'nowrap' as const, flexShrink:0 }}>nexaa.cc/</div>
+                    <input
+                      value={slug}
+                      onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30))}
+                      placeholder="yourname"
+                      style={{ flex:1, padding:'10px 12px', fontSize:13, background:'transparent', border:'none', color:'#fff', outline:'none', fontFamily:'var(--sans)' }}
+                    />
                   </div>
+                  <button
+                    onClick={async () => {
+                      if (!slug) return
+                      await navigator.clipboard.writeText(`https://nexaa.cc/${slug}`)
+                      toast_('Link copied!')
+                    }}
+                    style={{ padding:'10px 16px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, fontSize:12, color:'var(--t3)', cursor:'pointer', fontFamily:'var(--sans)', whiteSpace:'nowrap' as const }}
+                  >
+                    Copy link
+                  </button>
+                  <button
+                    onClick={() => slug && window.open(`https://nexaa.cc/${slug}`, '_blank')}
+                    style={{ padding:'10px 16px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, fontSize:12, color:'var(--t3)', cursor:'pointer', fontFamily:'var(--sans)', whiteSpace:'nowrap' as const }}
+                  >
+                    Preview
+                  </button>
                 </div>
-              )}
+                {slug && (
+                  <div style={{ fontSize:11, color:'rgba(30,142,240,0.7)', fontFamily:'var(--mono)', fontWeight:300 }}>
+                    nexaa.cc/{slug}
+                  </div>
+                )}
+              </div>
 
-              <Field label="Custom question" hint="Shown on your lead page form — optional">
-                <Input value={customQ} onChange={setCustomQ} placeholder="What's your biggest challenge right now?"/>
-              </Field>
+              {/* Custom question */}
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>Custom question on your form</div>
+                <input
+                  value={customQ}
+                  onChange={e => setCustomQ(e.target.value)}
+                  placeholder="e.g. What's your biggest challenge right now?"
+                  style={{ width:'100%', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 14px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none' }}
+                />
+              </div>
 
-              <SaveBtn onClick={async () => {
-                if (!ws) return; setSaving(true); setSaved(false)
-                await supabase.from('workspaces').update({ slug: slug.toLowerCase().trim().replace(/\s+/g,'-'), lead_page_custom_question: customQ }).eq('id', ws.id)
-                toast_('Lead page saved'); setSaved(true); setTimeout(()=>setSaved(false),3000); setSaving(false)
-              }} saving={saving} saved={saved}/>
+              {/* Auto-enrollment */}
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>When someone submits the form...</div>
+                <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+                    <input type="radio" checked={!leadAutoEnroll} onChange={() => setLeadAutoEnroll(false)} style={{ accentColor:'#1E8EF0' }} />
+                    <span style={{ fontSize:13, color:'var(--t2)', fontFamily:'var(--sans)' }}>Just add to contacts</span>
+                  </label>
+                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+                    <input type="radio" checked={leadAutoEnroll} onChange={() => setLeadAutoEnroll(true)} style={{ accentColor:'#1E8EF0' }} />
+                    <span style={{ fontSize:13, color:'var(--t2)', fontFamily:'var(--sans)' }}>Auto-enroll in a sequence</span>
+                  </label>
+                </div>
+
+                {leadAutoEnroll && (
+                  <div style={{ marginTop:12 }}>
+                    <select
+                      value={leadSequenceId}
+                      onChange={e => setLeadSequenceId(e.target.value)}
+                      style={{ width:'100%', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 14px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none', cursor:'pointer' }}
+                    >
+                      <option value="">Select a sequence...</option>
+                      {sequences.map((seq: any) => (
+                        <option key={seq.id} value={seq.id}>{seq.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Kit integration */}
+              <div style={{ marginBottom:24, padding:'16px', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
+                <div style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', marginBottom:4 }}>Kit (ConvertKit) sync</div>
+                <div style={{ fontSize:12, color:'var(--t4)', marginBottom:12, fontFamily:'var(--sans)' }}>Import your existing subscribers as contacts</div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <input
+                    value={kitApiKey}
+                    onChange={e => setKitApiKey(e.target.value)}
+                    placeholder="Your Kit API key"
+                    type="password"
+                    style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none' }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!kitApiKey || kitApiKey === '••••••••') return
+                      const res = await fetch('/api/integrations/kit/connect', {
+                        method:'POST',
+                        headers:{ 'Content-Type':'application/json' },
+                        body: JSON.stringify({ api_key: kitApiKey }),
+                      })
+                      const data = await res.json()
+                      if (data.success) toast_(`Connected Kit — imported ${data.imported} subscribers`)
+                      else toast_(data.error || 'Failed to connect Kit', false)
+                    }}
+                    style={{ padding:'9px 16px', background:'var(--blue)', border:'none', borderRadius:8, fontSize:12, fontFamily:'var(--display)', fontWeight:700, color:'#fff', cursor:'pointer', whiteSpace:'nowrap' as const }}
+                  >
+                    Connect →
+                  </button>
+                </div>
+              </div>
+
+              {/* Typeform */}
+              <div style={{ marginBottom:24, padding:'16px', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
+                <div style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', marginBottom:4 }}>Typeform webhook</div>
+                <div style={{ fontSize:12, color:'var(--t4)', marginBottom:10, fontFamily:'var(--sans)' }}>Capture leads from your Typeform forms automatically</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginBottom:8, fontFamily:'var(--mono)', fontWeight:300, wordBreak:'break-all' as const, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:6 }}>
+                  {ws?.id ? `https://nexaa.cc/api/integrations/typeform/webhook?workspace_id=${ws.id}` : 'Save your workspace first'}
+                </div>
+                <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)' }}>
+                  In Typeform: Connect → Webhooks → paste URL above
+                </div>
+              </div>
+
+              {/* Save button */}
+              <button
+                onClick={async () => {
+                  if (!ws) return
+                  const { error } = await supabase.from('workspaces').update({
+                    slug,
+                    lead_page_custom_question: customQ,
+                    lead_page_auto_enroll: leadAutoEnroll,
+                    lead_page_sequence_id: leadSequenceId || null,
+                  }).eq('id', ws.id)
+                  if (!error) toast_('Lead page settings saved')
+                  else toast_('Save failed', false)
+                }}
+                style={{ padding:'11px 28px', background:'var(--blue)', border:'none', borderRadius:9, fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer' }}
+              >
+                Save settings
+              </button>
             </div>
           )}
 
