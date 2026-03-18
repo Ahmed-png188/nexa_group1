@@ -1,25 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
-import { persistFile } from '@/lib/storage'
-import { createHmac } from 'crypto'
+import { enhanceVideoPrompt } from '@/lib/prompt-enhancer'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
-import { enhanceVideoPrompt } from '@/lib/prompt-enhancer'
-
-function base64url(input: string): string {
-  return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-}
-
-function getKlingToken(): string {
-  const accessKey = process.env.KLING_ACCESS_KEY!
-  const secretKey = process.env.KLING_SECRET_KEY!
-  const now = Math.floor(Date.now() / 1000)
-  const header = base64url(Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64'))
-  const payload = base64url(Buffer.from(JSON.stringify({ iss: accessKey, iat: now, exp: now + 1800 })).toString('base64'))
-  const signature = base64url(createHmac('sha256', secretKey).update(`${header}.${payload}`).digest('base64'))
-  return `${header}.${payload}.${signature}`
-}
+import { persistFile } from '@/lib/storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,161 +11,150 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const {
-      workspace_id, prompt, style = 'cinematic',
-      duration = 5, aspect_ratio = '16:9',
-      image_url,           // image-to-video
-      start_frame_url,     // start frame
-      end_frame_url,       // end frame
-      motion_strength = 0.5,
-    } = await request.json()
+    const { workspace_id, prompt, aspect_ratio = '9:16', duration = 8, mode = 'text' } = await request.json()
+
+    if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt required' }, { status: 400 })
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
 
-    // ── Plan gate ──
-    const gateError = await checkPlanAccess(workspace_id, 'video_generation')
-    if (gateError) return gateError
-
-    // ── Rate limit: max 10 video generations per hour per workspace ──
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    const { count: recentCount } = await supabase
-      .from('content')
-      .select('id', { count: 'exact', head: true })
-      .eq('workspace_id', workspace_id)
-      .eq('type', 'video')
-      .gte('created_at', oneHourAgo)
-    if ((recentCount ?? 0) >= 10) {
-      return NextResponse.json({
-        error: 'Rate limit exceeded',
-        message: 'Maximum 10 video generations per hour. Please wait before generating more.',
-      }, { status: 429 })
-    }
-
-    if (!process.env.KLING_ACCESS_KEY || !process.env.KLING_SECRET_KEY) {
-      return NextResponse.json({ error: 'Video generation not configured', message: 'KLING_ACCESS_KEY and KLING_SECRET_KEY not set. Add your Kling AI credentials to environment variables.' }, { status: 503 })
-    }
-
+    // Check and deduct credits
     const { data: deducted } = await supabase.rpc('deduct_credits', {
       p_workspace_id: workspace_id,
       p_amount: 20,
       p_action: 'video_gen',
       p_user_id: user.id,
-      p_description: `Video generation — Kling`,
+      p_description: 'Video generation — Veo 3.1 Fast',
     })
+    if (!deducted) return NextResponse.json({ error: 'Insufficient credits. Video generation costs 20 credits.' }, { status: 402 })
 
-    if (!deducted) {
-      return NextResponse.json({
-        error: 'Insufficient credits',
-        message: 'Video generation costs 20 credits.',
-      }, { status: 402 })
-    }
-
-    const token = getKlingToken()
-
-    // Get brand video context and AI-enhance the prompt
+    // Get brand context for enhancer
     const brand = await getBrandContext(workspace_id)
-    const brandVideo = brand?.videoContext ? `${brand.videoContext}, ` : ''
-    const baseVideoPrompt = `${brandVideo}${prompt}, ${style} style`
-    let finalVideoPrompt = baseVideoPrompt
+
+    // Enhance prompt cinematically
+    let finalPrompt = prompt
     try {
-      finalVideoPrompt = await enhanceVideoPrompt(baseVideoPrompt, brand)
-    } catch {
-      finalVideoPrompt = `${baseVideoPrompt}, high quality, professional`
+      finalPrompt = await enhanceVideoPrompt(prompt, brand)
+      console.log('[Nexa Video] Enhanced prompt:', finalPrompt)
+    } catch (e) {
+      console.error('[Nexa Video] Enhancer failed, using original:', e)
+      finalPrompt = prompt
     }
 
-    // Determine endpoint and body based on mode
-    let endpoint: string
-    const body: any = {
-      prompt: finalVideoPrompt,
-      negative_prompt: 'blurry, low quality, distorted, watermark, text',
-      cfg_scale: motion_strength,
-      duration,
-      aspect_ratio,
-      mode: 'std',
-    }
+    // Call Veo 3.1 Fast via Gemini API
+    const apiKey = process.env.GOOGLE_AI_API_KEY
+    if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
 
-    if (start_frame_url && end_frame_url) {
-      // Start + end frame mode
-      endpoint = 'https://api.klingai.com/v1/videos/image2video'
-      body.image_url = start_frame_url
-      body.tail_image_url = end_frame_url
-    } else if (image_url) {
-      // Image-to-video mode
-      endpoint = 'https://api.klingai.com/v1/videos/image2video'
-      body.image_url = image_url
-    } else {
-      // Text-to-video mode
-      endpoint = 'https://api.klingai.com/v1/videos/text2video'
-    }
+    // Submit generation request
+    const submitRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: finalPrompt }],
+          parameters: {
+            aspectRatio: aspect_ratio,
+            durationSeconds: Math.min(duration, 8),
+            generateAudio: true,
+            resolution: '720p',
+          }
+        })
+      }
+    )
 
-    const submitRes = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-
-    const submitData = await submitRes.json()
-
-    if (!submitData.data?.task_id) {
-      const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
-      await supabase.from('credits').update({ balance: (cr?.balance ?? 0) + 20 }).eq('workspace_id', workspace_id)
-      throw new Error(submitData.message ?? 'Failed to submit video task')
-    }
-
-    const taskId = submitData.data.task_id
-
-    // Poll for completion
-    let videoUrl = null
-    let attempts = 0
-    const isImageMode = !!(image_url || start_frame_url)
-
-    while (attempts < 36) {
-      await new Promise(r => setTimeout(r, 5000))
-      attempts++
-
-      const statusEndpoint = isImageMode
-        ? `https://api.klingai.com/v1/videos/image2video/${taskId}`
-        : `https://api.klingai.com/v1/videos/text2video/${taskId}`
-
-      const statusRes = await fetch(statusEndpoint, {
-        headers: { 'Authorization': `Bearer ${getKlingToken()}` },
+    if (!submitRes.ok) {
+      const err = await submitRes.text()
+      console.error('[Nexa Video] Veo submit error:', err)
+      // Refund credits on API error
+      await supabase.rpc('deduct_credits', {
+        p_workspace_id: workspace_id,
+        p_amount: -20,
+        p_action: 'video_gen_refund',
+        p_user_id: user.id,
+        p_description: 'Video generation refund — Veo API error',
       })
-      const statusData = await statusRes.json()
-      const task = statusData.data
+      throw new Error(`Veo API error: ${submitRes.status} — ${err}`)
+    }
 
-      if (task?.task_status === 'succeed') {
-        videoUrl = task.task_result?.videos?.[0]?.url
+    const operation = await submitRes.json()
+    const operationName = operation.name
+    if (!operationName) throw new Error('No operation name returned from Veo')
+
+    // Poll for completion — max 3 minutes, every 8 seconds
+    let videoUrl: string | null = null
+    const maxAttempts = 22
+
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 8000))
+
+      const pollRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`
+      )
+      if (!pollRes.ok) continue
+
+      const pollData = await pollRes.json()
+
+      if (pollData.done) {
+        const samples = pollData.response?.predictions?.[0]?.videos ||
+                        pollData.response?.generateVideoResponse?.generatedSamples ||
+                        pollData.response?.predictions
+
+        if (samples?.[0]?.video?.uri) {
+          videoUrl = samples[0].video.uri
+        } else if (samples?.[0]?.bytesBase64Encoded) {
+          const videoBuffer = Buffer.from(samples[0].bytesBase64Encoded, 'base64')
+          const fileName = `video_${user.id}_${Date.now()}.mp4`
+          const { data: upload } = await supabase.storage
+            .from('generated-content')
+            .upload(fileName, videoBuffer, { contentType: 'video/mp4' })
+          if (upload) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('generated-content')
+              .getPublicUrl(fileName)
+            videoUrl = publicUrl
+          }
+        }
         break
-      } else if (task?.task_status === 'failed') {
-        throw new Error('Video generation failed')
       }
     }
 
-    if (!videoUrl) throw new Error('Video generation timed out')
+    if (!videoUrl) {
+      // Refund credits on timeout
+      await supabase.rpc('deduct_credits', {
+        p_workspace_id: workspace_id,
+        p_amount: -20,
+        p_action: 'video_gen_refund',
+        p_user_id: user.id,
+        p_description: 'Video generation refund — timeout',
+      })
+      throw new Error('Video generation timed out. Please try again.')
+    }
 
-    // Save to DB
+    // Persist to Supabase storage
+    const permanentUrl = await persistFile(videoUrl, workspace_id, 'video', undefined)
+
+    // Save to content table
     const { data: savedContent } = await supabase.from('content').insert({
       workspace_id,
       created_by: user.id,
       type: 'video',
       platform: 'general',
       status: 'draft',
-      video_url: videoUrl,
-      prompt,
+      video_url: permanentUrl || videoUrl,
+      prompt: finalPrompt,
       credits_used: 20,
-      ai_model: 'kling-v1',
-      metadata: { aspect_ratio, duration, style, task_id: taskId, mode: isImageMode ? 'image2video' : 'text2video' },
+      ai_model: 'veo-3.1-fast',
+      metadata: {
+        aspect_ratio,
+        duration,
+        mode,
+        original_prompt: prompt,
+        enhanced_prompt: finalPrompt,
+        provider: 'google-veo',
+        has_audio: true,
+      },
     }).select().single()
-
-    // Persist to Supabase Storage
-    const permanentUrl = await persistFile(videoUrl, workspace_id, 'video', savedContent?.id)
-    if (savedContent?.id && permanentUrl !== videoUrl) {
-      await supabase.from('content').update({ video_url: permanentUrl }).eq('id', savedContent.id)
-    }
 
     await supabase.from('activity').insert({
       workspace_id,
@@ -193,14 +166,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      video_url: permanentUrl,
+      video_url: permanentUrl || videoUrl,
       content_id: savedContent?.id,
-      credits_used: 20,
-      task_id: taskId,
+      provider: 'veo-3.1-fast',
+      enhanced_prompt: finalPrompt,
     })
 
   } catch (error: any) {
-    console.error('Video generation error:', error)
-    return NextResponse.json({ error: 'Failed to generate video', details: error.message }, { status: 500 })
+    console.error('[Nexa Video] Error:', error)
+    return NextResponse.json({
+      error: error.message || 'Video generation failed'
+    }, { status: 500 })
   }
 }
