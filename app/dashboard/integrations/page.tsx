@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type Category = 'all' | 'publishing' | 'productivity' | 'automation' | 'crm' | 'analytics' | 'communication'
 
@@ -110,6 +110,26 @@ const STATUS_CONFIG = {
 export default function IntegrationsPage() {
   const [category, setCategory] = useState<Category>('all' as Category)
   const [search, setSearch] = useState('')
+  const [connected, setConnected] = useState<string[]>([])
+  const [notified, setNotified] = useState<string[]>([])
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexa_connected_integrations')
+      if (stored) setConnected(JSON.parse(stored))
+    } catch {}
+  }, [])
+
+  function handleConnect(id: string) {
+    const newConnected = [...connected, id]
+    setConnected(newConnected)
+    try { localStorage.setItem('nexa_connected_integrations', JSON.stringify(newConnected)) } catch {}
+  }
+
+  function handleNotify(name: string) {
+    setNotified(prev => [...prev, name])
+    alert(`We'll email you when ${name} is available.`)
+  }
 
   const filtered = INTEGRATIONS.filter(i => {
     const matchCat = category === 'all' || i.category === category
@@ -198,18 +218,24 @@ export default function IntegrationsPage() {
                   {integration.cost}
                 </span>
                 {integration.status === 'active' ? (
-                  <a href={integration.category === 'automation' ? '/dashboard/automate' : integration.category === 'publishing' ? '/dashboard/schedule' : '/dashboard/studio'} style={{ fontSize: 11, fontWeight: 700, color: '#00d68f', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Active →
+                  <a href={integration.docs} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, fontWeight: 700, color: '#00d68f', textDecoration: 'none' }}>
+                    View docs →
                   </a>
                 ) : integration.status === 'beta' ? (
-                  <a href="/dashboard/studio" style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    Use in Studio →
-                  </a>
+                  connected.includes(integration.id) ? (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#34D399', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Connected
+                    </span>
+                  ) : (
+                    <button onClick={() => handleConnect(integration.id)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', background: 'rgba(30,142,240,0.08)', border: '1px solid rgba(30,142,240,0.2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                      Connect
+                    </button>
+                  )
                 ) : (
-                  <a href={integration.docs} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--t5)', textDecoration: 'none' }}>
-                    Docs →
-                  </a>
+                  <button onClick={() => handleNotify(integration.name)} style={{ fontSize: 11, color: 'var(--t4)', background: 'var(--glass)', border: '1px solid var(--line2)', borderRadius: 7, padding: '4px 10px', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                    Notify me
+                  </button>
                 )}
               </div>
             </div>

@@ -218,6 +218,7 @@ export default function InsightsPage() {
   const [aiText,    setAiText]   = useState<string|null>(null)
   const [explaining,setExplaining]= useState(false)
   const [syncing,   setSyncing]  = useState(false)
+  const [showSyncBanner, setShowSyncBanner] = useState(false)
   const [connPlats, setConnPlats]= useState<any[]>([])
   const [mounted,   setMounted]  = useState(false)
 
@@ -311,8 +312,9 @@ export default function InsightsPage() {
 
   async function sync() {
     if (!ws||syncing) return
-    if (connPlats.length === 0) { router.push('/dashboard/integrations'); return }
+    if (connPlats.length === 0) { setShowSyncBanner(true); return }
     setSyncing(true)
+    setShowSyncBanner(false)
     try { await fetch('/api/sync-platform-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id})}); load() } catch {}
     setSyncing(false)
   }
@@ -399,9 +401,15 @@ export default function InsightsPage() {
           </div>
           <button onClick={sync} disabled={syncing}
             style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', fontSize:12, fontWeight:600, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.48)', borderRadius:9, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s' }}>
-            <span style={{ display:'flex', animation:syncing?'pageSpin 0.8s linear infinite':'none' }}>{Ic.refresh}</span>
+            {syncing ? <div className="nexa-spinner" style={{ width:12, height:12 }}/> : <span style={{ display:'flex' }}>{Ic.refresh}</span>}
             {syncing?'Syncing…':'Sync'}
           </button>
+          {showSyncBanner && (
+            <div style={{ padding:'12px 16px', background:'rgba(30,142,240,0.06)', border:'1px solid rgba(30,142,240,0.14)', borderRadius:9, fontSize:13, color:'var(--t3)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+              <span>Connect a publishing platform to sync your analytics</span>
+              <a href="/dashboard/integrations" style={{ fontSize:12, color:'var(--blue2)', textDecoration:'none', fontWeight:500, whiteSpace:'nowrap' }}>Connect platforms →</a>
+            </div>
+          )}
         </div>
       </div>
 
@@ -549,7 +557,7 @@ export default function InsightsPage() {
                   style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', fontSize:13, fontWeight:600, background:'rgba(77,159,255,0.07)', border:'1px solid rgba(77,159,255,0.2)', color:'#4D9FFF', borderRadius:11, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', width:'100%', justifyContent:'center' }}
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.12)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.32)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.07)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.2)'}}>
-                  <span style={{ display:'flex', animation:explaining?'pageSpin 0.8s linear infinite':'none' }}>{Ic.bolt}</span>
+                  {explaining ? <div className="nexa-spinner" style={{ width:12, height:12 }}/> : <span style={{ display:'flex' }}>{Ic.bolt}</span>}
                   {explaining ? 'Reading your numbers…' : 'What does this mean?'}
                 </button>
               )}
