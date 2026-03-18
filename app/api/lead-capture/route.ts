@@ -57,6 +57,15 @@ export async function POST(request: NextRequest) {
       })
     } catch {}
 
+    // Fire notification
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' },
+        body: JSON.stringify({ workspace_id, type: 'lead', message: `New lead captured: ${name || email}`, link: '/dashboard/email?tab=contacts' }),
+      })
+    } catch {}
+
     return NextResponse.json({ success: true, contact_id: contact?.id })
   } catch (error: unknown) {
     console.error('[lead-capture] Error:', error instanceof Error ? error.message : 'Unknown error')

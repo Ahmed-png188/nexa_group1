@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { guardWorkspace } from '@/lib/workspace-guard'
 
+async function postTweetOAuth1(_text: string, _oauthToken: string, _oauthTokenSecret: string) {
+  // X API v2 requires OAuth 1.0a with crypto HMAC-SHA1 signing
+  // Full OAuth 1.0a implementation coming when X OAuth callback is updated
+  return {
+    success: false,
+    error: 'X publishing requires OAuth 1.0a. Please reconnect X in Integrations to enable posting.',
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
@@ -149,41 +158,59 @@ export async function PATCH(request: NextRequest) {
       // Try to publish via platform API
       if (post.platform === 'linkedin') {
         try {
-          const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${connection.access_token}`,
-              'Content-Type': 'application/json',
-              'X-Restli-Protocol-Version': '2.0.0',
-            },
-            body: JSON.stringify({
-              author: `urn:li:person:${connection.platform_user_id}`,
-              lifecycleState: 'PUBLISHED',
-              specificContent: {
-                'com.linkedin.ugc.ShareContent': {
-                  shareCommentary: { text: post.body },
-                  shareMediaCategory: 'NONE',
-                },
+          // Get LinkedIn member ID via userinfo endpoint
+          const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+            headers: { Authorization: `Bearer ${connection.access_token}` },
+          })
+          const profile = await profileRes.json()
+          const authorUrn = profile.sub
+            ? `urn:li:person:${profile.sub}`
+            : `urn:li:person:${connection.platform_user_id}`
+
+          if (!profile.sub && !connection.platform_user_id) {
+            console.error('[LinkedIn] Could not resolve author URN')
+          } else {
+            const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${connection.access_token}`,
+                'Content-Type': 'application/json',
+                'X-Restli-Protocol-Version': '2.0.0',
               },
-              visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-            }),
-          })
-          const data = await res.json()
-          if (data.id) { published = true; platformPostId = data.id }
-        } catch {}
-      } else if (post.platform === 'x') {
-        try {
-          const res = await fetch('https://api.twitter.com/2/tweets', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${connection.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text: post.body?.slice(0, 280) }),
-          })
-          const data = await res.json()
-          if (data.data?.id) { published = true; platformPostId = data.data.id }
-        } catch {}
+              body: JSON.stringify({
+                author: authorUrn,
+                lifecycleState: 'PUBLISHED',
+                specificContent: {
+                  'com.linkedin.ugc.ShareContent': {
+                    shareCommentary: { text: post.body },
+                    shareMediaCategory: 'NONE',
+                  },
+                },
+                visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+              }),
+            })
+            const data = await res.json()
+            console.log('[LinkedIn]', data)
+            if (data.id) { published = true; platformPostId = data.id }
+          }
+        } catch (e) {
+          console.error('[LinkedIn publish]', e instanceof Error ? e.message : 'Unknown')
+        }
+      } else if (post.platform === 'x' || post.platform === 'twitter') {
+        // X requires OAuth 1.0a for user tweets
+        if (!connection.oauth_token_secret) {
+          // Only Bearer token — cannot post as user
+          console.error('[X] No OAuth 1.0a credentials — reconnection required')
+          // Fall through: published stays false, post marked as published manually below
+        } else {
+          const tweetRes = await postTweetOAuth1(
+            post.body?.slice(0, 280) || '',
+            connection.oauth_token || connection.access_token,
+            connection.oauth_token_secret
+          )
+          if (tweetRes.success) { published = true }
+          else { console.error('[X publish]', tweetRes.error) }
+        }
       } else {
         // Platform integration pending — mark as published manually
         published = true

@@ -149,6 +149,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
         if (p.new?.balance !== undefined) setCredits(p.new.balance)
       })
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'activity', filter:`workspace_id=eq.${workspace.id}` }, () => loadNotifs())
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications', filter:`workspace_id=eq.${workspace.id}` }, () => loadNotifs())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [workspace?.id])
@@ -409,7 +410,9 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                 onMouseLeave={e => { if(!notifOpen){ (e.currentTarget as HTMLElement).style.background='transparent'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.38)' }}}>
                 {Ic.bell}
                 {unread > 0 && (
-                  <div style={{ position:'absolute', top:6, right:6, width:7, height:7, borderRadius:'50%', background:'#FF5757', border:'1.5px solid var(--bg)' }}/>
+                  <div style={{ position:'absolute', top:-2, right:-2, minWidth:16, height:16, borderRadius:8, background:'#FF5757', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, color:'#fff', fontFamily:'var(--mono)', border:'1.5px solid #000', padding:'0 3px', pointerEvents:'none' }}>
+                    {unread > 9 ? '9+' : unread}
+                  </div>
                 )}
               </button>
 
@@ -431,9 +434,9 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                       <div key={n.id||i} style={{ display:'flex', gap:11, padding:'11px 16px', borderBottom:`1px solid rgba(255,255,255,0.04)`, transition:'background 0.12s' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.03)'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
-                        <div style={{ width:7, height:7, borderRadius:'50%', background:'#4D9FFF', flexShrink:0, marginTop:5 }}/>
+                        <div style={{ width:7, height:7, borderRadius:'50%', background: n.type === 'lead' ? '#4ADE80' : n.type === 'content' ? '#A78BFA' : n.type === 'warning' ? '#FFB547' : '#4D9FFF', flexShrink:0, marginTop:5 }}/>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.72)', lineHeight:1.5, letterSpacing:'-0.01em' }}>{n.title}</div>
+                          <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.72)', lineHeight:1.5, letterSpacing:'-0.01em' }}>{n.message || n.title}</div>
                           <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginTop:3 }}>
                             {n.created_at ? format(parseISO(n.created_at), 'MMM d, h:mm a') : ''}
                           </div>

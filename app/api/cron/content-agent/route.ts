@@ -102,6 +102,15 @@ Requirements:
       })
     }
 
+    // Fire notification
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' },
+        body: JSON.stringify({ workspace_id: workspaceId, type: 'content', message: `Content agent created a draft for ${platform}`, link: '/dashboard/studio' }),
+      })
+    } catch {}
+
     return NextResponse.json({
       success: true,
       content: savedContent,
