@@ -150,6 +150,21 @@ export async function POST(request: NextRequest) {
       }).eq('id', draftRecord.id)
     }
 
+    // Fire notification (non-blocking)
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
+      },
+      body: JSON.stringify({
+        workspace_id: member.workspace_id,
+        type: 'email',
+        message: `Email sent to ${to}`,
+        link: '/dashboard/automate',
+      }),
+    }).catch(() => {})
+
     return NextResponse.json({ success: true, messageId: sendData.id })
   } catch (error: unknown) {
     console.error('[Email Send] Error:', error instanceof Error ? error.message : 'Unknown error')

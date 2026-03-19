@@ -157,7 +157,11 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   }, [workspace?.id])
 
   useEffect(() => {
-    if (!workspace?.id) return
+    if (!workspace?.id) {
+      console.log('[Notifications] No workspaceId yet')
+      return
+    }
+    console.log('[Notifications] Setting up for workspace:', workspace.id)
     loadNotifs()
     const ch = supabase.channel(`shell-${workspace.id}`)
       .on('postgres_changes', { event:'UPDATE', schema:'public', table:'credits', filter:`workspace_id=eq.${workspace.id}` }, (p:any) => {
@@ -518,6 +522,27 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                       </div>
                     )}
                   </div>
+                  {/* Temp test button — remove after testing */}
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/notifications/create', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'x-internal-secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET || '',
+                        },
+                        body: JSON.stringify({
+                          workspace_id: workspace.id,
+                          type: 'system',
+                          message: 'Test notification — system working ✓',
+                        }),
+                      })
+                      loadNotifs()
+                    }}
+                    style={{ margin: '8px 16px', padding: '7px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, fontSize: 11, color: 'var(--t4)', cursor: 'pointer', fontFamily: 'var(--sans)', width: 'calc(100% - 32px)' }}
+                  >
+                    + Test notification
+                  </button>
                 </div>
               )}
             </div>
