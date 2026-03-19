@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
     })
     const userInfo = await userRes.json()
 
-    console.log('[Gmail Connect] Step 3 - userInfo:', userInfo.email, userInfo.name)
-    console.log('[Gmail Connect] Step 4 - saving to workspace:', workspaceId)
+    console.log('[Gmail Connect] Step 3 - userInfo fetched, saving to workspace:', workspaceId)
 
     // Delete existing record first to avoid constraint conflicts
     await supabase

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, content_id: savedId })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Schedule error:', error)
     return NextResponse.json({ error: 'Failed to schedule post' }, { status: 500 })
   }

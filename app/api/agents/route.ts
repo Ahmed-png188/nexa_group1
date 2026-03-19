@@ -253,8 +253,8 @@ Return ONLY JSON:
 
     return NextResponse.json({ success: true, ...result })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Agent error:', error)
-    return NextResponse.json({ error: 'Agent failed', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Agent failed' }, { status: 500 })
   }
 }

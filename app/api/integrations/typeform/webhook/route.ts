@@ -70,6 +70,16 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    // Validate workspace exists to prevent data injection into arbitrary workspace IDs
+    const { data: workspace } = await service
+      .from('workspaces')
+      .select('id')
+      .eq('id', workspaceId)
+      .single()
+    if (!workspace) {
+      return NextResponse.json({ error: 'Invalid workspace' }, { status: 400 })
+    }
+
     const name = `${firstName} ${lastName}`.trim() || email.split('@')[0]
 
     const { error } = await service.from('contacts').upsert({

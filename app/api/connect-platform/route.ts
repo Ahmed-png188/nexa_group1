@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ connections: connections ?? [] })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: 'Failed to get connections' }, { status: 500 })
   }
 }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: 'Failed to connect platform' }, { status: 500 })
   }
 }
@@ -96,7 +96,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: 'Failed to disconnect' }, { status: 500 })
   }
 }

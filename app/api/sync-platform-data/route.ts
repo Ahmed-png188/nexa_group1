@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
         : 'No platforms connected. Connect platforms in Schedule → Platforms.',
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sync error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }

@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       recent_activity: activity?.slice(0, 10) ?? [],
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get insights error:', error)
     return NextResponse.json({ error: 'Failed to get insights' }, { status: 500 })
   }

@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ processed: results.length, results })
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }

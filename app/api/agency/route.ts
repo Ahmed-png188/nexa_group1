@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 // GET — fetch all client workspaces for an agency
 export async function GET(request: NextRequest) {
@@ -9,6 +10,9 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const agency_workspace_id = searchParams.get('agency_workspace_id')
+
+  const deny = await guardWorkspace(supabase, agency_workspace_id!, user.id)
+  if (deny) return deny
 
   // Get client workspaces with their data
   const { data: clients } = await supabase
@@ -158,6 +162,9 @@ export async function DELETE(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id, agency_workspace_id } = await request.json()
+
+  const deny = await guardWorkspace(supabase, agency_workspace_id, user.id)
+  if (deny) return deny
 
   await supabase.from('client_workspaces').delete().eq('id', id).eq('agency_workspace_id', agency_workspace_id)
 

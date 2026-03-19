@@ -120,8 +120,8 @@ Make every email feel personal, human, and specific to the goal. No fluff.`
 
     return NextResponse.json({ success: true, sequence, agent, steps })
 
-  } catch (error: any) {
-    console.error('Create sequence error:', error)
+  } catch (error: unknown) {
+    console.error('Create sequence error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed to create sequence' }, { status: 500 })
   }
 }
@@ -135,6 +135,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const workspace_id = searchParams.get('workspace_id')
 
+    if (!workspace_id) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
     const { data: sequences } = await supabase
       .from('email_sequences')
       .select('*, agents(status, progress, stats)')
@@ -143,7 +148,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ sequences: sequences ?? [] })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error('Get sequences error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed to get sequences' }, { status: 500 })
   }
 }

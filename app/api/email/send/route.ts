@@ -117,8 +117,6 @@ export async function POST(request: NextRequest) {
       .replace(/\//g, '_')
       .replace(/=+$/, '')
 
-    console.log('[Email Send] Sending to:', to, 'subject:', subject, 'from:', emailAccount.email)
-
     // Send via Gmail API
     const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',

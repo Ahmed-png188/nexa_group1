@@ -145,8 +145,8 @@ alert_message = specific, actionable message if drift_detected (null otherwise)`
     best_piece_index: analysis.best_piece_index,
     worst_piece_index: analysis.worst_piece_index,
   })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Voice drift error:', error)
-    return NextResponse.json({ error: 'Voice drift analysis failed', details: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Voice drift analysis failed' }, { status: 500 })
   }
 }

@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, sent, failed, credits_used: creditCost })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Send email error:', error)
     return NextResponse.json({ error: 'Failed to send emails' }, { status: 500 })
   }

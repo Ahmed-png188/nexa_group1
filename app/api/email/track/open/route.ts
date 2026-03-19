@@ -4,10 +4,12 @@ import { createClient as serviceClient } from '@supabase/supabase-js'
 // 1x1 transparent GIF
 const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET(request: NextRequest) {
   const emailId = request.nextUrl.searchParams.get('id')
 
-  if (emailId) {
+  if (emailId && UUID_RE.test(emailId)) {
     try {
       const service = serviceClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       platforms: platforms ?? [],
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get schedule error:', error)
     return NextResponse.json({ error: 'Failed to get schedule' }, { status: 500 })
   }
