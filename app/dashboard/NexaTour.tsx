@@ -87,15 +87,26 @@ const STEPS: TourStep[] = [
 
 const TOUR_KEY = 'nexa_tour_v1_completed'
 
-export function useTourState() {
+export function useTourState(workspaceId?: string) {
   const [show, setShow] = useState(false)
   const [checked, setChecked] = useState(false)
+
   useEffect(() => {
-    const done = localStorage.getItem(TOUR_KEY)
-    if (!done) setShow(true)
-    setChecked(true)
-  }, [])
-  function dismiss() { localStorage.setItem(TOUR_KEY, '1'); setShow(false) }
+    const key = workspaceId ? `nexa_tour_done_${workspaceId}` : TOUR_KEY
+    const timer = setTimeout(() => {
+      const done = localStorage.getItem(key)
+      if (!done) setShow(true)
+      setChecked(true)
+    }, workspaceId ? 1500 : 0)
+    return () => clearTimeout(timer)
+  }, [workspaceId])
+
+  function dismiss() {
+    const key = workspaceId ? `nexa_tour_done_${workspaceId}` : TOUR_KEY
+    localStorage.setItem(key, '1')
+    localStorage.setItem(TOUR_KEY, '1')
+    setShow(false)
+  }
   return { show: checked && show, dismiss }
 }
 

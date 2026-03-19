@@ -292,7 +292,7 @@ BODY:
     if (!newSequenceName.trim() || !workspaceId) return
     const { data } = await supabase
       .from('email_sequences')
-      .insert({ workspace_id: workspaceId, name: newSequenceName, status: 'draft' })
+      .insert({ workspace_id: workspaceId, name: newSequenceName, status: 'draft', trigger_type: 'manual' })
       .select()
       .single()
     if (data) {
@@ -304,13 +304,18 @@ BODY:
   }
 
   async function loadSequenceSteps(sequenceId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('sequence_steps')
       .select('*')
       .eq('sequence_id', sequenceId)
       .order('step_number', { ascending: true })
+    if (error) console.error('[loadSequenceSteps]', error.message)
     setSequenceSteps(data || [])
   }
+
+  useEffect(() => {
+    if (selectedSequence?.id) loadSequenceSteps(selectedSequence.id)
+  }, [selectedSequence?.id])
 
   async function addStep(type: 'email' | 'wait' | 'condition') {
     if (!selectedSequence) return
@@ -982,8 +987,9 @@ BODY:
             <div style={{ width: 340, borderRight: '1px solid rgba(255,255,255,0.07)', overflowY: 'auto', flexShrink: 0 }}>
               <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontFamily: 'var(--display)', fontSize: 14, fontWeight: 700, color: '#fff' }}>Inbox</div>
-                <button onClick={loadInbox} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t4)', display: 'flex', padding: 4 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.37"/></svg>
+                <button onClick={loadInbox} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, cursor: 'pointer', color: 'var(--t3)', display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: 11, fontFamily: 'var(--sans)' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.37"/></svg>
+                  Refresh
                 </button>
               </div>
 
@@ -1020,11 +1026,8 @@ BODY:
                     <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>From: <span style={{ color: 'var(--t2)' }}>{selectedInboxMessage.fromName} {selectedInboxMessage.fromEmail ? `<${selectedInboxMessage.fromEmail}>` : ''}</span></div>
                     <div style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--sans)' }}>{selectedInboxMessage.date}</div>
                   </div>
-                  <div style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontFamily: 'var(--sans)', whiteSpace: 'pre-wrap', marginBottom: 20 }}>
+                  <div style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontFamily: 'var(--sans)', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'break-word', marginBottom: 20 }}>
                     {selectedInboxMessage.snippet}
-                    <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(30,142,240,0.05)', border: '1px solid rgba(30,142,240,0.12)', borderRadius: 7, fontSize: 12, color: 'var(--t4)' }}>
-                      Open Gmail to read full message →
-                    </div>
                   </div>
 
                   {/* Reply area */}

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -53,6 +53,10 @@ const objectives = [
     icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> },
   { id:'OUTCOME_LEADS',     name:'Leads',     desc:'Capture contact info',
     icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> },
+  { id:'OUTCOME_SALES',      name:'Sales',      desc:'Drive conversions & purchases',
+    icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+  { id:'OUTCOME_ENGAGEMENT', name:'Engagement', desc:'Grow likes, comments & shares',
+    icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
 ]
 
 const budgetPresets = [
@@ -143,6 +147,8 @@ function AmplifyInner() {
   const [previewTab, setPreviewTab] = useState<'feed'|'story'|'reel'>('feed')
   const [recentContent, setRecentContent] = useState<ContentItem[]>([])
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [uploadedAdImage, setUploadedAdImage] = useState<string | null>(null)
+  const adImageInputRef = useRef<HTMLInputElement>(null)
 
   // Stats
   const totalSpend   = campaigns.reduce((sum, c) => sum + (c.insights?.spend  || 0), 0)
@@ -433,6 +439,32 @@ function AmplifyInner() {
                     </div>
                   </div>
                 )}
+
+                {/* Upload ad image */}
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', marginBottom:8 }}>Upload ad image</div>
+                  {uploadedAdImage ? (
+                    <div style={{ position:'relative', display:'inline-block' }}>
+                      <img src={uploadedAdImage} alt="Ad" style={{ width:80, height:80, borderRadius:8, objectFit:'cover', border:'1px solid rgba(30,142,240,0.4)' }}/>
+                      <button onClick={() => setUploadedAdImage(null)} style={{ position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'#FF5757', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10 }}>✕</button>
+                    </div>
+                  ) : (
+                    <div onClick={() => adImageInputRef.current?.click()} style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 14px', background:'rgba(255,255,255,0.03)', border:'1px dashed rgba(255,255,255,0.12)', borderRadius:8, cursor:'pointer', fontSize:12, color:'var(--t4)', fontFamily:'var(--sans)', transition:'all 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(30,142,240,0.3)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      Click to upload image
+                    </div>
+                  )}
+                  <input ref={adImageInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = ev => setUploadedAdImage(ev.target?.result as string)
+                      reader.readAsDataURL(file)
+                    }
+                  }}/>
+                </div>
 
                 {/* Ad copy */}
                 <div style={{ marginBottom:12 }}>
@@ -839,7 +871,7 @@ function AmplifyInner() {
         <div style={{ fontSize:12, color:'var(--blue2)', fontFamily:'var(--sans)' }}>{campaigns.length} total</div>
       </div>
 
-      {campaigns.length === 0 ? (
+      {!showCreate && campaigns.length === 0 ? (
         <div style={{ background:'#0A0A0A', border:'1px solid var(--line)', borderRadius:12, padding:'48px 24px', textAlign:'center' as const }}>
           <div style={{ width:48, height:48, borderRadius:12, background:'rgba(249,115,22,0.08)', border:'1px solid rgba(249,115,22,0.16)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>

@@ -66,17 +66,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Build reply email with thread headers
+    const textToHtml = (text: string): string => {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .split('\n')
+        .map(line => line.trim() === '' ? '<br/>' : `<p style="margin:0 0 12px;line-height:1.7;color:#1a1a1a;">${line}</p>`)
+        .join('')
+    }
+
     const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`
+    const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.7;color:#1a1a1a;padding:20px;max-width:600px;">${textToHtml(body)}</body></html>`
+    const encodedSubject = `=?utf-8?B?${Buffer.from(replySubject).toString('base64')}?=`
+
     const emailLines = [
       `From: "${emailAccount.name}" <${emailAccount.email}>`,
       `To: ${to}`,
-      `Subject: ${replySubject}`,
+      `Subject: ${encodedSubject}`,
       `In-Reply-To: <${messageId}>`,
       `References: <${messageId}>`,
       `MIME-Version: 1.0`,
-      `Content-Type: text/plain; charset=UTF-8`,
+      `Content-Type: text/html; charset=utf-8`,
       ``,
-      body,
+      htmlBody,
     ]
     const emailContent = emailLines.join('\r\n')
     const encodedEmail = Buffer.from(emailContent)

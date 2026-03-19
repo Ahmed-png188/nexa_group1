@@ -88,7 +88,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
   const endRef   = useRef<HTMLDivElement>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
 
-  const { show: showTour, dismiss: dismissTour } = useTourState()
+  const { show: showTour, dismiss: dismissTour } = useTourState(workspace?.id)
   const [credits,     setCredits]     = useState(init)
   const [chatOpen,    setChatOpen]    = useState(true)
   const [isNarrow,    setIsNarrow]    = useState(false)
@@ -462,9 +462,13 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             <div style={{ position:'relative' }} data-dd>
               <button
                 onClick={() => {
-                  setNotifOpen(o => !o)
+                  const opening = !notifOpen
+                  setNotifOpen(opening)
                   setPillOpen(false)
-                  if (!notifOpen) setUnread(0) // clear badge when opening
+                  if (opening) {
+                    setUnread(0)
+                    fetch(`/api/notifications/mark-read?workspace_id=${workspace.id}`, { method: 'POST', credentials: 'include' }).catch(() => {})
+                  }
                 }}
                 style={{ width:34, height:34, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', background:notifOpen?'rgba(255,255,255,0.07)':'transparent', border:`1px solid ${notifOpen?'rgba(255,255,255,0.12)':'transparent'}`, color:notifOpen?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.38)', cursor:'pointer', transition:'all 0.15s', position:'relative' }}
                 onMouseEnter={e => { if(!notifOpen){ (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.7)' }}}
@@ -492,10 +496,12 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                   {/* Items */}
                   <div style={{ maxHeight:320, overflowY:'auto' }}>
                     {notifs.length > 0 ? notifs.slice(0,8).map((n:any,i:number) => (
-                      <div key={n.id||i} style={{ display:'flex', gap:11, padding:'11px 16px', borderBottom:`1px solid rgba(255,255,255,0.04)`, transition:'background 0.12s' }}
+                      <div key={n.id||i}
+                        onClick={() => { if (n.link) { setNotifOpen(false); router.push(n.link) } }}
+                        style={{ display:'flex', gap:11, padding:'11px 16px', borderBottom:`1px solid rgba(255,255,255,0.04)`, transition:'background 0.12s', cursor: n.link ? 'pointer' : 'default' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.03)'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='transparent'}>
-                        <div style={{ width:7, height:7, borderRadius:'50%', background: n.type === 'lead' ? '#4ADE80' : n.type === 'content' ? '#A78BFA' : n.type === 'warning' ? '#FFB547' : '#4D9FFF', flexShrink:0, marginTop:5 }}/>
+                        <div style={{ width:7, height:7, borderRadius:'50%', background: n.type === 'lead' ? '#4ADE80' : n.type === 'content' ? '#A78BFA' : n.type === 'warning' ? '#FFB547' : n.type === 'email' ? '#FF5757' : '#4D9FFF', flexShrink:0, marginTop:5 }}/>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.72)', lineHeight:1.5, letterSpacing:'-0.01em' }}>{n.message || n.title}</div>
                           <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginTop:3 }}>

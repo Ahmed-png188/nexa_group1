@@ -82,21 +82,33 @@ export async function POST(request: NextRequest) {
       sent_at: new Date().toISOString(),
     }).select('id').single()
 
-    // Build email with tracking pixel
+    // Build HTML email with tracking pixel
     const trackingPixel = draftRecord?.id
       ? `<img src="https://nexaa.cc/api/email/track/open?id=${draftRecord.id}" width="1" height="1" style="display:none"/>`
       : ''
 
-    const bodyWithTracking = trackingPixel ? `${body}\r\n\r\n${trackingPixel}` : body
+    const textToHtml = (text: string): string => {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .split('\n')
+        .map(line => line.trim() === '' ? '<br/>' : `<p style="margin:0 0 12px;line-height:1.7;color:#1a1a1a;">${line}</p>`)
+        .join('')
+    }
+
+    const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.7;color:#1a1a1a;padding:20px;max-width:600px;">${textToHtml(body)}${trackingPixel}</body></html>`
+
+    const encodedSubject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`
 
     const emailContent = [
       `From: ${emailAccount.name} <${emailAccount.email}>`,
       `To: ${to}`,
-      `Subject: ${subject}`,
+      `Subject: ${encodedSubject}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
       ``,
-      bodyWithTracking,
+      htmlBody,
     ].join('\r\n')
 
     const encodedEmail = Buffer.from(emailContent)

@@ -40,11 +40,15 @@ function AnalyzingSteps() {
     'Brand Brain is ready.',
   ]
   const [visibleSteps, setVisibleSteps] = useState<number[]>([])
+  const [allDone, setAllDone] = useState(false)
 
   useEffect(() => {
     steps.forEach((_, i) => {
       setTimeout(() => {
         setVisibleSteps(prev => [...prev, i])
+        if (i === steps.length - 1) {
+          setTimeout(() => setAllDone(true), 400)
+        }
       }, i * 800 + 200)
     })
   }, [])
@@ -87,6 +91,18 @@ function AnalyzingSteps() {
           </span>
         </div>
       ))}
+      {allDone && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, opacity: 1, transition: 'opacity 0.4s ease' }}>
+          {[0,1,2].map(d => (
+            <div key={d} style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: 'rgba(30,142,240,0.5)',
+              animation: `pulse 1.2s ease-in-out ${d * 0.2}s infinite`,
+            }}/>
+          ))}
+          <style>{`@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }`}</style>
+        </div>
+      )}
     </div>
   )
 }
@@ -110,6 +126,7 @@ export default function OnboardingPage() {
   const [scores, setScores]               = useState({ voice: 0, audience: 0, visual: 0 })
   const [usernameSlug, setUsernameSlug]   = useState('')
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
+  const [slugClaimed, setSlugClaimed]     = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const router  = useRouter()
   const supabase = createClient()
@@ -488,7 +505,9 @@ export default function OnboardingPage() {
                   return (
                     <button key={s.id} onClick={() => setSegment(s.id)}
                       style={{ padding:'18px 16px', borderRadius:12, background:selected?`${s.color}12`:'rgba(255,255,255,0.03)', border:`1px solid ${selected?s.color+'44':'rgba(255,255,255,0.1)'}`, cursor:'pointer', textAlign:'left', transition:'all 0.18s', outline:'none', boxShadow:selected?`0 0 0 1px ${s.color}22`:'none' }}>
-                      <div style={{ fontSize:18, marginBottom:8, color:s.color }}>{s.emoji}</div>
+                      <div style={{ marginBottom:10 }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:s.color, boxShadow:`0 0 8px ${s.color}80` }}/>
+                      </div>
                       <div style={{ fontFamily:'var(--display)', fontSize:15, fontWeight:800, color:selected?'#fff':'rgba(255,255,255,0.75)', marginBottom:3, letterSpacing:'-0.02em' }}>{s.label}</div>
                       <div style={{ fontSize:11, color:selected?`${s.color}cc`:'rgba(255,255,255,0.35)', lineHeight:1.4 }}>{s.sub}</div>
                     </button>
@@ -566,22 +585,40 @@ export default function OnboardingPage() {
                 )}
               </div>
 
+              {slugClaimed ? (
+                <div style={{ padding: '20px', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 12, textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div style={{ fontFamily: 'var(--display)', fontSize: 15, fontWeight: 700, color: '#4ADE80', marginBottom: 6 }}>nexaa.cc/{usernameSlug} is yours!</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--sans)' }}>Your lead page is reserved. Continue to set up your workspace.</div>
+                </div>
+              ) : null}
+
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setStep('workspace')}
                   className="ob-btn-sec"
                   style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontFamily: 'var(--sans)', fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', transition: 'all 0.18s' }}
                 >
-                  Skip for now
+                  {slugClaimed ? 'Continue →' : 'Skip for now'}
                 </button>
-                <button
-                  onClick={() => setStep('workspace')}
-                  disabled={usernameSlug.length >= 2 && slugAvailable === false}
-                  className="ob-btn-primary"
-                  style={{ ...btnPrimary, flex: 2, opacity: usernameSlug.length < 2 ? 0.5 : 1 }}
-                >
-                  {usernameSlug.length >= 2 ? 'Claim it →' : 'Continue →'}
-                </button>
+                {!slugClaimed && (
+                  <button
+                    onClick={() => {
+                      if (slugAvailable && usernameSlug.length >= 2) {
+                        setSlugClaimed(true)
+                      } else {
+                        setStep('workspace')
+                      }
+                    }}
+                    disabled={usernameSlug.length >= 2 && slugAvailable === false}
+                    className="ob-btn-primary"
+                    style={{ ...btnPrimary, flex: 2, opacity: usernameSlug.length < 2 ? 0.5 : 1 }}
+                  >
+                    {usernameSlug.length >= 2 ? 'Claim it →' : 'Continue →'}
+                  </button>
+                )}
               </div>
             </div>
           )}

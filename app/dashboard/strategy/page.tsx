@@ -107,6 +107,12 @@ export default function StrategyPage() {
 
   useEffect(() => { setMounted(true); load() }, [])
 
+  useEffect(() => {
+    if (!ws || loading) return
+    if (tab === 'timing' && !timingData && !genTiming) generateTiming()
+    if (tab === 'competitors' && !compData && !genComp) generateComp()
+  }, [tab, ws, loading])
+
   async function load() {
     const { data:{ user } } = await supabase.auth.getUser()
     if (!user) return
