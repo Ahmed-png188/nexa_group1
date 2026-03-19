@@ -618,7 +618,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
       ═══════════════════════════════════════════════════ */}
       {chatOpen && (
         <div style={{ display:'flex', flexDirection:'column', borderLeft:`1px solid ${BORDER}`, background:SURFACE, overflow:'hidden', width:360, minWidth:360 }}>
-          <style>{`
+          <style dangerouslySetInnerHTML={{ __html: `
             .nexa-chat-body { scrollbar-width: none; }
             .nexa-chat-body::-webkit-scrollbar { display: none; }
             .nexa-msg-ai { font-size:13.5px; color:rgba(255,255,255,0.82); line-height:1.8; letter-spacing:-0.01em; }
@@ -635,7 +635,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
             .nexa-msg-ai hr { border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0; }
             @keyframes pulse-dot { 0%,80%,100%{opacity:0.3;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
             @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-          `}</style>
+          ` }} />
 
           {/* Header */}
           <div style={{ height:'var(--topbar-h)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:`1px solid rgba(255,255,255,0.055)`, flexShrink:0, background:SURFACE, position:'relative', overflow:'hidden' }}>

@@ -102,7 +102,7 @@ function AnalyzingSteps() {
               animation: `pulse 1.2s ease-in-out ${d * 0.2}s infinite`,
             }}/>
           ))}
-          <style>{`@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }`}</style>
+          <style dangerouslySetInnerHTML={{ __html: `@keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }` }} />
         </div>
       )}
     </div>
@@ -327,7 +327,7 @@ export default function OnboardingPage() {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeUp   { from { opacity:0;transform:translateY(16px) } to { opacity:1;transform:translateY(0) } }
         @keyframes breathe  { 0%,100% { opacity:1;transform:scale(1) } 50% { opacity:0.7;transform:scale(0.97) } }
         @keyframes pulse-ring { 0% { transform:scale(1);opacity:0.5 } 100% { transform:scale(1.6);opacity:0 } }
@@ -339,7 +339,7 @@ export default function OnboardingPage() {
         .ob-ta { caret-color: #1E8EF0 }
         .ob-btn-primary:hover { background: #4DABF7 !important; transform: translateY(-1px) }
         .ob-btn-sec:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.18) !important }
-      `}</style>
+      ` }} />
 
       {/* ── ANALYZING SCREEN ── */}
       {step === 'analyzing' && (

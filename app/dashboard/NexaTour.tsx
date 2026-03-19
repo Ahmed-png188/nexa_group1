@@ -136,14 +136,14 @@ export default function NexaTour({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
         @keyframes popUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .tour-overlay { animation: fadeIn 0.2s ease }
         .tour-card-side { animation: slideIn 0.25s ease both }
         .tour-card-center { animation: popUp 0.25s ease both }
-      `}</style>
+      ` }} />
 
       {/* Overlay — clips the nav rail area so icons remain visible when highlighted */}
       <div className="tour-overlay" style={{ position:'fixed', inset:0, zIndex:9990, background: isPositioned ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)', backdropFilter:'blur(4px)', pointerEvents:'none', clipPath: isPositioned ? `inset(0 0 0 ${RAIL_W}px)` : undefined }}/>

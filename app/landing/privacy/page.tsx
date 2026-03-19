@@ -68,10 +68,10 @@ const SECTIONS = [
 export default function PrivacyPage() {
   return (
     <div style={{ background: B, color: T1, fontFamily: SANS, minHeight: '100vh' }}>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .legal-nav-link { color: ${T3}; text-decoration: none; font-size: 13px; transition: color 0.15s; }
         .legal-nav-link:hover { color: ${T1}; }
-      `}</style>
+      ` }} />
 
       {/* Nav */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: `1px solid ${LINE}`, padding: '0 40px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

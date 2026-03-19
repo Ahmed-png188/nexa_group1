@@ -85,13 +85,12 @@ export default function LeadForm({ workspace }: { workspace: Workspace }) {
       overflow: 'hidden',
       fontFamily: "'DM Sans', sans-serif",
     }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@1&display=swap');
+      <style dangerouslySetInnerHTML={{ __html: `
         * { box-sizing: border-box; }
         input, textarea { font-family: 'DM Sans', sans-serif; }
         input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.25); }
         input:focus, textarea:focus { border-color: rgba(30,142,240,0.4) !important; outline: none; }
-      `}</style>
+      ` }} />
 
       {/* Background effects */}
       <div style={{ position:'fixed', inset:0, opacity:0.03, backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize:'256px 256px', pointerEvents:'none' }}/>

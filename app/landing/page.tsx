@@ -119,7 +119,7 @@ export default function LandingPage() {
         .plan-card:hover { border-color: rgba(77,171,247,0.35) !important; transform: translateY(-2px); }
         .faq-item { border-bottom: 1px solid ${LINE}; }
         .faq-item:last-child { border-bottom: none; }
-        .nav-link { color: ${T3}; text-decoration: none; font-size: 14px; font-family: ${SANS}; transition: color 0.15s; }
+        .nav-link { color: ${T3}; text-decoration: none; font-size: 14px; font-family: "DM Sans", sans-serif; transition: color 0.15s; }
         .nav-link:hover { color: ${T1}; }
         .testimonial-card { transition: border-color 0.2s; }
         .testimonial-card:hover { border-color: rgba(77,171,247,0.25) !important; }
