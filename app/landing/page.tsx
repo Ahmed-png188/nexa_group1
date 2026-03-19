@@ -95,11 +95,7 @@ export default function LandingPage() {
 
   const doubled = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
 
-  return (
-    <div style={{ background: B, color: T1, fontFamily: SANS, overflowX: 'hidden' }}>
-
-      {/* ── KEYFRAMES ── */}
-      <style>{`
+  const landingCSS = `
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
@@ -125,7 +121,13 @@ export default function LandingPage() {
         .testimonial-card:hover { border-color: rgba(77,171,247,0.25) !important; }
         .feature-row { transition: background 0.15s; }
         .feature-row:hover { background: rgba(255,255,255,0.025) !important; }
-      `}</style>
+      `
+
+  return (
+    <div style={{ background: B, color: T1, fontFamily: SANS, overflowX: 'hidden' }}>
+
+      {/* ── KEYFRAMES ── */}
+      <style dangerouslySetInnerHTML={{ __html: landingCSS }} />
 
       {/* ── 1. NAV ── */}
       <nav style={{
