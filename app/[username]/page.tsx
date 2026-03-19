@@ -16,11 +16,13 @@ export default async function LeadPage({
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data: ws } = await supabase
+  const { data: ws, error: wsError } = await supabase
     .from('workspaces')
-    .select('id, name, brand_name, niche, lead_page_custom_question, segment')
+    .select('*')
     .eq('slug', username)
     .maybeSingle()
+
+  if (wsError) console.error('[LeadPage] query error:', wsError.message)
 
   if (!ws) {
     return (

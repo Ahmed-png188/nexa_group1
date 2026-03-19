@@ -87,14 +87,14 @@ export default function HomePage() {
     try {
       const { data: agentRunsData } = await supabase
         .from('agent_runs')
-        .select('agent_id, status, ran_at, agents(type, name)')
+        .select('agent_id, agent_type, status, ran_at')
         .eq('workspace_id', ws.id)
         .order('ran_at', { ascending: false })
         .limit(20)
 
       const lastRunMap: Record<string, string> = {}
       agentRunsData?.forEach((run: any) => {
-        const type = run.agents?.type
+        const type = run.agent_type || run.agent_id
         if (type && !lastRunMap[type]) {
           const d = new Date(run.ran_at)
           const isToday = d.toDateString() === new Date().toDateString()

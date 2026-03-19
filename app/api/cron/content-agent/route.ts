@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: workspace } = await service
       .from('workspaces')
-      .select('*, brand_profile, segment')
+      .select('*')
       .eq('id', workspaceId)
       .single()
 
