@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Verify workspace exists and has a public lead page
     const { data: ws } = await service
       .from('workspaces')
-      .select('id, lead_page_auto_enroll, lead_page_sequence_id')
+      .select('*')
       .eq('id', workspace_id)
       .single()
 

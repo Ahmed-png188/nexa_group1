@@ -687,7 +687,7 @@ export default function DashboardShell({ user, workspace, credits: init, childre
                 </div>
                 {/* Message content */}
                 {m.role === 'assistant'
-                  ? <div className="nexa-msg-ai" style={{ paddingLeft:29 }} dangerouslySetInnerHTML={{ __html: typeof marked.parse(m.content) === 'string' ? marked.parse(m.content) as string : '' }}/>
+                  ? <div className="nexa-msg-ai" style={{ paddingLeft:29 }} dangerouslySetInnerHTML={{ __html: String(marked.parse(m.content)) }}/>
                   : <div style={{ maxWidth:'88%', padding:'10px 14px', borderRadius:'16px 4px 16px 16px', background:'linear-gradient(135deg,rgba(14,165,255,0.14),rgba(14,165,255,0.07))', border:'1px solid rgba(14,165,255,0.2)', fontSize:13, color:'rgba(255,255,255,0.88)', lineHeight:1.7, letterSpacing:'-0.01em', fontFamily:'var(--sans)' }}>
                       {m.content}
                     </div>

@@ -59,7 +59,7 @@ export default function LeadForm({ workspace }: { workspace: Workspace }) {
           workspace_id: workspace.id,
           name,
           email,
-          answers: answer ? { [customQ]: answer } : {},
+          custom_answer: answer || null,
           source: 'lead_page',
         }),
       })

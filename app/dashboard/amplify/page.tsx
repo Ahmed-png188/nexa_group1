@@ -215,7 +215,7 @@ function AmplifyInner() {
 
       const { data: workspace } = await supabase
         .from('workspaces')
-        .select('brand_profile')
+        .select('*')
         .eq('id', member.workspace_id)
         .single()
 

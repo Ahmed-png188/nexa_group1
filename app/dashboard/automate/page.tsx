@@ -997,13 +997,20 @@ BODY:
                         if (!enrollSelected.length) return
                         setEnrolling(true)
                         try {
-                          await fetch('/api/email/sequences/enroll', {
+                          const res = await fetch('/api/email/sequences/enroll', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ sequence_id: selectedSeq.id, contact_ids: enrollSelected }),
                           })
-                          setShowEnrollModal(false)
-                          setEnrollSelected([])
+                          if (!res.ok) {
+                            const d = await res.json().catch(() => ({}))
+                            alert(d.error || 'Enrollment failed')
+                          } else {
+                            setShowEnrollModal(false)
+                            setEnrollSelected([])
+                          }
+                        } catch {
+                          alert('Enrollment failed: network error')
                         } finally {
                           setEnrolling(false)
                         }
