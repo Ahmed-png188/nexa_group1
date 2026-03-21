@@ -1,6 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PLAN_FEATURES } from '@/lib/plan-gate'
+
 
 // Monthly cron — resets workspace credits based on plan tier
 // Schedule via Vercel Cron: 0 0 1 * * (first day of each month)

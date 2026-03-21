@@ -1,8 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -69,6 +73,10 @@ export async function POST(request: NextRequest) {
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate — chat available on all active plans, blocks expired trial
+    const planError = await checkPlanAccess(workspace_id, 'brand_brain')
+    if (planError) return planError
 
     const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
     const { data: credits } = await supabase.from('credits').select('balance').eq('workspace_id', workspace_id).single()
@@ -182,7 +190,7 @@ If the user shares a document, PDF, or content file:
     ]
 
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5-20251101',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       system: systemPrompt,
       messages: claudeMessages,

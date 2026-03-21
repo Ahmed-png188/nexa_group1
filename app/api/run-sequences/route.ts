@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { getSenderFrom } from '@/lib/sender'
+
 
 // Called by Vercel Cron daily — processes active email sequences
 
@@ -29,6 +33,26 @@ export async function GET(request: NextRequest) {
 
     for (const seq of sequences) {
       try {
+        // Load workspace sender config for this sequence
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('brand_name,name,sender_name,sender_email,sender_domain,sender_domain_verified')
+          .eq('id', seq.workspace_id)
+          .single()
+
+        // Get workspace owner email for reply-to
+        const { data: ownerMember } = await supabase
+          .from('workspace_members')
+          .select('users(email)')
+          .eq('workspace_id', seq.workspace_id)
+          .eq('role', 'owner')
+          .limit(1)
+          .single()
+        const ownerEmail: string | null = (ownerMember as any)?.users?.email || null
+
+        const senderFrom = getSenderFrom(ws || {})
+        // reply-to: if custom domain → null (from already correct); else owner's real inbox
+        const replyTo: string | null = (ws as any)?.sender_domain_verified ? null : ownerEmail
         const steps: any[] = seq.steps || []
         const enrolledAt = new Date(seq.created_at)
         let updatedSteps = [...steps]
@@ -66,8 +90,9 @@ export async function GET(request: NextRequest) {
               const unsubUrl = `${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?token=${seq.id}`
 
               const { error } = await resend.emails.send({
-                from: `${seq.from_name ?? 'Nexa'} <${process.env.RESEND_FROM_EMAIL ?? 'hello@nexaa.cc'}>`,
+                from: senderFrom,
                 to: recipient.email,
+                ...(replyTo ? { reply_to: replyTo } : {}),
                 subject: step.subject || '(no subject)',
                 text: personalizedBody,
                 html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:40px 20px;color:#1a1a1a;line-height:1.6;">

@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 // GET — fetch all client workspaces for an agency
 export async function GET(request: NextRequest) {
@@ -13,6 +17,10 @@ export async function GET(request: NextRequest) {
 
   const deny = await guardWorkspace(supabase, agency_workspace_id!, user.id)
   if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(agency_workspace_id, 'agency_mode')
+    if (planError) return planError
 
   // Get client workspaces with their data
   const { data: clients } = await supabase

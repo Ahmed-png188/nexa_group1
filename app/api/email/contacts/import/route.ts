@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as serviceClient } from '@supabase/supabase-js'
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +18,12 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
     if (!member) return NextResponse.json({ error: 'No workspace' }, { status: 403 })
+
+    const workspace_id = (member as any).workspace_id
+
+    // Plan gate
+    const _planErr = await checkPlanAccess(workspace_id, 'email_sequences')
+    if (_planErr) return _planErr
 
     const body = await request.json()
     const { contacts } = body

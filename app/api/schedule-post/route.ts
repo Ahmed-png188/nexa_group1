@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 async function postTweetOAuth1(_text: string, _oauthToken: string, _oauthTokenSecret: string) {
   // X API v2 requires OAuth 1.0a with crypto HMAC-SHA1 signing
@@ -21,6 +25,10 @@ export async function POST(request: NextRequest) {
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'schedule')
+    if (planError) return planError
 
     // Deduct 1 credit for scheduling
     const { data: deducted } = await supabase.rpc('deduct_credits', {

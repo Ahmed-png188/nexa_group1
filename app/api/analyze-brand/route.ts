@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { guardWorkspace } from '@/lib/workspace-guard'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -194,7 +197,7 @@ Return ONLY valid JSON with this exact structure:
     let response: Awaited<ReturnType<typeof anthropic.messages.create>>
     try {
       response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-opus-4-6',
         max_tokens: 3500,
         messages: [{ role: 'user', content: messageContent }],
       })

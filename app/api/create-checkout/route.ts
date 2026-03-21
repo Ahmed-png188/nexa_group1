@@ -1,33 +1,46 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 import { guardWorkspace } from '@/lib/workspace-guard'
 
+
+// Prices in cents. Must match Stripe dashboard + lib/plan-gate.ts
 const PLANS = {
   spark: {
     name: 'Spark',
-    price: 3900, // cents
+    price: 4900,   // $49/mo
     credits: 500,
     priceId: process.env.STRIPE_PRICE_SPARK ?? '',
   },
   grow: {
     name: 'Grow',
-    price: 8900,
+    price: 8900,   // $89/mo
     credits: 1500,
     priceId: process.env.STRIPE_PRICE_GROW ?? '',
   },
   scale: {
     name: 'Scale',
-    price: 17900,
-    credits: 5000,
+    price: 16900,  // $169/mo
+    credits: 4000,
     priceId: process.env.STRIPE_PRICE_SCALE ?? '',
   },
   agency: {
     name: 'Agency',
-    price: 34900,
-    credits: 15000,
+    price: 34900,  // $349/mo
+    credits: 12000,
     priceId: process.env.STRIPE_PRICE_AGENCY ?? '',
   },
+}
+
+// Top-up packs — must match TOPUP_PACKS in lib/plan-gate.ts
+const TOPUP_PRICES: Record<number, number> = {
+  100:  500,   // $5
+  300:  1200,  // $12
+  700:  2500,  // $25
+  1500: 4500,  // $45
+  3500: 8900,  // $89
 }
 
 export async function POST(request: NextRequest) {
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
               name: `${top_up_credits} Nexa Credits`,
               description: 'One-time credit top-up for Nexa',
             },
-            unit_amount: Math.ceil(top_up_credits / 500) * 1200, // $12 per 500
+            unit_amount: TOPUP_PRICES[top_up_credits as keyof typeof TOPUP_PRICES] ?? Math.ceil(top_up_credits / 100) * 200,
           },
           quantity: 1,
         }],

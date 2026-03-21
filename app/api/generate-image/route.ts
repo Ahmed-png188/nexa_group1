@@ -1,11 +1,14 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
-import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { persistFile } from '@/lib/storage'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess, checkCredits, CREDIT_COSTS } from '@/lib/plan-gate'
 import { enhanceImagePrompt } from '@/lib/prompt-enhancer'
 import { fal } from '@fal-ai/client'
+
 
 // Configure fal client
 fal.config({ credentials: process.env.FAL_KEY })
@@ -50,20 +53,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Image generation not configured', message: 'FAL_KEY not set. Add your Fal.ai API key to environment variables.' }, { status: 503 })
     }
 
-    const { data: deducted } = await supabase.rpc('deduct_credits', {
-      p_workspace_id: workspace_id,
-      p_amount: 5,
-      p_action: 'image_gen',
-      p_user_id: user.id,
-      p_description: 'Image generation — Nano Banana 2',
-    })
-
-    if (!deducted) {
-      return NextResponse.json({
-        error: 'Insufficient credits',
-        message: 'Image generation costs 5 credits.',
-      }, { status: 402 })
-    }
+    const { ok: credOk, error: creditError } = await checkCredits(
+      workspace_id, user.id, CREDIT_COSTS.image,
+      'image_gen', 'Image generation — Nano Banana 2',
+    )
+    if (!credOk) return creditError!
 
     // Enhance prompt with brand context and AI art direction
     const brand = await getBrandContext(workspace_id)

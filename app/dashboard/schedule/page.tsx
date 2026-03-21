@@ -10,53 +10,54 @@ type View     = 'calendar'|'queue'|'platforms'
 
 const PC: Record<string,string> = {
   instagram:'#E1306C', linkedin:'#0A66C2', x:'#E7E7E7',
-  tiktok:'#FF0050',    email:'#4D9FFF',    general:'#888',
+  tiktok:'#FF0050',    email:'#00AAFF',    general:'#666',
 }
 const PL: Record<string,string> = {
   instagram:'Instagram', linkedin:'LinkedIn', x:'X',
   tiktok:'TikTok', email:'Email', general:'General',
 }
 
-const Ic = {
-  cal:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  list:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
-  link:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
-  plus:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  trash:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
-  check:  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
-  chevL:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  chevR:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  close:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  bolt:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
-}
+const F    = "'Geist', -apple-system, sans-serif"
+const MONO = "'Geist Mono', monospace"
+const DOW  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
-const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const Ic = {
+  cal:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  list:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  link:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+  plus:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  trash: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
+  check: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  chevL: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  chevR: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  close: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  bolt:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+  arrow: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+}
 
 function Dot({ platform, size=6 }: { platform:string; size?:number }) {
-  return <div style={{ width:size, height:size, borderRadius:'50%', background:PC[platform]||'#888', flexShrink:0, boxShadow:`0 0 ${size}px ${PC[platform]||'#888'}60` }}/>
+  return <div style={{ width:size, height:size, borderRadius:'50%', background:PC[platform]||'#666', flexShrink:0 }}/>
 }
 
-function SLabel({ children }: any) {
-  return <div className="nexa-label" style={{ marginBottom:9 }}>{children}</div>
+function Label({ children }: any) {
+  return <div style={{ fontSize:'10px', fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'rgba(0,170,255,0.70)', marginBottom:'10px', fontFamily:F }}>{children}</div>
 }
 
-/* ─── Inner page ─── */
 function Inner() {
   const supabase     = createClient()
   const searchParams = useSearchParams()
 
-  const [ws,       setWs]      = useState<any>(null)
-  const [view,     setView]    = useState<View>('calendar')
-  const [month,    setMonth]   = useState(new Date())
-  const [posts,    setPosts]   = useState<any[]>([])
-  const [drafts,   setDrafts]  = useState<any[]>([])
-  const [connPlats,setConnPlats]= useState<any[]>([])
-  const [loading,  setLoading] = useState(true)
-  const [modal,    setModal]   = useState(false)
-  const [toast,    setToast]   = useState<{msg:string;ok:boolean}|null>(null)
-  const [mounted,  setMounted] = useState(false)
+  const [ws,        setWs]        = useState<any>(null)
+  const [view,      setView]      = useState<View>('calendar')
+  const [month,     setMonth]     = useState(new Date())
+  const [posts,     setPosts]     = useState<any[]>([])
+  const [drafts,    setDrafts]    = useState<any[]>([])
+  const [connPlats, setConnPlats] = useState<any[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [modal,     setModal]     = useState(false)
+  const [toast,     setToast]     = useState<{msg:string;ok:boolean}|null>(null)
+  const [mounted,   setMounted]   = useState(false)
 
-  // form state
   const [fPlat,  setFPlat]  = useState<Platform>('instagram')
   const [fDate,  setFDate]  = useState('')
   const [fTime,  setFTime]  = useState('09:00')
@@ -64,12 +65,12 @@ function Inner() {
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
 
-  function toast_(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),3500) }
+  function showToast(msg:string, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),3500) }
 
   useEffect(() => {
     setMounted(true)
     const c = searchParams.get('connected')
-    if (c) toast_(`${PL[c]||c} connected!`)
+    if (c) showToast(`${PL[c]||c} connected!`)
     load()
   }, [])
 
@@ -96,376 +97,381 @@ function Inner() {
     try {
       const r = await fetch('/api/schedule-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,platform:fPlat,body:fBody,scheduled_for:dt.toISOString()})})
       if (r.ok) {
-        setSaved(true); toast_('Post scheduled — it\'s in the queue')
+        setSaved(true); showToast('Post scheduled — it\'s in the queue')
         setFBody('')
         setTimeout(()=>{ setModal(false); setSaved(false) },1400)
-      } else toast_('Something went wrong — try again','error' as any)
-    } catch { toast_('Something went wrong','error' as any) }
+      } else showToast('Something went wrong — try again', false)
+    } catch { showToast('Something went wrong', false) }
     setSaving(false)
   }
 
   async function publishNow(id:string) {
     try {
       const r = await fetch('/api/schedule-post',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_id:id,action:'publish'})})
-      if (r.ok) { toast_('Published!'); load() } else toast_('Failed','error' as any)
+      if (r.ok) { showToast('Published!'); load() } else showToast('Failed', false)
     } catch {}
   }
 
   async function del(id:string) {
-    await fetch(`/api/schedule-post?id=${id}`, { method: 'DELETE' })
-    toast_('Deleted'); load()
+    await fetch(`/api/schedule-post?id=${id}`, { method:'DELETE' })
+    showToast('Deleted'); load()
   }
 
-  function openForDay(day:Date) {
-    setFDate(format(day,'yyyy-MM-dd')); setModal(true)
-  }
-
-  function openForDraft(draft:any) {
-    setFBody(draft.body||''); setFPlat(draft.platform||'instagram')
-    setFDate(format(new Date(),'yyyy-MM-dd')); setModal(true)
-  }
+  function openForDay(day:Date) { setFDate(format(day,'yyyy-MM-dd')); setModal(true) }
+  function openForDraft(draft:any) { setFBody(draft.body||''); setFPlat(draft.platform||'instagram'); setFDate(format(new Date(),'yyyy-MM-dd')); setModal(true) }
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:'14px', background:'#0C0C0C', fontFamily:F }}>
       <div className="nexa-spinner" style={{ width:22, height:22 }}/>
-      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
+      <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.25)', letterSpacing:'0.04em' }}>Loading</div>
     </div>
   )
 
   const days     = eachDayOfInterval({ start:startOfMonth(month), end:endOfMonth(month) })
   const pad      = days[0].getDay()
-  const onDay    = (d:Date) => posts.filter(p=>p.scheduled_for&&isSameDay(parseISO(p.scheduled_for),d))
-  const upcoming = posts.filter(p=>p.scheduled_for&&new Date(p.scheduled_for)>=new Date())
+  const onDay    = (d:Date) => posts.filter(p => p.scheduled_for && isSameDay(parseISO(p.scheduled_for),d))
+  const upcoming = posts.filter(p => p.scheduled_for && new Date(p.scheduled_for) >= new Date())
   const ready    = fBody.trim() && fDate
 
   return (
     <>
-      <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto' }}>
+      <div style={{ height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#0C0C0C', fontFamily:F }}>
+        <style dangerouslySetInnerHTML={{ __html:`
+          .sch-scroll::-webkit-scrollbar { display:none; }
+          @keyframes schUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+          .sc-in { animation: schUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+          .day-cell { transition: all 0.15s; }
+          .day-cell:hover { border-color: rgba(255,255,255,0.18) !important; background: rgba(255,255,255,0.04) !important; }
+          .queue-row:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.14) !important; }
+          .draft-row:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.12) !important; }
+          input[type=date]::-webkit-calendar-picker-indicator,
+          input[type=time]::-webkit-calendar-picker-indicator { filter: invert(0.4); }
+        `}}/>
 
-        {/* Header */}
+        {/* ── HEADER ── */}
         <div style={{
-          display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:24,
-          opacity:mounted?1:0, transform:mounted?'translateY(0)':'translateY(12px)',
-          transition:'opacity 0.45s ease, transform 0.45s ease',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'28px 36px 0',
+          opacity:mounted?1:0, transform:mounted?'translateY(0)':'translateY(8px)',
+          transition:'opacity 0.4s ease, transform 0.4s ease',
         }}>
           <div>
-            <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>
-              Schedule
-            </h1>
-            <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
+            <h1 style={{ fontSize:'22px', fontWeight:700, letterSpacing:'-0.03em', color:'#FFFFFF', lineHeight:1, marginBottom:'6px', fontFamily:F }}>Schedule</h1>
+            <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.35)', fontFamily:F }}>
               {upcoming.length > 0
                 ? `${upcoming.length} post${upcoming.length!==1?'s':''} queued · ${connPlats.length} platform${connPlats.length!==1?'s':''} connected`
                 : 'Everything you create, everywhere it needs to go.'}
             </p>
           </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
             {/* View toggle */}
-            <div style={{ display:'flex', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:11, padding:3, gap:2 }}>
-              {([{v:'calendar' as View,i:Ic.cal},{v:'queue' as View,i:Ic.list},{v:'platforms' as View,i:Ic.link}] as const).map(({v,i})=>(
-                <button key={v} onClick={()=>setView(v)}
-                  style={{ width:33, height:31, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${view===v?'rgba(255,255,255,0.12)':'transparent'}`, background:view===v?'rgba(255,255,255,0.08)':'transparent', color:view===v?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.32)', cursor:'pointer', transition:'all 0.15s' }}>
+            <div style={{ display:'flex', background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'10px', padding:'3px', gap:'2px' }}>
+              {([{v:'calendar' as View, i:Ic.cal},{v:'queue' as View, i:Ic.list},{v:'platforms' as View, i:Ic.link}] as const).map(({v,i}) => (
+                <button key={v} onClick={() => setView(v)}
+                  style={{ width:34, height:30, borderRadius:'7px', display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${view===v?'rgba(255,255,255,0.14)':'transparent'}`, background:view===v?'rgba(255,255,255,0.08)':'transparent', color:view===v?'rgba(255,255,255,0.88)':'rgba(255,255,255,0.30)', cursor:'pointer', transition:'all 0.15s' }}>
                   {i}
                 </button>
               ))}
             </div>
-            {/* New post */}
-            <button
-              onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
-              style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#0EA5FF', color:'#000', border:'none', borderRadius:10, cursor:'pointer', boxShadow:'0 4px 18px rgba(14,165,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2)', transition:'all 0.18s' }}
-              onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLElement).style.boxShadow='0 7px 24px rgba(77,159,255,0.45)'}}
-              onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 18px rgba(77,159,255,0.35)'}}>
+            {/* New post CTA */}
+            <button onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
+              style={{ display:'flex', alignItems:'center', gap:'7px', padding:'9px 18px', fontSize:'13px', fontWeight:600, fontFamily:F, background:'#FFFFFF', color:'#0C0C0C', border:'none', borderRadius:'10px', cursor:'pointer', transition:'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.88)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='#FFFFFF'}>
               <span style={{ display:'flex' }}>{Ic.plus}</span>New post
             </button>
           </div>
         </div>
 
-        {/* ════════ CALENDAR ════════ */}
-        {view === 'calendar' && (
-          <div style={{ animation:'pageUp 0.35s ease both' }}>
-            {/* Month nav */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-              <button onClick={()=>setMonth(subMonths(month,1))}
-                style={{ width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.45)', cursor:'pointer', transition:'all 0.15s' }}
-                onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.88)'}
-                onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)'}>
-                {Ic.chevL}
-              </button>
-              <div style={{ fontFamily:'var(--display)', fontSize:16, fontWeight:700, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
-                {format(month,'MMMM yyyy')}
+        <div style={{ padding:'24px 36px 48px' }}>
+
+          {/* ════════ CALENDAR ════════ */}
+          {view === 'calendar' && (
+            <div className="sc-in">
+              {/* Month nav */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+                <button onClick={() => setMonth(subMonths(month,1))}
+                  style={{ width:34, height:34, borderRadius:'9px', background:'#141414', border:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.40)', cursor:'pointer', transition:'all 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.88)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.40)'}>
+                  {Ic.chevL}
+                </button>
+                <div style={{ fontSize:'17px', fontWeight:600, letterSpacing:'-0.03em', color:'#FFFFFF', fontFamily:F }}>
+                  {format(month,'MMMM yyyy')}
+                </div>
+                <button onClick={() => setMonth(addMonths(month,1))}
+                  style={{ width:34, height:34, borderRadius:'9px', background:'#141414', border:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.40)', cursor:'pointer', transition:'all 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.88)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.40)'}>
+                  {Ic.chevR}
+                </button>
               </div>
-              <button onClick={()=>setMonth(addMonths(month,1))}
-                style={{ width:34, height:34, borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.45)', cursor:'pointer', transition:'all 0.15s' }}
-                onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.88)'}
-                onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)'}>
-                {Ic.chevR}
-              </button>
-            </div>
 
-            {/* Day headers */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:5 }}>
-              {DOW.map(d => (
-                <div key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.2)', letterSpacing:'0.08em', textTransform:'uppercase', padding:'4px 0', fontFamily:'var(--sans)' }}>{d}</div>
-              ))}
-            </div>
+              {/* Day headers */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'4px', marginBottom:'6px' }}>
+                {DOW.map(d => (
+                  <div key={d} style={{ textAlign:'center', fontSize:'10px', fontWeight:600, color:'rgba(0,170,255,0.60)', letterSpacing:'0.08em', textTransform:'uppercase', padding:'4px 0', fontFamily:F }}>{d}</div>
+                ))}
+              </div>
 
-            {/* Grid */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
-              {Array.from({length:pad}).map((_,i) => <div key={`p${i}`} style={{ minHeight:90 }}/>)}
-              {days.map(day => {
-                const dp     = onDay(day)
-                const today  = isToday(day)
-                const inMon  = isSameMonth(day,month)
-                return (
-                  <div key={day.toISOString()}
-                    onClick={() => openForDay(day)}
-                    style={{ minHeight:96, padding:'9px 8px', borderRadius:12, background:today?'rgba(14,165,255,0.06)':'rgba(255,255,255,0.018)', border:`1px solid ${today?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.055)'}`, cursor:'pointer', transition:'all 0.18s cubic-bezier(0.22,1,0.36,1)', opacity:inMon?1:0.28, position:'relative', overflow:'hidden' }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(14,165,255,0.09)':'rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(14,165,255,0.3)':'rgba(255,255,255,0.11)';(e.currentTarget as HTMLElement).style.transform='translateY(-1px)'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=today?'rgba(14,165,255,0.06)':'rgba(255,255,255,0.018)';(e.currentTarget as HTMLElement).style.borderColor=today?'rgba(14,165,255,0.22)':'rgba(255,255,255,0.055)';(e.currentTarget as HTMLElement).style.transform='translateY(0)'}}>
-                    {today && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#0EA5FF,#38BFFF)', borderRadius:'12px 12px 0 0' }}/>}
-                    {/* Day number */}
-                    <div style={{ width:24, height:24, borderRadius:7, background:today?'#0EA5FF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--mono)', fontSize:13, fontWeight:300, color:today?'#000':'rgba(255,255,255,0.5)', marginBottom:7, letterSpacing:'-0.02em' }}>
-                      {format(day,'d')}
-                    </div>
-                    {/* Posts */}
-                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                      {dp.slice(0,3).map((p,i) => (
-                        <div key={p.id}
-                          onClick={e => { e.stopPropagation(); setFBody(p.body||''); setFPlat(p.platform||'instagram'); setFDate(format(parseISO(p.scheduled_for),'yyyy-MM-dd')); setModal(true) }}
-                          style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 5px', borderRadius:5, background:PC[p.platform]?`${PC[p.platform]}18`:'rgba(255,255,255,0.05)' }}>
-                          <Dot platform={p.platform} size={4}/>
-                          <span style={{ fontSize:9, color:'rgba(255,255,255,0.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.2 }}>
-                            {p.title||p.body?.slice(0,18)||'Post'}
-                          </span>
-                        </div>
-                      ))}
-                      {dp.length > 3 && <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', paddingLeft:4 }}>+{dp.length-3}</div>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Legend */}
-            <div style={{ display:'flex', gap:14, marginTop:18, flexWrap:'wrap' }}>
-              {Object.entries(PC).filter(([k])=>k!=='general').map(([plat,color])=>(
-                <div key={plat} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'rgba(255,255,255,0.3)' }}>
-                  <Dot platform={plat} size={5}/>
-                  {PL[plat]}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ════════ QUEUE ════════ */}
-        {view === 'queue' && (
-          <div style={{ animation:'pageUp 0.35s ease both' }}>
-
-            {/* Upcoming */}
-            <div style={{ marginBottom:32 }}>
-              <SLabel>Scheduled · {upcoming.length}</SLabel>
-              {upcoming.length > 0 ? (
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {upcoming.map(post => (
-                    <div key={post.id}
-                      className="nexa-card"
-                      style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:14 }}>
-                      <Dot platform={post.platform} size={8}/>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.82)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em', fontFamily:'var(--sans)', lineHeight:1.65 }}>
-                          {post.title||post.body?.slice(0,65)||'Post'}
-                        </div>
-                        <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:3 }}>
-                          <span style={{ fontSize:10, color:`${PC[post.platform]||'#888'}cc`, fontWeight:700 }}>{PL[post.platform]||post.platform}</span>
-                          <span style={{ fontSize:11, color:'rgba(255,255,255,0.28)', fontFamily:'var(--mono)', fontWeight:300 }}>
-                            {post.scheduled_for ? format(parseISO(post.scheduled_for),'MMM d, h:mm a') : ''}
-                          </span>
-                        </div>
+              {/* Calendar grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'4px' }}>
+                {Array.from({length:pad}).map((_,i) => <div key={`p${i}`} style={{ minHeight:'96px' }}/>)}
+                {days.map(day => {
+                  const dp    = onDay(day)
+                  const today = isToday(day)
+                  const inMon = isSameMonth(day, month)
+                  return (
+                    <div key={day.toISOString()}
+                      onClick={() => openForDay(day)}
+                      className="day-cell"
+                      style={{
+                        minHeight:'96px', padding:'9px 8px',
+                        borderRadius:'10px',
+                        background: today ? 'rgba(0,170,255,0.06)' : 'rgba(255,255,255,0.02)',
+                        border:`1px solid ${today ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.07)'}`,
+                        cursor:'pointer', opacity:inMon?1:0.30,
+                        position:'relative', overflow:'hidden',
+                      }}>
+                      {/* Today indicator */}
+                      {today && <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:'#00AAFF', borderRadius:'10px 10px 0 0' }}/>}
+                      {/* Day number */}
+                      <div style={{ width:24, height:24, borderRadius:'6px', background:today?'#00AAFF':'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:MONO, fontSize:'12px', fontWeight:400, color:today?'#0C0C0C':'rgba(255,255,255,0.45)', marginBottom:'6px' }}>
+                        {format(day,'d')}
                       </div>
-                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                        {post.platform === 'instagram' && (
-                          <div style={{ fontSize:10, color:'rgba(255,181,71,0.7)', marginBottom:4, lineHeight:1.4 }}>
-                            Saved to calendar - post manually on Instagram
+                      {/* Posts on this day */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:'3px' }}>
+                        {dp.slice(0,3).map((p) => (
+                          <div key={p.id}
+                            onClick={e => { e.stopPropagation(); setFBody(p.body||''); setFPlat(p.platform||'instagram'); setFDate(format(parseISO(p.scheduled_for),'yyyy-MM-dd')); setModal(true) }}
+                            style={{ display:'flex', alignItems:'center', gap:'4px', padding:'2px 5px', borderRadius:'4px', background:PC[p.platform]?`${PC[p.platform]}18`:'rgba(255,255,255,0.05)' }}>
+                            <Dot platform={p.platform} size={4}/>
+                            <span style={{ fontSize:'9px', color:'rgba(255,255,255,0.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.2, fontFamily:F }}>
+                              {p.title||p.body?.slice(0,18)||'Post'}
+                            </span>
                           </div>
-                        )}
-                        <button onClick={() => publishNow(post.id)}
-                          style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.22)', color:'#34D399', cursor:'pointer', fontFamily:'var(--display)', transition:'all 0.15s' }}>
-                          <span style={{ display:'flex' }}>{Ic.check}</span>Publish now
-                        </button>
-                        <button onClick={() => del(post.id)}
-                          style={{ width:32, height:32, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', background:'transparent', border:'1px solid rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.28)', cursor:'pointer', transition:'all 0.15s' }}
-                          onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,87,87,0.35)';(e.currentTarget as HTMLElement).style.color='#FF5757'}}
-                          onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.28)'}}>
-                          {Ic.trash}
-                        </button>
+                        ))}
+                        {dp.length > 3 && <div style={{ fontSize:'9px', color:'rgba(255,255,255,0.25)', paddingLeft:'4px', fontFamily:F }}>+{dp.length-3}</div>}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding:'32px 24px', background:'rgba(255,255,255,0.02)', border:'1px dashed rgba(255,255,255,0.08)', borderRadius:14, textAlign:'center' }}>
-                  <div style={{ fontSize:18, color:'rgba(255,255,255,0.28)', lineHeight:1.7, marginBottom:14, fontFamily:'var(--display)', fontWeight:700 }}>
-                    Nothing queued yet. Pick a day on the calendar<br/>or create something new in Studio.
+                  )
+                })}
+              </div>
+
+              {/* Platform legend */}
+              <div style={{ display:'flex', gap:'16px', marginTop:'20px', flexWrap:'wrap' }}>
+                {Object.entries(PC).filter(([k]) => k!=='general').map(([plat,color]) => (
+                  <div key={plat} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color:'rgba(255,255,255,0.28)', fontFamily:F }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>
+                    {PL[plat]}
                   </div>
-                  <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
-                    <button onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
-                      style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', fontSize:12, fontWeight:700, background:'rgba(77,159,255,0.1)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', borderRadius:9, cursor:'pointer', fontFamily:'var(--display)' }}>
-                      <span style={{ display:'flex' }}>{Ic.plus}</span>Schedule post
-                    </button>
-                    <Link href="/dashboard/studio"
-                      style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', fontSize:12, fontWeight:700, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.5)', borderRadius:9, textDecoration:'none', fontFamily:'var(--sans)' }}>
-                      <span style={{ display:'flex' }}>{Ic.bolt}</span>Create in Studio
-                    </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ════════ QUEUE ════════ */}
+          {view === 'queue' && (
+            <div className="sc-in">
+
+              {/* Upcoming */}
+              <div style={{ marginBottom:'32px' }}>
+                <Label>Scheduled · {upcoming.length}</Label>
+                {upcoming.length > 0 ? (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                    {upcoming.map(post => (
+                      <div key={post.id} className="queue-row"
+                        style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 18px', background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'10px', transition:'all 0.15s' }}>
+                        <Dot platform={post.platform} size={8}/>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:'13px', fontWeight:500, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:F, marginBottom:'3px' }}>
+                            {post.title||post.body?.slice(0,65)||'Post'}
+                          </div>
+                          <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                            <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', fontWeight:500, fontFamily:F }}>{PL[post.platform]||post.platform}</span>
+                            <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', fontFamily:MONO }}>
+                              {post.scheduled_for ? format(parseISO(post.scheduled_for),'MMM d, h:mm a') : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:'5px', flexShrink:0, alignItems:'center' }}>
+                          {post.platform === 'instagram' && (
+                            <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.28)', maxWidth:'120px', lineHeight:1.4, textAlign:'right', fontFamily:F }}>Post manually on Instagram</span>
+                          )}
+                          <button onClick={() => publishNow(post.id)}
+                            style={{ display:'flex', alignItems:'center', gap:'5px', padding:'6px 12px', borderRadius:'8px', fontSize:'11px', fontWeight:600, background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.20)', color:'#22C55E', cursor:'pointer', fontFamily:F, transition:'all 0.15s' }}>
+                            <span style={{ display:'flex' }}>{Ic.check}</span>Publish now
+                          </button>
+                          <button onClick={() => del(post.id)}
+                            style={{ width:32, height:32, borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', background:'transparent', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.25)', cursor:'pointer', transition:'all 0.15s' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(239,68,68,0.30)'; (e.currentTarget as HTMLElement).style.color='#EF4444' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.25)' }}>
+                            {Ic.trash}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding:'36px 24px', background:'#141414', border:'1px dashed rgba(255,255,255,0.08)', borderRadius:'10px', textAlign:'center' }}>
+                    <div style={{ fontSize:'14px', color:'rgba(255,255,255,0.30)', lineHeight:1.7, marginBottom:'20px', fontFamily:F }}>
+                      Nothing queued yet.<br/>
+                      <span style={{ fontSize:'13px', color:'rgba(255,255,255,0.20)' }}>Pick a day on the calendar or create something new.</span>
+                    </div>
+                    <div style={{ display:'flex', gap:'8px', justifyContent:'center' }}>
+                      <button onClick={() => { setModal(true); setFBody(''); setFDate(format(new Date(),'yyyy-MM-dd')) }}
+                        style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', fontSize:'12px', fontWeight:600, background:'#FFFFFF', color:'#0C0C0C', border:'none', borderRadius:'8px', cursor:'pointer', fontFamily:F, transition:'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.88)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='#FFFFFF'}>
+                        <span style={{ display:'flex' }}>{Ic.plus}</span>Schedule a post
+                      </button>
+                      <Link href="/dashboard/studio"
+                        style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', fontSize:'12px', fontWeight:500, background:'transparent', border:'1px solid rgba(255,255,255,0.10)', color:'rgba(255,255,255,0.45)', borderRadius:'8px', textDecoration:'none', fontFamily:F, transition:'all 0.15s' }}>
+                        <span style={{ display:'flex' }}>{Ic.bolt}</span>Create in Studio
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Drafts */}
+              {drafts.length > 0 && (
+                <div>
+                  <Label>Drafts · {drafts.length}</Label>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+                    {drafts.map(draft => (
+                      <div key={draft.id} className="draft-row"
+                        style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 16px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'10px', transition:'all 0.15s' }}>
+                        <Dot platform={draft.platform||'general'} size={7}/>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.65)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:F, marginBottom:'2px' }}>
+                            {draft.title||draft.body?.slice(0,65)||'Draft'}
+                          </div>
+                          <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.28)', fontFamily:F }}>
+                            {PL[draft.platform]||'General'} · Draft
+                          </div>
+                        </div>
+                        <button onClick={() => openForDraft(draft)}
+                          style={{ display:'flex', alignItems:'center', gap:'5px', padding:'6px 12px', borderRadius:'8px', fontSize:'11px', fontWeight:600, background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.20)', color:'#00AAFF', cursor:'pointer', fontFamily:F, transition:'all 0.15s', flexShrink:0 }}>
+                          <span style={{ display:'flex' }}>{Ic.cal}</span>Schedule
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
+          )}
 
-            {/* Drafts */}
-            {drafts.length > 0 && (
-              <div>
-                <SLabel>Drafts · {drafts.length}</SLabel>
-                <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                  {drafts.map(draft => (
-                    <div key={draft.id}
-                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, transition:'all 0.15s' }}
-                      onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.1)'}}
-                      onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.02)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.06)'}}>
-                      <Dot platform={draft.platform||'general'} size={7}/>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.62)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
-                          {draft.title||draft.body?.slice(0,65)||'Draft'}
+          {/* ════════ PLATFORMS ════════ */}
+          {view === 'platforms' && (
+            <div className="sc-in">
+              <Label>Connected Platforms</Label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'10px', marginBottom:'32px' }}>
+                {(['instagram','linkedin','x','tiktok','email'] as const).map(plat => {
+                  const conn  = connPlats.find(p => p.platform===plat)
+                  const color = PC[plat]
+                  return (
+                    <div key={plat} style={{ padding:'20px', background:'#141414', border:`1px solid ${conn?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.07)'}`, borderRadius:'10px', transition:'all 0.15s' }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                          <div style={{ width:8, height:8, borderRadius:'50%', background:conn?color:'rgba(255,255,255,0.15)' }}/>
+                          <span style={{ fontSize:'13px', fontWeight:600, color:conn?'rgba(255,255,255,0.88)':'rgba(255,255,255,0.35)', fontFamily:F }}>{PL[plat]}</span>
                         </div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginTop:2 }}>
-                          {PL[draft.platform]||'General'} · Draft
-                        </div>
-                      </div>
-                      <button onClick={() => openForDraft(draft)}
-                        style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, fontSize:11, fontWeight:700, background:'rgba(77,159,255,0.08)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--display)', transition:'all 0.15s', flexShrink:0 }}>
-                        <span style={{ display:'flex' }}>{Ic.cal}</span>Schedule
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ════════ PLATFORMS ════════ */}
-        {view === 'platforms' && (
-          <div style={{ animation:'pageUp 0.35s ease both' }}>
-            <SLabel>Connected platforms</SLabel>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px,1fr))', gap:10, marginBottom:28 }}>
-              {(['instagram','linkedin','x','tiktok','email'] as const).map(plat => {
-                const conn  = connPlats.find(p => p.platform===plat)
-                const color = PC[plat]
-                return (
-                  <div key={plat}
-                    style={{ padding:'18px 20px', background:conn?`${color}07`:'rgba(255,255,255,0.02)', border:`1px solid ${conn?`${color}25`:'rgba(255,255,255,0.07)'}`, borderRadius:15, transition:'all 0.15s' }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                        <div style={{ width:9, height:9, borderRadius:'50%', background:conn?color:'rgba(255,255,255,0.12)', boxShadow:conn?`0 0 8px ${color}80`:'none' }}/>
-                        <span style={{ fontSize:13, fontWeight:700, color:conn?'rgba(255,255,255,0.88)':'rgba(255,255,255,0.35)', letterSpacing:'-0.01em' }}>{PL[plat]}</span>
-                      </div>
-                      {conn && (
-                        <span style={{ fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:100, background:`${color}12`, border:`1px solid ${color}28`, color, textTransform:'uppercase', letterSpacing:'0.04em' }}>
-                          {conn.status||'active'}
-                        </span>
-                      )}
-                    </div>
-                    {conn ? (
-                      <>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginBottom:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {conn.platform_username||conn.account_name||conn.platform_name||'Connected'}
-                        </div>
-                        <div style={{ padding:'9px 12px', background:'rgba(0,0,0,0.25)', borderRadius:9, textAlign:'center' }}>
-                          <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'rgba(255,255,255,0.78)', letterSpacing:'-0.03em', lineHeight:1 }}>
-                            {posts.filter(p=>p.platform===plat).length}
-                          </div>
-                          <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.28)', marginTop:2 }}>posts queued</div>
-                        </div>
-                      </>
-                    ) : (
-                      <a href={`/api/oauth/${plat}?workspace_id=${ws?.id}`}
-                        style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'9px 14px', borderRadius:10, fontSize:12, fontWeight:700, background:`${color}0e`, border:`1px solid ${color}22`, color, textDecoration:'none', transition:'all 0.15s' }}
-                        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=`${color}18`;(e.currentTarget as HTMLElement).style.borderColor=`${color}38`}}
-                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=`${color}0e`;(e.currentTarget as HTMLElement).style.borderColor=`${color}22`}}>
-                        <span style={{ display:'flex' }}>{Ic.plus}</span>Connect {PL[plat]}
-                      </a>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Per-platform queue breakdown */}
-            {connPlats.length > 0 && (
-              <>
-                <SLabel>Queue by platform</SLabel>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:10, marginTop:10 }}>
-                  {connPlats.map(cp => {
-                    const platPosts = posts.filter(p=>p.platform===cp.platform).slice(0,5)
-                    const color = PC[cp.platform]||'#888'
-                    return (
-                      <div key={cp.id} style={{ padding:'16px 18px', background:'rgba(255,255,255,0.025)', border:`1px solid ${color}18`, borderRadius:14 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:13 }}>
-                          <Dot platform={cp.platform} size={7}/>
-                          <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.82)', letterSpacing:'-0.01em' }}>{PL[cp.platform]||cp.platform}</span>
-                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginLeft:'auto' }}>{platPosts.length} upcoming</span>
-                        </div>
-                        {platPosts.length > 0 ? platPosts.map(p => (
-                          <div key={p.id} style={{ display:'flex', gap:9, padding:'7px 0', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.52)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {p.title||p.body?.slice(0,38)||'Post'}
-                            </div>
-                            <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', flexShrink:0, fontFamily:'var(--mono)', fontWeight:300 }}>
-                              {p.scheduled_for?format(parseISO(p.scheduled_for),'MMM d'):''}
-                            </div>
-                          </div>
-                        )) : (
-                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', padding:'6px 0' }}>Nothing queued</div>
+                        {conn && (
+                          <span style={{ fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'100px', background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.20)', color:'#22C55E', textTransform:'uppercase', letterSpacing:'0.04em', fontFamily:F }}>
+                            Active
+                          </span>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                      {conn ? (
+                        <>
+                          <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.30)', marginBottom:'14px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:F }}>
+                            {conn.platform_username||conn.account_name||'Connected'}
+                          </div>
+                          <div style={{ padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:'8px', textAlign:'center' }}>
+                            <div style={{ fontSize:'22px', fontWeight:700, color:'#FFFFFF', letterSpacing:'-0.04em', lineHeight:1, fontFamily:MONO, marginBottom:'4px' }}>
+                              {posts.filter(p => p.platform===plat).length}
+                            </div>
+                            <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.30)', fontFamily:F }}>queued</div>
+                          </div>
+                        </>
+                      ) : (
+                        <a href={`/api/oauth/${plat}?workspace_id=${ws?.id}`}
+                          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'9px 12px', borderRadius:'8px', fontSize:'12px', fontWeight:500, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', color:'rgba(255,255,255,0.45)', textDecoration:'none', transition:'all 0.15s', fontFamily:F }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.75)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)' }}>
+                          <span style={{ display:'flex' }}>{Ic.plus}</span>Connect
+                        </a>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Queue by platform */}
+              {connPlats.length > 0 && (
+                <>
+                  <Label>Queue by Platform</Label>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginTop:'10px' }}>
+                    {connPlats.map(cp => {
+                      const platPosts = posts.filter(p => p.platform===cp.platform).slice(0,5)
+                      return (
+                        <div key={cp.id} style={{ padding:'18px 20px', background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'10px' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'14px' }}>
+                            <Dot platform={cp.platform} size={7}/>
+                            <span style={{ fontSize:'13px', fontWeight:500, color:'rgba(255,255,255,0.75)', fontFamily:F }}>{PL[cp.platform]||cp.platform}</span>
+                            <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', marginLeft:'auto', fontFamily:F }}>{platPosts.length} upcoming</span>
+                          </div>
+                          {platPosts.length > 0 ? platPosts.map(p => (
+                            <div key={p.id} style={{ display:'flex', gap:'10px', padding:'8px 0', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                              <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.50)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:F }}>
+                                {p.title||p.body?.slice(0,38)||'Post'}
+                              </div>
+                              <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', flexShrink:0, fontFamily:MONO }}>
+                                {p.scheduled_for ? format(parseISO(p.scheduled_for),'MMM d') : ''}
+                              </div>
+                            </div>
+                          )) : (
+                            <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.22)', padding:'6px 0', fontFamily:F }}>Nothing queued</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ════════ MODAL ════════ */}
+      {/* ════════ SCHEDULE MODAL ════════ */}
       {modal && (
         <div
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(14px)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(16px)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}
           onClick={e => { if(e.target===e.currentTarget) setModal(false) }}>
-          <div style={{ background:'rgba(10,10,16,0.99)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:22, padding:'30px', width:'100%', maxWidth:520, boxShadow:'0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)', position:'relative', overflow:'hidden', animation:'pageUp 0.22s ease both' }}>
+          <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.12)', borderTop:'2px solid #00AAFF', borderRadius:'14px', padding:'28px', width:'100%', maxWidth:'500px', boxShadow:'0 40px 100px rgba(0,0,0,0.90)', animation:'schUp 0.22s ease both', fontFamily:F }}>
 
-            {/* Top accent */}
-            <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,rgba(77,159,255,0.5),transparent)' }}/>
             {/* Header */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'24px' }}>
               <div>
-                <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.95)', marginBottom:3 }}>
-                  Schedule a post
-                </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>Save posts to your calendar — publish manually when you're ready.</div>
+                <div style={{ fontSize:'18px', fontWeight:600, letterSpacing:'-0.03em', color:'#FFFFFF', marginBottom:'4px', fontFamily:F }}>Schedule a post</div>
+                <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.30)', fontFamily:F }}>Save to your calendar — publish manually when ready.</div>
               </div>
-              <button onClick={()=>setModal(false)}
-                style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.38)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <button onClick={() => setModal(false)}
+                style={{ width:28, height:28, borderRadius:'7px', background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.35)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {Ic.close}
               </button>
             </div>
 
             {/* Platform */}
-            <div style={{ marginBottom:18 }}>
-              <SLabel>Platform</SLabel>
-              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+            <div style={{ marginBottom:'20px' }}>
+              <Label>Platform</Label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'7px' }}>
                 {(['instagram','linkedin','x','tiktok','email','general'] as Platform[]).map(p => (
                   <button key={p} onClick={() => setFPlat(p)}
-                    style={{ padding:'5px 14px', borderRadius:100, fontSize:12, fontWeight:600, background:fPlat===p?`${PC[p]}16`:'rgba(255,255,255,0.04)', border:`1px solid ${fPlat===p?`${PC[p]}44`:'rgba(255,255,255,0.08)'}`, color:fPlat===p?PC[p]:'rgba(255,255,255,0.38)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.14s', boxShadow:fPlat===p?`0 0 10px ${PC[p]}25`:'none' }}>
+                    style={{ padding:'8px 10px', borderRadius:'8px', fontSize:'12px', fontWeight:500, background:fPlat===p?'rgba(255,255,255,0.10)':'rgba(255,255,255,0.03)', border:`1px solid ${fPlat===p?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color:fPlat===p?'#FFFFFF':'rgba(255,255,255,0.40)', cursor:'pointer', fontFamily:F, transition:'all 0.14s', textAlign:'center' }}>
                     {PL[p]}
                   </button>
                 ))}
@@ -473,54 +479,60 @@ function Inner() {
             </div>
 
             {/* Date + Time */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:18 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'20px' }}>
               {[
                 { label:'Date', type:'date', value:fDate, set:setFDate },
                 { label:'Time', type:'time', value:fTime, set:setFTime },
               ].map(f => (
                 <div key={f.label}>
-                  <SLabel>{f.label}</SLabel>
-                  <input type={f.type} value={f.value} onChange={e=>f.set(e.target.value)}
-                    style={{ width:'100%', padding:'10px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'rgba(255,255,255,0.82)', fontSize:13, fontFamily:'var(--sans)', outline:'none', transition:'border-color 0.15s', boxSizing:'border-box' }}
-                    onFocus={e=>e.target.style.borderColor='rgba(77,159,255,0.35)'}
-                    onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}/>
+                  <Label>{f.label}</Label>
+                  <input type={f.type} value={f.value} onChange={e => f.set(e.target.value)}
+                    style={{ width:'100%', padding:'10px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', borderRadius:'8px', color:'rgba(255,255,255,0.80)', fontSize:'13px', fontFamily:F, outline:'none', transition:'border-color 0.15s', boxSizing:'border-box' as const }}
+                    onFocus={e => e.target.style.borderColor='rgba(0,170,255,0.35)'}
+                    onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'}/>
                 </div>
               ))}
             </div>
 
             {/* Caption */}
-            <div style={{ marginBottom:22 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:9 }}>
-                <SLabel>Caption</SLabel>
-                {fDate && <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:500 }}>Scheduling for {format(new Date(fDate+'T12:00:00'),'MMM d')} at {fTime}</span>}
+            <div style={{ marginBottom:'24px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+                <Label>Caption</Label>
+                {fDate && <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.28)', fontFamily:F }}>
+                  {format(new Date(fDate+'T12:00:00'),'MMM d')} at {fTime}
+                </span>}
               </div>
-              <div style={{ borderRadius:12, background:fBody?'rgba(77,159,255,0.03)':'rgba(255,255,255,0.025)', border:`1px solid ${fBody?'rgba(77,159,255,0.22)':'rgba(255,255,255,0.09)'}`, transition:'all 0.18s' }}>
+              <div style={{ borderRadius:'10px', background:'rgba(255,255,255,0.03)', border:`1px solid ${fBody?'rgba(0,170,255,0.20)':'rgba(255,255,255,0.08)'}`, transition:'all 0.15s' }}>
                 <textarea
                   value={fBody}
                   onChange={e => setFBody(e.target.value)}
                   rows={6}
                   placeholder={`Write or paste your caption here.\n\nTip: Generate it first in Studio — it'll already be in your brand voice.`}
-                  style={{ width:'100%', padding:'13px 15px', fontSize:13, fontFamily:'var(--sans)', background:'transparent', border:'none', color:'rgba(255,255,255,0.88)', outline:'none', resize:'vertical', lineHeight:1.7, boxSizing:'border-box' }}
+                  style={{ width:'100%', padding:'13px 14px', fontSize:'13px', fontFamily:F, background:'transparent', border:'none', color:'rgba(255,255,255,0.85)', outline:'none', resize:'vertical', lineHeight:1.7, boxSizing:'border-box' as const }}
                 />
               </div>
             </div>
 
             {/* CTA */}
             <button onClick={schedule} disabled={!ready||saving}
-              style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:ready?'#4D9FFF':'rgba(255,255,255,0.04)', color:ready?'#000':'rgba(255,255,255,0.2)', border:'none', borderRadius:12, cursor:ready?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, transition:'all 0.18s', boxShadow:ready?'0 4px 22px rgba(77,159,255,0.38)':'none' }}>
+              style={{ width:'100%', padding:'13px', fontSize:'13px', fontWeight:600, fontFamily:F, background:ready?'#FFFFFF':'rgba(255,255,255,0.06)', color:ready?'#0C0C0C':'rgba(255,255,255,0.20)', border:'none', borderRadius:'10px', cursor:ready?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', transition:'all 0.15s' }}
+              onMouseEnter={e => { if(ready) (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.88)' }}
+              onMouseLeave={e => { if(ready) (e.currentTarget as HTMLElement).style.background='#FFFFFF' }}>
               {saving
-                ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Scheduling…</>
+                ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Scheduling…</>
                 : saved
                 ? <><span style={{ display:'flex' }}>{Ic.check}</span>Scheduled!</>
-                : <><span style={{ display:'flex' }}>{Ic.cal}</span>{fDate?`Schedule for ${format(new Date(fDate+'T12:00:00'),'MMM d')} at ${fTime}`:'Add to queue'}</>}
+                : <><span style={{ display:'flex' }}>{Ic.cal}</span>
+                  {fDate ? `Schedule for ${format(new Date(fDate+'T12:00:00'),'MMM d')} at ${fTime}` : 'Add to queue'}</>
+              }
             </button>
           </div>
         </div>
       )}
 
-      {/* ════════ TOAST ════════ */}
+      {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, padding:'12px 20px', borderRadius:12, background:toast.ok?'rgba(52,211,153,0.1)':'rgba(255,87,87,0.12)', border:`1px solid ${toast.ok?'rgba(52,211,153,0.28)':'rgba(255,87,87,0.3)'}`, color:toast.ok?'#34D399':'#FF5757', fontSize:13, fontWeight:600, backdropFilter:'blur(16px)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'pageUp 0.2s ease both' }}>
+        <div style={{ position:'fixed', bottom:'24px', right:'24px', zIndex:9999, padding:'12px 20px', borderRadius:'10px', background:toast.ok?'rgba(34,197,94,0.10)':'rgba(239,68,68,0.10)', border:`1px solid ${toast.ok?'rgba(34,197,94,0.25)':'rgba(239,68,68,0.25)'}`, color:toast.ok?'#22C55E':'#EF4444', fontSize:'13px', fontWeight:600, fontFamily:F, boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'schUp 0.2s ease both' }}>
           {toast.msg}
         </div>
       )}
@@ -530,7 +542,7 @@ function Inner() {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.28)',fontSize:13 }}>Loading…</div>}>
+    <Suspense fallback={<div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.25)',fontSize:'13px' }}>Loading…</div>}>
       <Inner/>
     </Suspense>
   )

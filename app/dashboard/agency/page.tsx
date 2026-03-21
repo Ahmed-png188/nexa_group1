@@ -22,7 +22,7 @@ function Avatar({ name, size=40 }: { name:string; size?:number }) {
   const colors = ['#4D9FFF','#A78BFA','#34D399','#FF7A40','#FFB547','#FF5757','#38BFFF','#F472B6']
   const color = colors[name.charCodeAt(0) % colors.length]
   return (
-    <div style={{ width:size, height:size, borderRadius:Math.round(size*0.3), background:`linear-gradient(135deg, ${color}, ${color}99)`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:Math.round(size*0.38), fontWeight:800, color:'#fff', flexShrink:0, boxShadow:`0 4px 12px ${color}30` }}>
+    <div style={{ width:size, height:size, borderRadius:Math.round(size*0.3), background:`linear-gradient(135deg, ${color}, ${color}99)`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--sans)', fontSize:Math.round(size*0.38), fontWeight:800, color:'#fff', flexShrink:0, boxShadow:`0 4px 12px ${color}30` }}>
       {initials}
     </div>
   )
@@ -86,9 +86,9 @@ export default function AgencyPage() {
   }
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'var(--bg)' }}>
       <div className="nexa-spinner" style={{ width:22, height:22 }}/>
-      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
+      <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
     </div>
   )
 
@@ -97,53 +97,88 @@ export default function AgencyPage() {
 
   /* ─── NON-AGENCY UPSELL ─── */
   if (!isAgency) return (
-    <div style={{ height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000' }}>
-      <div style={{ position:'relative', overflow:'hidden', padding:'64px 40px', textAlign:'center' }}>
-        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(6,10,20,0.5) 0%, rgba(8,6,24,0.5) 40%, transparent 100%)' }}/>
-        <div style={{ position:'absolute', top:-60, left:'20%', width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle, rgba(77,159,255,0.2) 0%, transparent 65%)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', top:-40, right:'15%', width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,122,64,0.15) 0%, transparent 65%)', pointerEvents:'none' }}/>
+    <div style={{
+      height: 'calc(100vh - var(--topbar-h))',
+      overflowY: 'auto',
+      backgroundImage: 'url(/cyan-header.png)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '60px 32px',
+      position: 'relative',
+    }}>
 
-        <div style={{ position:'relative', zIndex:1 }}>
-          <div style={{ width:72, height:72, borderRadius:20, background:'rgba(77,159,255,0.08)', border:'1px solid rgba(77,159,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', color:'#4D9FFF' }}>
-            {Ic.users}
-          </div>
-          <h1 style={{ fontFamily:'var(--display)', fontSize:30, fontWeight:800, letterSpacing:'-0.05em', color:'#F4F0FF', marginBottom:12, lineHeight:1.1 }}>
-            Run your agency from one place
-          </h1>
-          <p style={{ fontSize:14, color:'rgba(255,255,255,0.4)', lineHeight:1.85, maxWidth:480, margin:'0 auto 32px' }}>
-            Manage multiple client workspaces, track monthly retainers, switch between brands instantly, and produce brand-accurate content for every client — all without leaving Nexa.
-          </p>
+      <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:620, animation:'pageUp 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
 
-          {/* Feature grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, maxWidth:600, margin:'0 auto 36px', textAlign:'left' }}>
-            {[
-              { color:'#4D9FFF', icon:Ic.users,  title:'Client workspaces',  desc:'Each client gets their own Brand Brain, strategy, and content' },
-              { color:'#34D399', icon:Ic.chart,  title:'Retainer tracking',   desc:'Track MRR across all clients from a single dashboard' },
-              { color:'#FF7A40', icon:Ic.bolt,   title:'One-click switching', desc:'Jump between client workspaces without logging out' },
-            ].map(f => (
-              <div key={f.title} style={{ padding:'16px', background:'rgba(255,255,255,0.03)', border:`1px solid ${f.color}18`, borderRadius:14 }}>
-                <div style={{ width:28, height:28, borderRadius:8, background:`${f.color}12`, border:`1px solid ${f.color}22`, display:'flex', alignItems:'center', justifyContent:'center', color:f.color, marginBottom:10 }}>{f.icon}</div>
-                <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.82)', marginBottom:4, letterSpacing:'-0.01em' }}>{f.title}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', lineHeight:1.55 }}>{f.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          <Link href="/dashboard/settings?tab=billing"
-            style={{ display:'inline-flex', alignItems:'center', gap:9, padding:'14px 32px', fontSize:15, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', borderRadius:13, textDecoration:'none', boxShadow:'0 4px 28px rgba(77,159,255,0.4)', transition:'all 0.18s' }}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 36px rgba(77,159,255,0.5)'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 28px rgba(77,159,255,0.4)'}}>
-            <span style={{ display:'flex' }}>{Ic.bolt}</span>
-            Upgrade to Agency
-          </Link>
+        {/* Top pill badge */}
+        <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'6px 14px', borderRadius:999, background:'rgba(0,0,0,0.12)', border:'1px solid rgba(0,0,0,0.16)', marginBottom:32, backdropFilter:'blur(8px)' }}>
+          <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(0,0,0,0.45)' }}/>
+          <span style={{ fontSize:12, fontWeight:600, color:'rgba(0,0,0,0.65)', letterSpacing:'0.02em' }}>Agency · Not enabled</span>
         </div>
+
+        {/* Main headline */}
+        <h1 style={{ fontSize:'clamp(32px,5vw,52px)', fontWeight:800, letterSpacing:'-0.04em', color:'#0C0C0C', lineHeight:1.1, marginBottom:16, fontFamily:'var(--sans)' }}>
+          Run your agency<br/>from one place.
+        </h1>
+
+        {/* Subline — warm dark gray, same hierarchy as design system text-2 but for light bg */}
+        <p style={{ fontSize:16, color:'rgba(0,0,0,0.52)', lineHeight:1.75, maxWidth:480, margin:'0 auto 40px' }}>
+          Manage multiple client workspaces, track retainers, and switch between brands instantly — all without leaving Nexa.
+        </p>
+
+        {/* Feature cards */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:40 }}>
+          {[
+            {
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+              title: 'Client workspaces',
+              desc:  'Each client gets their own Brand Brain, strategy, and content pipeline',
+            },
+            {
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+              title: 'Retainer tracking',
+              desc:  'Track MRR across all clients from a single dashboard',
+            },
+            {
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+              title: 'One-click switching',
+              desc:  'Jump between client workspaces without logging out',
+            },
+          ].map(f => (
+            <div key={f.title} style={{ padding:'20px 18px', borderRadius:14, background:'rgba(255,255,255,0.72)', border:'1px solid rgba(255,255,255,0.90)', backdropFilter:'blur(16px)', textAlign:'left' }}>
+              {/* Icon — solid dark */}
+              <div style={{ color:'rgba(0,0,0,0.55)', marginBottom:12, display:'flex' }}>{f.icon}</div>
+              {/* Card title — solid black */}
+              <div style={{ fontSize:14, fontWeight:700, color:'#0C0C0C', marginBottom:6, letterSpacing:'-0.02em' }}>{f.title}</div>
+              {/* Card desc — warm dark gray, clearly readable */}
+              <div style={{ fontSize:12, color:'rgba(0,0,0,0.50)', lineHeight:1.65 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA button */}
+        <Link
+          href="/dashboard/settings?tab=billing"
+          style={{ display:'inline-flex', alignItems:'center', gap:9, padding:'14px 32px', fontSize:15, fontWeight:700, fontFamily:'var(--sans)', letterSpacing:'-0.02em', background:'#0C0C0C', color:'#ffffff', borderRadius:12, textDecoration:'none', transition:'all 0.18s', boxShadow:'0 4px 24px rgba(0,0,0,0.30)' }}
+          onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#1a1a1a';(e.currentTarget as HTMLElement).style.transform='translateY(-2px)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='#0C0C0C';(e.currentTarget as HTMLElement).style.transform='none'}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Upgrade to Agency
+        </Link>
+
+        {/* Sub-CTA — warm dark gray */}
+        <div style={{ marginTop:14, fontSize:12, color:'rgba(0,0,0,0.45)' }}>$349/mo · Cancel anytime · No setup fees</div>
+
       </div>
     </div>
   )
 
   /* ─── CLIENT DETAIL ─── */
   if (sel) return (
-    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000' }}>
+    <div style={{ padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'var(--bg)' }}>
       {/* Back + header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:28 }}>
         <button onClick={() => setSel(null)}
@@ -154,10 +189,10 @@ export default function AgencyPage() {
         </button>
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1 }}>
+            <h1 style={{ fontFamily:'var(--sans)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', lineHeight:1 }}>
               {sel.client_name}
             </h1>
-            <span style={{ fontSize:9, fontWeight:700, padding:'2px 9px', borderRadius:100, background:sel.status==='active'?'rgba(52,211,153,0.08)':'rgba(255,255,255,0.05)', border:`1px solid ${sel.status==='active'?'rgba(52,211,153,0.2)':'rgba(255,255,255,0.1)'}`, color:sel.status==='active'?'#34D399':'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+            <span style={{ fontSize:9, fontWeight:700, padding:'2px 9px', borderRadius:100, background:sel.status==='active'?'var(--success-dim)':'rgba(255,255,255,0.05)', border:`1px solid ${sel.status==='active'?'var(--success-border)':'rgba(255,255,255,0.1)'}`, color:sel.status==='active'?'#34D399':'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
               {sel.status||'active'}
             </span>
           </div>
@@ -168,9 +203,9 @@ export default function AgencyPage() {
       {/* Stats */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px,1fr))', gap:8, marginBottom:24 }}>
         {[
-          { label:'Monthly retainer', value:sel.monthly_retainer?`$${sel.monthly_retainer?.toLocaleString()}/mo`:'—', color:'#34D399' },
+          { label:'Monthly retainer', value:sel.monthly_retainer?`$${sel.monthly_retainer?.toLocaleString()}/mo`:'—', color:'var(--success)' },
           { label:'Content created',  value:String(sel.content_count||0),   color:'#A78BFA' },
-          { label:'Active since',     value:sel.created_at?.slice(0,10)||'—', color:'#4D9FFF' },
+          { label:'Active since',     value:sel.created_at?.slice(0,10)||'—', color:'var(--cyan)' },
           { label:'Status',           value:sel.status||'active',           color:sel.status==='active'?'#34D399':'#FFB547' },
         ].map(s => (
           <div key={s.label} className="nexa-card" style={{ padding:'14px 16px', borderRadius:13 }}>
@@ -199,7 +234,7 @@ export default function AgencyPage() {
             </div>
           </div>
           <button onClick={() => switchWs(sel.client_workspace_id)}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 22px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s', flexShrink:0 }}>
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 22px', fontSize:13, fontWeight:700, fontFamily:'var(--sans)', letterSpacing:'-0.02em', background:'var(--cyan)', color:'var(--bg)', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s', flexShrink:0 }}>
             <span style={{ display:'flex' }}>{Ic.bolt}</span>Switch workspace
           </button>
         </div>
@@ -211,19 +246,19 @@ export default function AgencyPage() {
   return (
     <>
       <div style={{
-        padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'#000',
+        padding:'28px 32px 48px', height:'calc(100vh - var(--topbar-h))', overflowY:'auto', background:'var(--bg)',
         opacity:mounted?1:0, transition:'opacity 0.4s ease',
       }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:28 }}>
           <div>
-            <h1 style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>Agency</h1>
+            <h1 style={{ fontFamily:'var(--sans)', fontSize:22, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:5 }}>Agency</h1>
             <p style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>
               {activeCount} active client{activeCount!==1?'s':''} · ${totalMRR.toLocaleString()} MRR
             </p>
           </div>
           <button onClick={() => setShowNew(true)}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', fontFamily:'var(--display)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s' }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', fontFamily:'var(--sans)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'var(--cyan)', color:'var(--bg)', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 18px rgba(77,159,255,0.35)', transition:'all 0.18s' }}
             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLElement).style.boxShadow='0 7px 24px rgba(77,159,255,0.45)'}}
             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='none';(e.currentTarget as HTMLElement).style.boxShadow='0 4px 18px rgba(77,159,255,0.35)'}}>
             <span style={{ display:'flex' }}>{Ic.plus}</span>Add client
@@ -233,16 +268,16 @@ export default function AgencyPage() {
         {/* MRR + stats bar */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(170px,1fr))', gap:8, marginBottom:24 }}>
           {[
-            { label:'Active clients',  value:activeCount,                        color:'#34D399', icon:Ic.users  },
+            { label:'Active clients',  value:activeCount,                        color:'var(--success)', icon:Ic.users  },
             { label:'Pending invites', value:invites.length,                     color:'#FFB547', icon:Ic.arrow  },
-            { label:'Monthly revenue', value:`$${totalMRR.toLocaleString()}`,    color:'#4D9FFF', icon:Ic.dollar },
+            { label:'Monthly revenue', value:`$${totalMRR.toLocaleString()}`,    color:'var(--cyan)', icon:Ic.dollar },
             { label:'Total clients',   value:clients.length,                     color:'#A78BFA', icon:Ic.chart  },
           ].map(s => (
             <div key={s.label} className="nexa-card" style={{ padding:'14px 18px', borderRadius:14, display:'flex', alignItems:'center', gap:11 }}>
               <div style={{ width:32, height:32, borderRadius:9, background:`${s.color}12`, border:`1px solid ${s.color}22`, display:'flex', alignItems:'center', justifyContent:'center', color:s.color, flexShrink:0 }}>{s.icon}</div>
               <div>
                 <div className="nexa-num" style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:28, letterSpacing:'-0.04em', color:s.color }}>{s.value}</div>
-                <div className="nexa-label" style={{ fontFamily:'var(--sans)', fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--t4)', marginTop:3 }}>{s.label}</div>
+                <div className="nexa-label" style={{ fontFamily:'var(--sans)', fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-3)', marginTop:3 }}>{s.label}</div>
               </div>
             </div>
           ))}
@@ -265,11 +300,11 @@ export default function AgencyPage() {
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                       <Avatar name={c.client_name} size={40}/>
                       <div>
-                        <div style={{ fontFamily:'var(--display)', fontWeight:600, fontSize:14, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2 }}>{c.client_name}</div>
+                        <div style={{ fontFamily:'var(--sans)', fontWeight:600, fontSize:14, color:'rgba(255,255,255,0.9)', letterSpacing:'-0.02em', marginBottom:2 }}>{c.client_name}</div>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,0.38)' }}>{c.brand_name||'No brand set'}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize:9, fontWeight:700, padding:'3px 9px', borderRadius:100, background:c.status==='active'?'rgba(52,211,153,0.08)':'rgba(255,255,255,0.05)', border:`1px solid ${c.status==='active'?'rgba(52,211,153,0.2)':'rgba(255,255,255,0.09)'}`, color:c.status==='active'?'#34D399':'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    <span style={{ fontSize:9, fontWeight:700, padding:'3px 9px', borderRadius:100, background:c.status==='active'?'var(--success-dim)':'rgba(255,255,255,0.05)', border:`1px solid ${c.status==='active'?'var(--success-border)':'rgba(255,255,255,0.09)'}`, color:c.status==='active'?'#34D399':'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
                       {c.status||'active'}
                     </span>
                   </div>
@@ -289,9 +324,9 @@ export default function AgencyPage() {
                     {c.client_workspace_id && (
                       <button
                         onClick={e => { e.stopPropagation(); switchWs(c.client_workspace_id) }}
-                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 13px', borderRadius:9, fontSize:11, fontWeight:700, background:'rgba(77,159,255,0.1)', border:'1px solid rgba(77,159,255,0.22)', color:'#4D9FFF', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', letterSpacing:'-0.01em' }}
-                        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.18)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.38)'}}
-                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.1)';(e.currentTarget as HTMLElement).style.borderColor='rgba(77,159,255,0.22)'}}>
+                        style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 13px', borderRadius:9, fontSize:11, fontWeight:700, background:'var(--cyan-dim)', border:'1px solid rgba(77,159,255,0.22)', color:'var(--cyan)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', letterSpacing:'-0.01em' }}
+                        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(77,159,255,0.18)';(e.currentTarget as HTMLElement).style.borderColor='rgba(0,170,255,0.35)'}}
+                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='var(--cyan-dim)';(e.currentTarget as HTMLElement).style.borderColor='var(--cyan-border)'}}>
                         <span style={{ display:'flex' }}>{Ic.bolt}</span>
                         Switch →
                       </button>
@@ -303,15 +338,15 @@ export default function AgencyPage() {
           </>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'44vh', textAlign:'center', padding:'40px', border:'1px dashed rgba(255,255,255,0.08)', borderRadius:18 }}>
-            <div style={{ width:56, height:56, borderRadius:16, background:'rgba(77,159,255,0.07)', border:'1px solid rgba(77,159,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#4D9FFF', marginBottom:20 }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:'var(--cyan-dim)', border:'1px solid rgba(77,159,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cyan)', marginBottom:20 }}>
               {Ic.users}
             </div>
-            <h3 style={{ fontFamily:'var(--display)', fontWeight:700, fontSize:20, letterSpacing:'-0.02em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>No clients yet</h3>
+            <h3 style={{ fontFamily:'var(--sans)', fontWeight:700, fontSize:20, letterSpacing:'-0.02em', color:'rgba(255,255,255,0.85)', marginBottom:9 }}>No clients yet</h3>
             <p style={{ fontFamily:'var(--sans)', fontSize:14, lineHeight:1.75, color:'rgba(255,255,255,0.32)', maxWidth:360, marginBottom:22 }}>
               Add your first client to start managing their brand, content, and workspace from one place.
             </p>
             <button onClick={() => setShowNew(true)}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontFamily:'var(--display)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'#4D9FFF', color:'#000', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 26px', fontFamily:'var(--sans)', fontWeight:700, fontSize:13, letterSpacing:'-0.02em', background:'var(--cyan)', color:'var(--bg)', border:'none', borderRadius:11, cursor:'pointer', boxShadow:'0 4px 22px rgba(77,159,255,0.38)', transition:'all 0.18s' }}>
               <span style={{ display:'flex' }}>{Ic.plus}</span>Add first client
             </button>
           </div>
@@ -352,10 +387,10 @@ export default function AgencyPage() {
             {/* Header */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
               <div>
-                <div style={{ fontFamily:'var(--display)', fontSize:17, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:3 }}>
+                <div style={{ fontFamily:'var(--sans)', fontSize:17, fontWeight:800, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.92)', lineHeight:1, marginBottom:3 }}>
                   Add new client
                 </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>They'll receive an invite to join their workspace</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>They&apos;ll receive an invite to join their workspace</div>
               </div>
               <button onClick={() => setShowNew(false)}
                 style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.38)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -372,7 +407,7 @@ export default function AgencyPage() {
             ].map(f => (
               <div key={f.label} style={{ marginBottom:14 }}>
                 <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.42)', marginBottom:7 }}>
-                  {f.label}{f.req && <span style={{ color:'#FF5757', marginLeft:3 }}>*</span>}
+                  {f.label}{f.req && <span style={{ color:'var(--error)', marginLeft:3 }}>*</span>}
                 </div>
                 <input
                   type={f.type}
@@ -380,14 +415,14 @@ export default function AgencyPage() {
                   onChange={e => f.set(e.target.value)}
                   placeholder={f.ph}
                   style={{ width:'100%', padding:'11px 13px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'rgba(255,255,255,0.88)', fontSize:13, fontFamily:'var(--sans)', outline:'none', transition:'border-color 0.15s', boxSizing:'border-box' as const }}
-                  onFocus={e=>e.target.style.borderColor='rgba(77,159,255,0.35)'}
+                  onFocus={e=>e.target.style.borderColor='rgba(0,170,255,0.35)'}
                   onBlur={e=>e.target.style.borderColor='rgba(255,255,255,0.1)'}
                 />
               </div>
             ))}
 
             <button onClick={addClient} disabled={!cName.trim()||creating}
-              style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em', background:cName.trim()?'#4D9FFF':'rgba(255,255,255,0.04)', color:cName.trim()?'#000':'rgba(255,255,255,0.2)', border:'none', borderRadius:12, cursor:cName.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, marginTop:8, transition:'all 0.18s', boxShadow:cName.trim()?'0 4px 22px rgba(77,159,255,0.38)':'none' }}>
+              style={{ width:'100%', padding:'14px', fontSize:14, fontWeight:700, fontFamily:'var(--sans)', letterSpacing:'-0.02em', background:cName.trim()?'#4D9FFF':'rgba(255,255,255,0.04)', color:cName.trim()?'#000':'rgba(255,255,255,0.2)', border:'none', borderRadius:12, cursor:cName.trim()?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:9, marginTop:8, transition:'all 0.18s', boxShadow:cName.trim()?'0 4px 22px rgba(77,159,255,0.38)':'none' }}>
               {creating
                 ? <><div className="nexa-spinner" style={{ width:14, height:14 }}/>Adding client…</>
                 : <><span style={{ display:'flex' }}>{Ic.plus}</span>Add client</>}
@@ -398,7 +433,7 @@ export default function AgencyPage() {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, padding:'12px 20px', borderRadius:12, background:toast.ok?'rgba(52,211,153,0.1)':'rgba(255,87,87,0.12)', border:`1px solid ${toast.ok?'rgba(52,211,153,0.28)':'rgba(255,87,87,0.3)'}`, color:toast.ok?'#34D399':'#FF5757', fontSize:13, fontWeight:600, backdropFilter:'blur(16px)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'pageUp 0.2s ease both' }}>
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, padding:'12px 20px', borderRadius:12, background:toast.ok?'var(--success-dim)':'var(--error-dim)', border:`1px solid ${toast.ok?'var(--success-border)':'var(--error-border)'}`, color:toast.ok?'#34D399':'#FF5757', fontSize:13, fontWeight:600, backdropFilter:'blur(16px)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'pageUp 0.2s ease both' }}>
           {toast.msg}
         </div>
       )}

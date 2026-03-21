@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as serviceClient } from '@supabase/supabase-js'
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,9 +12,15 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { sequence_id, contact_ids } = await request.json()
+    const { sequence_id, contact_ids, workspace_id } = await request.json()
     if (!sequence_id || !contact_ids?.length) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    }
+
+    // Plan gate
+    if (workspace_id) {
+      const _planErr = await checkPlanAccess(workspace_id, 'email_sequences')
+      if (_planErr) return _planErr
     }
 
     const service = serviceClient(

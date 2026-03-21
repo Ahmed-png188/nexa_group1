@@ -1,7 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -62,6 +66,10 @@ export async function POST(request: NextRequest) {
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'strategy')
+    if (planError) return planError
 
     // Fetch workspace context
     const { data: workspace } = await supabase
@@ -129,7 +137,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
 }`
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })

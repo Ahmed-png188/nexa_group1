@@ -1,6 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
+
 
 export async function POST(request: NextRequest) {
   // Use regular client to verify the user session
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 400 })
 
-  await admin.from('credits').insert({ workspace_id: workspace.id, balance: 500 })
+  await admin.from('credits').insert({ workspace_id: workspace.id, balance: 150 }) // Trial: 150 credits
 
   await admin.from('activity').insert({
     workspace_id: workspace.id,

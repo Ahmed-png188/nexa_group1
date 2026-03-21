@@ -1,8 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
+import { checkPlanAccess, checkCredits, CREDIT_COSTS as PLAN_CREDIT_COSTS } from '@/lib/plan-gate'
 import { guardWorkspace } from '@/lib/workspace-guard'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -58,9 +62,13 @@ function sanitize(input: unknown, max = 2000): string {
   return input.trim().slice(0, max)
 }
 
+// Credit costs from plan-gate (single source of truth)
 const CREDIT_COSTS: Record<string, number> = {
-  post: 3, thread: 5, email: 5, caption: 2, hook: 2,
-  bio: 2, ad: 5, story: 2, full_piece: 10,
+  post: PLAN_CREDIT_COSTS.post, thread: PLAN_CREDIT_COSTS.thread,
+  email: PLAN_CREDIT_COSTS.email, caption: PLAN_CREDIT_COSTS.caption,
+  hook: PLAN_CREDIT_COSTS.hook, bio: PLAN_CREDIT_COSTS.bio,
+  ad: PLAN_CREDIT_COSTS.ad, story: PLAN_CREDIT_COSTS.story,
+  full_piece: PLAN_CREDIT_COSTS.full_piece,
 }
 
 export async function POST(request: NextRequest) {
@@ -101,20 +109,12 @@ export async function POST(request: NextRequest) {
 
     // Check and deduct credits
     const creditCost = CREDIT_COSTS[type] ?? 3
-    const { data: deducted } = await supabase.rpc('deduct_credits', {
-      p_workspace_id: workspace_id,
-      p_amount: creditCost,
-      p_action: `${type}_gen`,
-      p_user_id: user.id,
-      p_description: `Generated ${type} for ${platform ?? 'general'}`,
-    })
-
-    if (!deducted) {
-      return NextResponse.json({
-        error: 'Insufficient credits',
-        message: `This action costs ${creditCost} credits. Please top up your balance.`,
-      }, { status: 402 })
-    }
+    const { ok: credOk, error: creditError } = await checkCredits(
+      workspace_id, user.id, creditCost,
+      `${type}_gen`,
+      `Generated ${type} for ${platform ?? 'general'}`,
+    )
+    if (!credOk) return creditError!
 
     // Platform-specific formatting guidance
     const platformGuide: Record<string, string> = {

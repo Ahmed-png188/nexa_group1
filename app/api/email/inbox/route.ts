@@ -1,6 +1,76 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as serviceClient } from '@supabase/supabase-js'
+
+
+// Decode base64url Gmail body
+function decodeBase64(data: string): string {
+  try {
+    return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+  } catch { return '' }
+}
+
+// Strip HTML to clean readable plain text
+function stripHtml(html: string): string {
+  return html
+    // Remove entire style/script blocks
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    // Block elements → newlines
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h[1-6]|blockquote|section|article|header|footer)>/gi, '\n')
+    // Headings — add extra line before
+    .replace(/<h[1-6][^>]*>/gi, '\n')
+    // List items — add bullet
+    .replace(/<li[^>]*>/gi, '• ')
+    // Links — keep just the text, strip the href
+    .replace(/<a[^>]*href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '$2')
+    // Strip all remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_: string, n: string) => String.fromCharCode(Number(n)))
+    // Clean up whitespace
+    .replace(/[ \t]{2,}/g, ' ')       // collapse inline spaces
+    .replace(/\n[ \t]+/g, '\n')      // trim line-leading spaces
+    .replace(/[ \t]+\n/g, '\n')      // trim line-trailing spaces
+    .replace(/\n{3,}/g, '\n\n')      // max double newline
+    .trim()
+}
+
+
+// Extract readable plain text from Gmail payload — prefer text/plain, fallback to stripped HTML
+function extractBody(payload: any): string {
+  if (!payload) return ''
+  if (payload.body?.data) {
+    const decoded = decodeBase64(payload.body.data)
+    return payload.mimeType === 'text/html' ? stripHtml(decoded) : decoded
+  }
+  if (payload.parts) {
+    let plain = '', html = ''
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        plain = decodeBase64(part.body.data)
+      } else if (part.mimeType === 'text/html' && part.body?.data) {
+        html = stripHtml(decodeBase64(part.body.data))
+      } else if (part.parts) {
+        const nested = extractBody(part)
+        if (nested) plain = plain || nested
+      }
+    }
+    // Always prefer plain text — it's already clean readable content
+    return plain || html
+  }
+  return ''
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,9 +96,7 @@ export async function GET(request: NextRequest) {
       .eq('workspace_id', member.workspace_id)
       .single()
 
-    if (!account?.access_token) {
-      return NextResponse.json({ messages: [] })
-    }
+    if (!account?.access_token) return NextResponse.json({ messages: [] })
 
     // Refresh token if needed
     let accessToken = account.access_token
@@ -48,73 +116,76 @@ export async function GET(request: NextRequest) {
         const tokens = await res.json()
         if (tokens.access_token) {
           accessToken = tokens.access_token
-          const newExpiry = tokens.expires_in
-            ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-            : null
           await service.from('email_accounts').update({
             access_token: tokens.access_token,
-            token_expires_at: newExpiry,
+            token_expires_at: tokens.expires_in
+              ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+              : null,
           }).eq('id', account.id)
         }
       }
     }
 
-    // Fetch INBOX message IDs
+    // Fetch inbox message list
     const listRes = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=20',
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
-
-    if (!listRes.ok) {
-      const err = await listRes.json()
-      console.error('[inbox] Gmail list error:', err)
-      return NextResponse.json({ messages: [] })
-    }
+    if (!listRes.ok) return NextResponse.json({ messages: [] })
 
     const listData = await listRes.json()
     const messageIds: string[] = (listData.messages || []).map((m: any) => m.id)
-
     if (messageIds.length === 0) return NextResponse.json({ messages: [] })
 
-    // Fetch metadata for each message (parallel, limit 20)
-    const metaRequests = messageIds.map(id =>
-      fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      ).then(r => r.json())
+    // Fetch full message with body for each ID
+    const fullMessages = await Promise.all(
+      messageIds.map(id =>
+        fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        ).then(r => r.json())
+      )
     )
 
-    const metas = await Promise.all(metaRequests)
+    const messages = fullMessages.map((msg: any) => {
+      const headers: any[] = msg.payload?.headers || []
+      const get = (name: string) =>
+        headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
 
-    const messages = metas.map((meta: any) => {
-      const headers: any[] = meta.payload?.headers || []
-      const get = (name: string) => headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
-
-      const rawFrom = get('From')
+      const rawFrom   = get('From')
       const fromMatch = rawFrom.match(/^"?([^"<]+)"?\s*<?([^>]*)>?$/)
-      const fromName = fromMatch?.[1]?.trim() || rawFrom
+      const fromName  = fromMatch?.[1]?.trim() || rawFrom
       const fromEmail = fromMatch?.[2]?.trim() || rawFrom
 
-      const rawDate = get('Date')
       let formattedDate = ''
       try {
-        const d = new Date(rawDate)
+        const d = new Date(get('Date'))
         const now = new Date()
-        const isToday = d.toDateString() === now.toDateString()
-        formattedDate = isToday
+        formattedDate = d.toDateString() === now.toDateString()
           ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
       } catch {}
 
+      // Extract clean readable body
+      const body = extractBody(msg.payload)
+
+      // Clean snippet for list preview
+      const snippet = (msg.snippet || '')
+        .replace(/&#(\d+);/g, (_: string, n: string) => String.fromCharCode(Number(n)))
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+        .trim()
+
       return {
-        id: meta.id,
-        threadId: meta.threadId,
-        subject: get('Subject') || '(no subject)',
+        id:       msg.id,
+        threadId: msg.threadId,
+        subject:  get('Subject') || '(no subject)',
         fromName,
         fromEmail,
-        date: formattedDate,
-        snippet: meta.snippet || '',
-        unread: (meta.labelIds || []).includes('UNREAD'),
+        date:     formattedDate,
+        snippet,
+        body:     body || snippet,
+        unread:   (msg.labelIds || []).includes('UNREAD'),
       }
     })
 

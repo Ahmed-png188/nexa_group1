@@ -1,8 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -63,6 +67,10 @@ export async function POST(request: NextRequest) {
 
   const deny = await guardWorkspace(supabase, workspace_id, user.id)
   if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'brand_brain')
+    if (planError) return planError
 
   // Check if we already have a fresh brief (< 6 hours old)
   const { data: ws } = await supabase
@@ -188,7 +196,7 @@ Return ONLY valid JSON:
 }`
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 800,
     messages: [{ role: 'user', content: prompt }],
   })

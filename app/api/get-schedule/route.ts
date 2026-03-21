@@ -1,6 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +21,10 @@ export async function GET(request: NextRequest) {
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'schedule')
+    if (planError) return planError
 
     // Get start and end of month
     const start = new Date(year, month - 1, 1).toISOString()

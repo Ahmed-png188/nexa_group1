@@ -1,5 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
+import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
+
 
 // Platform OAuth config
 // In production, replace these with your real OAuth app credentials
@@ -27,6 +31,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    // Plan gate
+    const _planErr = await checkPlanAccess(workspace_id, 'schedule')
+    if (_planErr) return _planErr
+
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)

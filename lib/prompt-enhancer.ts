@@ -3,12 +3,16 @@ import Anthropic from '@anthropic-ai/sdk'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function enhanceImagePrompt(userPrompt: string, brandContext: any): Promise<string> {
-  const visual = brandContext?.profile?.visual?.aesthetic || 'premium, modern, professional'
-  const colors = brandContext?.profile?.visual?.colors || 'rich, deep tones'
-  const industry = brandContext?.profile?.business?.industry || 'professional services'
+  const brand     = brandContext?.workspace?.brand_name || 'this brand'
+  const visual    = brandContext?.profile?.visual?.aesthetic || 'premium, modern, professional'
+  const colors    = brandContext?.profile?.visual?.color_mood || brandContext?.profile?.visual?.colors || 'rich, deep tones'
+  const photoStyle= brandContext?.profile?.visual?.photography_style || 'professional brand photography'
+  const composition = brandContext?.profile?.visual?.composition || 'clean, purposeful'
+  const industry  = brandContext?.profile?.business?.industry || 'professional services'
+  const customPfx = brandContext?.profile?.generation_instructions?.image_prompt_prefix || ''
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 300,
     messages: [{
       role: 'user',
@@ -24,7 +28,7 @@ CRITICAL RULES — non-negotiable:
 - Always include a specific color grade or film stock reference
 - Always include composition technique (rule of thirds, leading lines, negative space, etc.)
 
-Brand context: ${visual}, colors: ${colors}, industry: ${industry}
+Brand: ${brand} | Aesthetic: ${visual} | Colors: ${colors} | Photography: ${photoStyle} | Composition: ${composition} | Industry: ${industry}${customPfx ? ' | ' + customPfx : ''}
 
 Output ONLY the enhanced prompt. Maximum 140 words. No explanation. No preamble.
 
@@ -36,32 +40,49 @@ Basic prompt to enhance: "${userPrompt}"`,
 }
 
 export async function enhanceVideoPrompt(userPrompt: string, brandContext: any): Promise<string> {
-  const industry = brandContext?.profile?.business?.industry || 'professional services'
-  const tone = brandContext?.profile?.voice?.primary_tone || 'confident, premium'
+  const brand     = brandContext?.workspace?.brand_name || 'this brand'
+  const industry  = brandContext?.profile?.business?.industry || 'professional services'
+  const tone      = brandContext?.profile?.voice?.primary_tone || 'confident, premium'
+  const aesthetic = brandContext?.profile?.visual?.aesthetic || 'premium and modern'
+  const colorMood = brandContext?.profile?.visual?.color_mood || 'rich sophisticated tones'
+  const vidStyle  = brandContext?.profile?.visual?.video_style || 'cinematic brand content'
+  const audience  = brandContext?.profile?.audience?.primary || 'professional audience'
+  const customPfx = brandContext?.profile?.generation_instructions?.video_prompt_prefix || ''
+
+  const brandDNA = [
+    `Brand: ${brand}`,
+    `Industry: ${industry}`,
+    `Tone: ${tone}`,
+    `Visual aesthetic: ${aesthetic}`,
+    `Color palette mood: ${colorMood}`,
+    `Video style: ${vidStyle}`,
+    `Audience: ${audience}`,
+    customPfx ? `Custom brand direction: ${customPfx}` : ''
+  ].filter(Boolean).join('\n')
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 300,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 350,
     messages: [{
       role: 'user',
-      content: `You are a cinematic director who has shot campaigns for Nike, Apple, and Chanel. Transform this basic video prompt into a professional director's brief that produces cinema-quality output.
+      content: `You are a creative director who has shot campaigns for Nike, Apple, Chanel and Rolex. You don't just make beautiful videos — you make videos that feel unmistakably like a specific brand.
+
+BRAND DNA (every creative decision must serve this):
+${brandDNA}
 
 CRITICAL RULES — non-negotiable:
-- Output must look like a real film production, NOT AI-generated
-- Always specify exact camera movement: slow dolly push, handheld verité, smooth orbit, locked off tripod, whip pan, crane descent — pick the one that serves the story
-- Always specify lighting: golden hour backlight, soft overcast diffusion, dramatic side key with practical fill, neon reflected off wet street, etc.
-- Always specify color grade: desaturated teal-orange blockbuster, warm Kodak Vision3 film, cold clinical blue-white, rich chocolate shadows with golden highlights
-- Always specify aspect ratio: 9:16 for Reels/TikTok, 16:9 for YouTube/LinkedIn
-- Always specify pace: slow 24fps cinematic, energetic quick cuts implied, single continuous take
-- Motion must feel physical and real — specify if handheld adds tension or if smooth adds luxury
-- Never use vague words like "cinematic" or "high quality" alone — always show what that means specifically
-- Include one specific film or commercial reference if relevant
+- Output must look like a REAL film production, not AI-generated
+- Every element must reinforce the brand DNA above — color, motion style, energy level, and lighting must all align with the brand aesthetic
+- Specify exact camera movement that matches the brand energy (luxury = slow orbit/dolly, energy brand = dynamic handheld, tech = clean locked-off)
+- Specify lighting that matches the color mood (warm golden for warmth brands, cool blue-white for tech, dramatic key for bold brands)
+- Specify color grade that matches the visual aesthetic
+- Specify pace that matches brand tone
+- Never use vague words — always show what "cinematic" or "premium" means specifically for THIS brand
+- One specific film or campaign reference if relevant to the brand world
 
-Brand tone: ${tone}, industry: ${industry}
+Output ONLY the enhanced prompt. Maximum 160 words. No explanation.
 
-Output ONLY the enhanced prompt. Maximum 160 words. No explanation. No preamble.
-
-Basic prompt to enhance: "${userPrompt}"`,
+Basic prompt: "${userPrompt}"`,
     }],
   })
 
@@ -98,6 +119,67 @@ RULES:
 Output ONLY the marked-up script with delivery notations. No explanation.
 
 Script: "${script}"`,
+    }],
+  })
+
+  return (response.content[0] as any).text.trim()
+}
+
+export async function enhanceImageToVideoPrompt(
+  userPrompt: string,
+  brandContext: any,
+  mode: 'image' | 'frame'
+): Promise<string> {
+  const brand     = brandContext?.workspace?.brand_name || 'this brand'
+  const industry  = brandContext?.profile?.business?.industry || 'professional services'
+  const tone      = brandContext?.profile?.voice?.primary_tone || 'confident, premium'
+  const aesthetic = brandContext?.profile?.visual?.aesthetic || 'premium and modern'
+  const colorMood = brandContext?.profile?.visual?.color_mood || 'rich, sophisticated tones'
+  const vidStyle  = brandContext?.profile?.visual?.video_style || 'cinematic brand content'
+  const customPfx = brandContext?.profile?.generation_instructions?.video_prompt_prefix || ''
+
+  // Brand visual DNA — this is what makes every video feel on-brand
+  const brandDNA = `
+Brand: ${brand}
+Industry: ${industry}
+Tone: ${tone}
+Visual aesthetic: ${aesthetic}
+Color palette mood: ${colorMood}
+Video style: ${vidStyle}
+${customPfx ? `Custom brand direction: ${customPfx}` : ''}
+`.trim()
+
+  const modeContext = mode === 'image'
+    ? `The user is animating a STILL IMAGE into a video. The motion should feel intentional and premium — not random. Enhance with specific camera movement that respects the composition of the original image.`
+    : `The user is creating a video that TRANSITIONS between a start frame and end frame. The motion should connect both frames naturally and cinematically.`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 350,
+    messages: [{
+      role: 'user',
+      content: `You are a creative director at a top-tier brand agency — the kind that shoots campaigns for Porsche, Apple, and Rolex. You understand brand identity deeply and translate it into cinematic motion.
+
+${modeContext}
+
+BRAND DNA (use this to ensure every creative decision is on-brand):
+${brandDNA}
+
+AS CREATIVE DIRECTOR, your job is to:
+1. Take the user's basic prompt and elevate it with brand-appropriate motion language
+2. Specify camera movement that matches the brand's aesthetic (luxury brands = slow, deliberate; energy brands = dynamic, kinetic)
+3. Specify lighting that reinforces the color mood (warm amber for warmth, cool blue for tech, golden hour for aspiration)
+4. Specify the ONE most important motion element — what moves, how it moves, why it moves
+5. Reference the brand's visual tone in the motion style
+
+RULES:
+- Every word must serve the brand aesthetic
+- Motion must feel INTENTIONAL, not random
+- Specify: camera movement + lighting + color grade + key motion element
+- Maximum 150 words
+- Output ONLY the enhanced prompt — no explanation, no preamble
+
+User's prompt: "${userPrompt || 'animate this brand image cinematically'}"`,
     }],
   })
 

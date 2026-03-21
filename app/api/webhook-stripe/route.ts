@@ -1,13 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
-const PLAN_CREDITS: Record<string, number> = {
-  spark: 500,
-  grow: 1500,
-  scale: 5000,
-  agency: 15000,
-}
+import { PLAN_CREDITS } from '@/lib/plan-constants'
+
 
 export async function POST(request: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_test_placeholder', {

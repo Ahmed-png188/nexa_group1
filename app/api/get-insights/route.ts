@@ -1,7 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -18,6 +22,10 @@ export async function GET(request: NextRequest) {
     if (!workspace_id) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'insights_basic')
+    if (planError) return planError
 
     const daysAgo = new Date()
     daysAgo.setDate(daysAgo.getDate() - parseInt(period))

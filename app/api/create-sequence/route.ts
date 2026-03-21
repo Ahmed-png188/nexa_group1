@@ -1,10 +1,24 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { getBrandContext } from '@/lib/brand-context'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+// Smart delay schedules per sequence type
+const DELAY_SCHEDULES: Record<string, number[]> = {
+  welcome:  [0, 1, 3, 7, 14],
+  nurture:  [0, 3, 7, 14, 21],
+  reengage: [0, 2, 5, 10, 15],
+  launch:   [0, 1, 2, 4, 7],
+  sales:    [0, 2, 4, 7, 10],
+  default:  [0, 2, 4, 7, 10],
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,60 +26,114 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    
-    const { workspace_id, name, goal, audience, num_emails = 5, generate_with_ai = true } = await request.json()
+    const { workspace_id, name, goal, audience, sequence_type = 'default', num_emails = 5, generate_with_ai = true } = await request.json()
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
 
-    // ── Plan gate ──
     const gateError = await checkPlanAccess(workspace_id, 'email_sequences')
     if (gateError) return gateError
 
     const { data: workspace } = await supabase
       .from('workspaces').select('*').eq('id', workspace_id).single()
 
-    let steps = []
+    let steps: any[] = []
 
     if (generate_with_ai) {
-      // Use Claude to generate the full sequence
-      const prompt = `You are an expert email copywriter for ${workspace?.brand_name ?? workspace?.name}.
+      // Full Brand Brain context
+      const brand = await getBrandContext(workspace_id)
+      const profile = brand?.profile
 
-Brand voice: ${workspace?.brand_voice ?? 'Confident, direct, outcome-focused'}
-Audience: ${workspace?.brand_audience ?? 'Ambitious professionals'}
-Sequence goal: ${goal}
-Target audience for this sequence: ${audience}
-Number of emails: ${num_emails}
+      const brandVoice   = profile?.voice?.primary_tone      || workspace?.brand_voice    || 'confident, direct, outcome-focused'
+      const writingStyle = profile?.voice?.writing_style     || 'clear, punchy, no filler'
+      const vocabulary   = profile?.voice?.vocabulary?.join(', ')      || ''
+      const forbidden    = profile?.voice?.forbidden?.join(', ')        || ''
+      const audiencePrimary = profile?.audience?.primary     || workspace?.brand_audience || 'ambitious professionals'
+      const audiencePsych   = profile?.audience?.psychology  || ''
+      const painPoints      = profile?.audience?.pain_points?.join(', ') || ''
+      const desires         = profile?.audience?.desires?.join(', ')     || ''
+      const positioning     = profile?.positioning?.unique_angle || ''
+      const ctaStyle        = profile?.content?.cta_style    || 'clear and direct'
+      const hookStyles      = profile?.content?.hooks?.join(', ') || ''
+      const customPrefix    = profile?.generation_instructions?.copy_prompt_prefix || ''
+      const brandName       = workspace?.brand_name || workspace?.name || 'the brand'
 
-Write a complete ${num_emails}-email sequence. Return ONLY valid JSON (no markdown):
+      const brandDNA = [
+        `Brand: ${brandName}`,
+        `Voice: ${brandVoice}`,
+        `Writing style: ${writingStyle}`,
+        vocabulary   ? `Vocabulary to USE: ${vocabulary}`   : '',
+        forbidden    ? `Words FORBIDDEN: ${forbidden}`       : '',
+        `Audience: ${audiencePrimary}`,
+        audiencePsych  ? `Audience psychology: ${audiencePsych}` : '',
+        painPoints     ? `Pain points: ${painPoints}`            : '',
+        desires        ? `Desires: ${desires}`                   : '',
+        positioning    ? `Unique positioning: ${positioning}`    : '',
+        `CTA style: ${ctaStyle}`,
+        hookStyles     ? `Hook styles that work: ${hookStyles}`  : '',
+        customPrefix,
+      ].filter(Boolean).join('\n')
 
+      // Pick delay schedule
+      const typeKey = Object.keys(DELAY_SCHEDULES).find(k =>
+        (sequence_type + ' ' + (goal || '')).toLowerCase().includes(k)
+      ) || 'default'
+      const delays = DELAY_SCHEDULES[typeKey]
+      const actualEmails = Math.min(num_emails, delays.length)
+
+      const emailArchitecture = [
+        `Email 1 (Day ${delays[0]}): Hook immediately. Why this matters to THEM right now. No fluff.`,
+        actualEmails >= 2 ? `Email 2 (Day ${delays[1]}): Deliver the first value. One insight they can use today.` : '',
+        actualEmails >= 3 ? `Email 3 (Day ${delays[2]}): Address the main objection. Acknowledge it, then dismantle it.` : '',
+        actualEmails >= 4 ? `Email 4 (Day ${delays[3]}): Concrete result or social proof. Numbers beat adjectives.` : '',
+        actualEmails >= 5 ? `Email 5 (Day ${delays[4]}): Clear ask. The CTA should feel earned, not forced.` : '',
+      ].filter(Boolean).join('\n')
+
+      const systemPrompt = `You are the head copywriter for ${brandName}. You write email sequences that feel like they came from a real human — not a marketing robot.
+
+BRAND DNA — write EXACTLY in this voice, no exceptions:
+${brandDNA}
+
+WRITING RULES (non-negotiable):
+- Every email sounds like the brand founder wrote it personally
+- Subject lines: max 7 words, curiosity or benefit driven
+- Bodies: 120-200 words max. Every sentence earns its place.
+- End with a specific CTA matching the brand's CTA style
+- No "I hope this email finds you well"
+- No "In today's fast-paced world"
+- No "game-changer", "leverage", "synergy"
+- Use the vocabulary listed. Avoid the forbidden words.`
+
+      const userPrompt = `Write a ${actualEmails}-email sequence for this goal:
+
+Goal: ${goal}
+Audience: ${audience || audiencePrimary}
+Type: ${sequence_type}
+
+EMAIL ARCHITECTURE:
+${emailArchitecture}
+
+Return ONLY valid JSON, no markdown, no backticks, no explanation:
 {
-  "sequence_name": "Name for this sequence",
+  "sequence_name": "Short descriptive name",
   "steps": [
     {
       "step_number": 1,
-      "delay_days": 0,
-      "subject": "Email subject line",
-      "preview_text": "Preview text (shown in inbox)",
-      "body": "Full email body — conversational, on-brand, with clear CTA. 150-250 words.",
-      "cta": "Call to action text",
-      "goal": "What this specific email achieves"
+      "delay_days": ${delays[0]},
+      "subject": "Subject line — max 7 words",
+      "preview_text": "Preview text 40-60 chars",
+      "body": "Full email body 120-200 words. Human. On-brand. Direct.",
+      "cta": "Specific call to action",
+      "goal": "What this email achieves"
     }
   ]
-}
-
-Email 1: Immediate (day 0) — warm welcome, set expectations
-Email 2: Day 2 — deliver value, build trust  
-Email 3: Day 4 — address the main objection
-Email 4: Day 7 — social proof / case study
-Email 5: Day 10 — direct offer / CTA
-
-Make every email feel personal, human, and specific to the goal. No fluff.`
+}`
 
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
       })
 
       const rawText = response.content
@@ -76,52 +144,50 @@ Make every email feel personal, human, and specific to the goal. No fluff.`
       try {
         const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         const parsed = JSON.parse(cleaned)
-        steps = parsed.steps ?? []
+        steps = (parsed.steps ?? []).map((s: any, i: number) => ({
+          ...s,
+          id: `step_${Date.now()}_${i}`,
+          step_type: 'email',
+          delay_days: s.delay_days ?? delays[i] ?? i * 2,
+        }))
       } catch {
-        // Fallback steps
-        steps = Array.from({ length: num_emails }, (_, i) => ({
+        // Fallback
+        steps = Array.from({ length: actualEmails }, (_, i) => ({
+          id: `step_${Date.now()}_${i}`,
           step_number: i + 1,
-          delay_days: [0, 2, 4, 7, 10][i] ?? i * 2,
+          step_type: 'email',
+          delay_days: delays[i] ?? i * 2,
           subject: `Email ${i + 1} — ${goal}`,
-          preview_text: `A message from ${workspace?.brand_name}`,
-          body: `Hi there,\n\nThis is email ${i + 1} of your ${goal} sequence.\n\nMore content coming soon.\n\nBest,\n${workspace?.brand_name}`,
+          preview_text: `A message from ${brandName}`,
+          body: `Hi there,\n\nThis is email ${i + 1} of your sequence.\n\nBest,\n${brandName}`,
           cta: 'Reply to this email',
           goal: `Step ${i + 1} objective`,
         }))
       }
     }
 
-    // Create the agent
     const { data: agent } = await supabase.from('agents').insert({
-      workspace_id,
-      created_by: user.id,
-      name,
-      type: 'email_sequence',
-      status: 'idle',
-      config: { goal, audience, num_emails },
+      workspace_id, created_by: user.id,
+      name, type: 'email_sequence', status: 'idle',
+      config: { goal, audience, num_emails, sequence_type },
     }).select().single()
 
-    // Save the sequence
     const { data: sequence } = await supabase.from('email_sequences').insert({
-      workspace_id,
-      agent_id: agent?.id,
-      name,
-      status: 'draft',
-      steps,
-      started_at: null, // set when sequence is activated
+      workspace_id, agent_id: agent?.id,
+      name, status: 'draft', steps,
     }).select().single()
 
     await supabase.from('activity').insert({
-      workspace_id,
-      user_id: user.id,
+      workspace_id, user_id: user.id,
       type: 'sequence_created',
       title: `Email sequence "${name}" created — ${steps.length} emails`,
+      metadata: { sequence_id: sequence?.id, goal, sequence_type },
     })
 
     return NextResponse.json({ success: true, sequence, agent, steps })
 
   } catch (error: unknown) {
-    console.error('Create sequence error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('[create-sequence]', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'Failed to create sequence' }, { status: 500 })
   }
 }
@@ -132,9 +198,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
-    const workspace_id = searchParams.get('workspace_id')
-
+    const workspace_id = new URL(request.url).searchParams.get('workspace_id')
     if (!workspace_id) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
@@ -147,9 +211,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     return NextResponse.json({ sequences: sequences ?? [] })
-
   } catch (error: unknown) {
-    console.error('Get sequences error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json({ error: 'Failed to get sequences' }, { status: 500 })
   }
 }

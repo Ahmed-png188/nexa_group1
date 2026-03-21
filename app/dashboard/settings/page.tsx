@@ -4,33 +4,105 @@ import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Tab = 'profile'|'workspace'|'billing'|'password'|'leadpage'
+type Tab = 'profile'|'workspace'|'billing'|'password'
 
 const PLANS = [
   {
-    id:'spark',  name:'Spark',  price:39,  credits:500,
-    color:'rgba(255,255,255,0.45)',
-    desc:'For creators getting started',
-    features:['500 credits/mo','Copy generation','Brand Brain','Analytics'],
+    id:'spark', name:'Spark', tagline:'The Creator', price:49, credits:500,
+    color:'rgba(255,255,255,0.5)',
+    desc:'Build your brand and create consistently',
+    popular: false,
+    features:[
+      '500 credits/mo (~25 videos or 166 posts)',
+      'Brand Brain — voice training',
+      'All content types (text, image, video, voice)',
+      'Nexa AI chat — unlimited',
+      'Morning brief',
+      'Strategy & 30-day plan',
+      '2 social platforms',
+      '60 scheduled posts/mo',
+      'Lead capture page',
+      'Lead magnet delivery',
+      'Basic analytics',
+      '1 team member',
+    ],
+    locked:[
+      'Email sequences',
+      'Amplify (Meta Ads)',
+      'Competitor analysis',
+    ],
   },
   {
-    id:'grow',   name:'Grow',   price:89,  credits:1500,
-    color:'#4D9FFF',
-    desc:'For creators building in public',
-    features:['1,500 credits/mo','Image generation','All platforms','Full analytics'],
-  },
-  {
-    id:'scale',  name:'Scale',  price:179, credits:5000,
-    color:'#A78BFA',
-    desc:'For serious personal brands',
+    id:'grow', name:'Grow', tagline:'The Grower', price:89, credits:1500,
+    color:'var(--cyan,#00AAFF)',
+    desc:'Capture leads, run ads, grow your audience',
     popular: true,
-    features:['5,000 credits/mo','Video & voice generation','Automation sequences','Competitor analysis'],
+    features:[
+      '1,500 credits/mo (~75 videos or 500 posts)',
+      'Everything in Spark',
+      'Email sequences (3 active)',
+      'AI-written sequences',
+      '2,500 contacts · 3,000 emails/mo',
+      'Amplify — Meta Ads from your content',
+      'One-click boost from Studio',
+      'Competitor analysis',
+      'Performance learning',
+      '4 social platforms · unlimited posts',
+      'Full analytics + AI insights',
+      'Kit/ConvertKit integration',
+      'Typeform webhook',
+      '2 team members',
+    ],
+    locked:[
+      'Remove Nexa branding',
+      'Custom sender domain',
+      'Behavioral triggers',
+    ],
   },
   {
-    id:'agency', name:'Agency', price:349, credits:15000,
+    id:'scale', name:'Scale', tagline:'The Operator', price:169, credits:4000,
+    color:'#A78BFA',
+    desc:'Professional, white-label, fully automated',
+    popular: false,
+    features:[
+      '4,000 credits/mo (~200 videos or 1,333 posts)',
+      'Everything in Grow',
+      'Remove Nexa branding everywhere',
+      'Custom sender domain',
+      '15 email sequences · 15,000 contacts',
+      '20,000 emails/mo',
+      'Behavioral triggers',
+      'A/B subject line testing',
+      'AI ad performance monitor',
+      'Daily ad insights brief',
+      'Unlimited platforms & scheduled posts',
+      'Analytics export',
+      'Custom & Zapier webhooks',
+      '5 team members · Priority support',
+    ],
+    locked:[
+      'Agency client workspaces',
+    ],
+  },
+  {
+    id:'agency', name:'Agency', tagline:'The Agency', price:349, credits:12000,
     color:'#FF7A40',
-    desc:'For agencies and teams',
-    features:['15,000 credits/mo','Agency mode','Client workspaces','All AI models','Priority support'],
+    desc:'Run multiple client brands from one place',
+    popular: false,
+    features:[
+      '12,000 credits/mo (~600 videos or 4,000 posts)',
+      'Everything in Scale',
+      'Unlimited client workspaces',
+      'Separate Brand Brain per client',
+      'Agency overview dashboard',
+      'Retainer & MRR tracking',
+      'One-click workspace switching',
+      'Client invite system',
+      '100,000 emails/mo',
+      'Unlimited contacts',
+      '25 team members',
+    ],
+    locked:[],
   },
 ]
 
@@ -49,7 +121,6 @@ const NAV = [
   { id:'profile'   as Tab, label:'Profile',   icon:Ic.user, desc:'Your name, email, bio' },
   { id:'workspace' as Tab, label:'Workspace', icon:Ic.ws,   desc:'Brand voice, audience, niche' },
   { id:'billing'   as Tab, label:'Billing',   icon:Ic.card, desc:'Plan, credits, upgrades' },
-  { id:'leadpage'  as Tab, label:'Lead page', icon:Ic.bolt, desc:'Your public capture page' },
   { id:'password'  as Tab, label:'Security',  icon:Ic.lock, desc:'Change your password' },
 ]
 
@@ -59,7 +130,7 @@ function Field({ label, hint, children }: any) {
     <div style={{ marginBottom:20 }}>
       <div style={{ fontFamily:'var(--sans)', fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.55)', marginBottom:7, letterSpacing:'-0.01em' }}>{label}</div>
       {children}
-      {hint && <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', marginTop:6, lineHeight:1.55 }}>{hint}</div>}
+      {hint && <div style={{ fontSize:11, color:'var(--text-3)', marginTop:6, lineHeight:1.55 }}>{hint}</div>}
     </div>
   )
 }
@@ -77,13 +148,13 @@ function Input({ value, onChange, placeholder, type='text', readOnly=false }: an
       onBlur={() => setFocused(false)}
       style={{
         width:'100%', padding:'11px 14px',
-        background: readOnly ? 'rgba(255,255,255,0.02)' : focused ? 'rgba(77,159,255,0.04)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${focused ? 'rgba(77,159,255,0.32)' : 'rgba(255,255,255,0.1)'}`,
+        background: readOnly ? 'rgba(255,255,255,0.02)' : focused ? 'rgba(0,170,255,0.04)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${focused ? 'rgba(0,170,255,0.30)' : 'rgba(255,255,255,0.1)'}`,
         borderRadius:11, color: readOnly ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.9)',
         fontFamily:'var(--sans)', fontSize:14, outline:'none',
         transition:'all 0.18s', boxSizing:'border-box' as const,
         cursor: readOnly ? 'default' : 'text',
-        boxShadow: focused ? '0 0 0 3px rgba(77,159,255,0.06)' : 'none',
+        boxShadow: focused ? '0 0 0 3px rgba(0,170,255,0.06)' : 'none',
       }}
     />
   )
@@ -99,15 +170,15 @@ function Textarea({ value, onChange, placeholder, rows=4, hint }: any) {
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           width:'100%', padding:'12px 14px',
-          background: focused ? 'rgba(77,159,255,0.04)' : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${focused ? 'rgba(77,159,255,0.32)' : 'rgba(255,255,255,0.1)'}`,
+          background: focused ? 'rgba(0,170,255,0.04)' : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${focused ? 'rgba(0,170,255,0.30)' : 'rgba(255,255,255,0.1)'}`,
           borderRadius:11, color:'rgba(255,255,255,0.9)', fontSize:13,
           fontFamily:'var(--sans)', outline:'none', resize:'vertical',
           lineHeight:1.7, boxSizing:'border-box' as const, transition:'all 0.18s',
-          boxShadow: focused ? '0 0 0 3px rgba(77,159,255,0.06)' : 'none',
+          boxShadow: focused ? '0 0 0 3px rgba(0,170,255,0.06)' : 'none',
         }}
       />
-      {hint && <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', marginTop:6, lineHeight:1.55 }}>{hint}</div>}
+      {hint && <div style={{ fontSize:11, color:'var(--text-3)', marginTop:6, lineHeight:1.55 }}>{hint}</div>}
     </>
   )
 }
@@ -115,15 +186,14 @@ function Textarea({ value, onChange, placeholder, rows=4, hint }: any) {
 function SaveBtn({ onClick, saving, saved, disabled }: any) {
   return (
     <button onClick={onClick} disabled={saving||disabled}
+      className={saved ? '' : saving || disabled ? 'btn-secondary' : 'btn-primary'}
       style={{
-        display:'flex', alignItems:'center', gap:8, padding:'11px 26px',
-        fontSize:13, fontWeight:700, fontFamily:'var(--display)', letterSpacing:'-0.02em',
-        background: saved ? 'rgba(52,211,153,0.1)' : saving || disabled ? 'rgba(255,255,255,0.04)' : '#4D9FFF',
-        color: saved ? '#34D399' : saving || disabled ? 'rgba(255,255,255,0.25)' : '#000',
-        border: `1px solid ${saved ? 'rgba(52,211,153,0.25)' : 'transparent'}`,
-        borderRadius:11, cursor: saving || disabled ? 'not-allowed' : 'pointer',
+        display:'flex', alignItems:'center', gap:8,
+        ...(saved ? {
+          padding:'9px 18px', fontSize:13, fontWeight:600, borderRadius:10, cursor:'not-allowed',
+          background:'var(--success-dim)', color:'var(--success)', border:'1px solid var(--success-border)',
+        } : {}),
         transition:'all 0.2s',
-        boxShadow: saved || saving || disabled ? 'none' : '0 4px 18px rgba(77,159,255,0.35)',
       }}>
       {saving
         ? <><div className="nexa-spinner" style={{ width:13, height:13 }}/>Saving…</>
@@ -144,9 +214,10 @@ function SettingsInner() {
   const [ws,        setWs]        = useState<any>(null)
   const [credits,   setCredits]   = useState<any>(null)
   const [highlightPlan, setHighlightPlan] = useState<string|null>(null)
-  const [loading,   setLoading]   = useState(true)
-  const [saving,    setSaving]    = useState(false)
-  const [saved,     setSaved]     = useState(false)
+  const [loading,        setLoading]        = useState(true)
+  const [saving,         setSaving]         = useState(false)
+  const [saved,          setSaved]          = useState(false)
+  const [billingLoading, setBillingLoading] = useState(false)
   const [toast,     setToast]     = useState<{msg:string;ok:boolean}|null>(null)
 
   // form state
@@ -234,10 +305,21 @@ function SettingsInner() {
     setSaving(false)
   }
 
-  async function checkout(planId:string) {
-    const r = await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:planId,workspace_id:ws?.id})})
-    const d = await r.json()
-    if (d.url) router.push(d.url)
+  async function checkout(planId: string | null, topUpCredits?: number) {
+    setBillingLoading(true)
+    try {
+      const body: Record<string, unknown> = { workspace_id: ws?.id }
+      if (topUpCredits) body.top_up_credits = topUpCredits
+      else body.plan = planId
+      const r = await fetch('/api/create-checkout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const d = await r.json()
+      if (d.url) window.location.href = d.url
+      else toast_('Could not start checkout', false)
+    } catch { toast_('Checkout failed', false) }
+    setBillingLoading(false)
   }
 
   async function signOut() { await supabase.auth.signOut(); router.push('/') }
@@ -265,9 +347,9 @@ function SettingsInner() {
   }
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16, background:'#000' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:16 }}>
       <div className="nexa-spinner" style={{ width:22, height:22 }}/>
-      <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
+      <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:'var(--sans)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontWeight:500 }}>Loading</div>
     </div>
   )
 
@@ -277,31 +359,31 @@ function SettingsInner() {
 
   return (
     <>
-      <div style={{ display:'grid', gridTemplateColumns:'240px 1fr', height:'calc(100vh - var(--topbar-h))', overflow:'hidden' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'220px 1fr', height:'calc(100vh - var(--topbar-h))', overflow:'hidden' }}>
 
         {/* ── LEFT NAV ── */}
-        <div style={{ borderRight:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', padding:'20px 14px', overflow:'hidden' }}>
+        <div style={{ borderRight:'1px solid var(--border-subtle)', display:'flex', flexDirection:'column', padding:'20px 12px', overflow:'hidden', background:'var(--surface)' }}>
 
           {/* User card */}
-          <div style={{ padding:'16px', borderRadius:14, background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.07)', marginBottom:20 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:42, height:42, borderRadius:13, background:'linear-gradient(135deg,#4D9FFF,#A78BFA)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--display)', fontSize:17, fontWeight:800, color:'#fff', flexShrink:0, boxShadow:'0 4px 12px rgba(77,159,255,0.3)' }}>
+          <div className="card" style={{ padding:'14px 16px', marginBottom:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:38, height:38, borderRadius:11, background:'linear-gradient(135deg, var(--cyan), rgba(0,170,255,0.5))', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--sans)', fontSize:15, fontWeight:700, color:'#fff', flexShrink:0 }}>
                 {initial}
               </div>
               <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
                   {user?.full_name||'Your account'}
                 </div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                <div style={{ fontSize:11, color:'var(--text-3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
                   {user?.email}
                 </div>
               </div>
             </div>
             {/* Plan badge */}
-            <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:7, padding:'6px 10px', borderRadius:8, background:`${planColor}0a`, border:`1px solid ${planColor}20` }}>
+            <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:7, padding:'5px 9px', borderRadius:7, background:`${planColor}0d`, border:`1px solid ${planColor}22` }}>
               <div style={{ width:5, height:5, borderRadius:'50%', background:planColor, boxShadow:`0 0 6px ${planColor}` }}/>
-              <span style={{ fontSize:11, fontWeight:700, color:planColor, textTransform:'capitalize', letterSpacing:'-0.01em' }}>{currentPlan} plan</span>
-              <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginLeft:'auto' }}>
+              <span style={{ fontSize:11, fontWeight:600, color:planColor, textTransform:'capitalize', letterSpacing:'-0.01em' }}>{currentPlan} plan</span>
+              <span style={{ fontSize:10, color:'var(--text-3)', marginLeft:'auto' }}>
                 {credits?.balance?.toLocaleString()||0} cr
               </span>
             </div>
@@ -313,13 +395,13 @@ function SettingsInner() {
               const on = tab === n.id
               return (
                 <button key={n.id} onClick={() => { setTab(n.id); setSaved(false) }}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:11, background:on?'rgba(77,159,255,0.08)':'transparent', border:`1px solid ${on?'rgba(77,159,255,0.18)':'transparent'}`, color:on?'#4D9FFF':'rgba(255,255,255,0.45)', cursor:'pointer', fontFamily:'var(--sans)', fontSize:13, fontWeight:500, transition:'all 0.15s', textAlign:'left', width:'100%' }}
+                  style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 11px', borderRadius:10, background:on?'var(--cyan-dim)':'transparent', border:`1px solid ${on?'var(--cyan-border)':'transparent'}`, color:on?'var(--cyan)':'var(--text-3)', cursor:'pointer', fontFamily:'var(--sans)', fontSize:13, fontWeight:on?600:400, transition:'all 0.15s', textAlign:'left', width:'100%' }}
                   onMouseEnter={e => { if(!on)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
                   onMouseLeave={e => { if(!on)(e.currentTarget as HTMLElement).style.background='transparent' }}>
-                  <span style={{ display:'flex', opacity:on?1:0.6 }}>{n.icon}</span>
+                  <span style={{ display:'flex', opacity:on?1:0.55 }}>{n.icon}</span>
                   <div>
                     <div style={{ lineHeight:1 }}>{n.label}</div>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginTop:2, fontWeight:400 }}>{n.desc}</div>
+                    <div style={{ fontSize:10, color:'var(--text-3)', marginTop:2, fontWeight:400 }}>{n.desc}</div>
                   </div>
                 </button>
               )
@@ -328,22 +410,22 @@ function SettingsInner() {
 
           {/* Sign out */}
           <button onClick={signOut}
-            style={{ display:'flex', alignItems:'center', gap:9, padding:'10px 12px', borderRadius:11, background:'transparent', border:'1px solid transparent', color:'rgba(255,87,87,0.65)', cursor:'pointer', fontSize:13, fontFamily:'var(--sans)', transition:'all 0.15s', width:'100%' }}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,87,87,0.07)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,87,87,0.15)'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent';(e.currentTarget as HTMLElement).style.borderColor='transparent'}}>
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 11px', borderRadius:10, background:'transparent', border:'1px solid transparent', color:'var(--error)', opacity:0.65, cursor:'pointer', fontSize:13, fontFamily:'var(--sans)', transition:'all 0.15s', width:'100%' }}
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='var(--error-dim)';(e.currentTarget as HTMLElement).style.opacity='1';(e.currentTarget as HTMLElement).style.borderColor='var(--error-border)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent';(e.currentTarget as HTMLElement).style.opacity='0.65';(e.currentTarget as HTMLElement).style.borderColor='transparent'}}>
             <span style={{ display:'flex' }}>{Ic.out}</span>Sign out
           </button>
         </div>
 
         {/* ── CONTENT ── */}
-        <div style={{ overflowY:'auto', padding:'32px 40px 60px' }}>
+        <div style={{ overflowY:'auto', padding:'32px 36px 60px' }}>
 
           {/* ════ PROFILE ════ */}
           {tab === 'profile' && (
             <div style={{ maxWidth:520, animation:'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom:28 }}>
-                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Profile</h2>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>How you appear across your workspace</p>
+                <h2 style={{ fontSize:20, fontWeight:700, letterSpacing:'-0.03em', color:'var(--text-1)', marginBottom:5 }}>Profile</h2>
+                <p style={{ fontSize:12, color:'var(--text-3)' }}>How you appear across your workspace</p>
               </div>
               <Field label="Full name">
                 <Input value={fullName} onChange={setFullName} placeholder="Your full name"/>
@@ -362,8 +444,8 @@ function SettingsInner() {
           {tab === 'workspace' && (
             <div style={{ maxWidth:560, animation:'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom:28 }}>
-                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Workspace</h2>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>These settings power every AI generation across the entire product</p>
+                <h2 style={{ fontSize:20, fontWeight:700, letterSpacing:'-0.03em', color:'var(--text-1)', marginBottom:5 }}>Workspace</h2>
+                <p style={{ fontSize:12, color:'var(--text-3)' }}>These settings power every AI generation across the entire product</p>
               </div>
 
               <Field label="Workspace name">
@@ -376,8 +458,8 @@ function SettingsInner() {
               <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'24px 0' }}/>
 
               <div style={{ marginBottom:20 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#4D9FFF', letterSpacing:'0.05em', textTransform:'uppercase', marginBottom:4 }}>Brand voice</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:16 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:'var(--cyan)', letterSpacing:'0.06em', textTransform:'uppercase' as const, marginBottom:4 }}>Brand voice</div>
+                <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:16 }}>
                   This is the most important setting. Every generation — copy, email, strategy — uses this as its foundation.
                 </div>
               </div>
@@ -393,6 +475,45 @@ function SettingsInner() {
               </Field>
 
               <SaveBtn onClick={saveWorkspace} saving={saving} saved={saved}/>
+
+              {/* ── Email sender settings ── */}
+              <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'32px 0' }}/>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:'var(--cyan)', letterSpacing:'0.06em', textTransform:'uppercase' as const, marginBottom:4 }}>Email sender identity</div>
+                <div style={{ fontSize:12, color:'var(--text-3)', lineHeight:1.7 }}>
+                  Control who emails appear to come from — lead magnets, sequences, and automations. By default emails send from <span style={{ fontFamily:'var(--mono)', color:'var(--text-2)' }}>hello@nexaa.cc</span> with your brand name. Connect a custom domain to send from your own address.
+                </div>
+              </div>
+
+              <Field label="Sender name" hint="Name recipients see in their inbox">
+                <Input value={ws?.sender_name||ws?.brand_name||''} onChange={()=>{}} placeholder={ws?.brand_name||ws?.name||'Your Brand'} readOnly/>
+              </Field>
+              <div style={{ fontSize:11, color:'var(--text-3)', marginTop:-8, marginBottom:16 }}>Automatically uses your brand name — edit it in Brand name above</div>
+
+              <div style={{ padding:'16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', marginBottom:16 }}>
+                {['scale','agency'].includes(currentPlan) ? (
+                  <>
+                    <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', marginBottom:4 }}>Custom sender domain</div>
+                    <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:12 }}>
+                      Send from <span style={{ fontFamily:'var(--mono)' }}>hello@yourdomain.com</span>. You&apos;ll need to add DNS records to verify.
+                    </div>
+                    <a href="/dashboard/settings?tab=billing" className="btn-secondary" style={{ fontSize:12, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      Configure custom domain →
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:3 }}>Custom sender domain</div>
+                        <div style={{ fontSize:12, color:'var(--text-3)' }}>Send from your own domain on Scale & Agency</div>
+                      </div>
+                      <a href="/dashboard/settings?tab=billing" className="btn-accent" style={{ fontSize:11, padding:'5px 10px', textDecoration:'none', whiteSpace:'nowrap' as const }}>Upgrade</a>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -400,43 +521,43 @@ function SettingsInner() {
           {tab === 'billing' && (
             <div style={{ animation:'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom:28 }}>
-                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Billing</h2>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Manage your plan and credits</p>
+                <h2 style={{ fontSize:20, fontWeight:700, letterSpacing:'-0.03em', color:'var(--text-1)', marginBottom:5 }}>Billing</h2>
+                <p style={{ fontSize:12, color:'var(--text-3)' }}>Manage your plan and credits</p>
               </div>
 
               {/* Current usage card */}
-              <div style={{ padding:'20px 24px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, marginBottom:28, display:'flex', alignItems:'center', gap:20 }}>
+              <div className="card" style={{ marginBottom:24, display:'flex', alignItems:'center', gap:20 }}>
                 <div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.28)', letterSpacing:'0.09em', textTransform:'uppercase', marginBottom:6 }}>Current plan</div>
-                  <div style={{ fontFamily:'var(--display)', fontSize:22, fontWeight:800, letterSpacing:'-0.04em', color:planColor, textTransform:'capitalize' }}>{currentPlan}</div>
+                  <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:5 }}>Current plan</div>
+                  <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.04em', color:planColor, textTransform:'capitalize', fontFamily:'var(--sans)' }}>{currentPlan}</div>
                   {ws?.plan_status==='trialing' && (
-                    <div style={{ marginTop:10, padding:'10px 14px', background:'rgba(255,181,71,0.07)', border:'1px solid rgba(255,181,71,0.2)', borderRadius:10 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'#FFB547', marginBottom:3 }}>Trial active</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.55 }}>
+                    <div style={{ marginTop:10, padding:'10px 14px', background:'var(--warning-dim)', border:'1px solid var(--warning-border)', borderRadius:10 }}>
+                      <div style={{ fontSize:11, fontWeight:600, color:'var(--warning)', marginBottom:3 }}>Trial active</div>
+                      <div style={{ fontSize:11, color:'var(--text-2)', lineHeight:1.55 }}>
                         You're on a 7-day free trial. Upgrade before it ends to keep your Brand Brain, content, and automations running.
                       </div>
                     </div>
                   )}
                   {ws?.plan_status==='past_due' && (
-                    <div style={{ marginTop:10, padding:'10px 14px', background:'rgba(255,80,80,0.07)', border:'1px solid rgba(255,80,80,0.2)', borderRadius:10 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:'#FF5757', marginBottom:3 }}>Payment failed</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.55 }}>
+                    <div style={{ marginTop:10, padding:'10px 14px', background:'var(--error-dim)', border:'1px solid var(--error-border)', borderRadius:10 }}>
+                      <div style={{ fontSize:11, fontWeight:600, color:'var(--error)', marginBottom:3 }}>Payment failed</div>
+                      <div style={{ fontSize:11, color:'var(--text-2)', lineHeight:1.55 }}>
                         Your last payment failed. Update your payment method to avoid losing access.
                       </div>
                     </div>
                   )}
                 </div>
-                <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
+                <div style={{ width:1, height:44, background:'var(--border)' }}/>
                 <div>
-                  <div className="nexa-label" style={{ marginBottom:6 }}>Credits remaining</div>
-                  <div className="nexa-num" style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:22 }}>
+                  <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:5 }}>Credits remaining</div>
+                  <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.04em', color:'var(--text-1)', fontFamily:'var(--sans)' }}>
                     {credits?.balance?.toLocaleString()||0}
                   </div>
                 </div>
-                <div style={{ width:1, height:48, background:'rgba(255,255,255,0.08)' }}/>
+                <div style={{ width:1, height:44, background:'var(--border)' }}/>
                 <div>
-                  <div className="nexa-label" style={{ marginBottom:6 }}>Lifetime used</div>
-                  <div className="nexa-num" style={{ fontSize:22 }}>
+                  <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:5 }}>Lifetime used</div>
+                  <div style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.04em', color:'var(--text-1)', fontFamily:'var(--sans)' }}>
                     {credits?.lifetime_used?.toLocaleString()||0}
                   </div>
                 </div>
@@ -444,227 +565,157 @@ function SettingsInner() {
 
               {/* Manage subscription */}
               {ws?.stripe_subscription_id && (
-                <div style={{ marginBottom:24 }}>
-                  <button onClick={openPortal}
-                    style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', fontSize:13, fontWeight:700, fontFamily:'var(--display)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:11, color:'rgba(255,255,255,0.7)', cursor:'pointer', transition:'all 0.18s', letterSpacing:'-0.01em' }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.18)'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)';(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.1)'}}>
+                <div style={{ marginBottom:20 }}>
+                  <button onClick={openPortal} className="btn-secondary" style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ display:'flex' }}>{Ic.card}</span>Manage subscription →
                   </button>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:6 }}>Update payment method, view invoices, or cancel</div>
+                  <div style={{ fontSize:11, color:'var(--text-3)', marginTop:6 }}>Update payment method, view invoices, or cancel</div>
                 </div>
               )}
 
               {/* Plan cards */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(210px,1fr))', gap:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px,1fr))', gap:12, marginBottom:28 }}>
                 {PLANS.map(plan => {
                   const isCurrent = currentPlan === plan.id
+                  const isDowngrade = ['spark','grow','scale','agency'].indexOf(plan.id) < ['spark','grow','scale','agency'].indexOf(currentPlan)
                   return (
-                    <div key={plan.id} className="nexa-card"
-                      style={{ padding:'20px', background:isCurrent?'var(--blue-dim)':'', border:isCurrent?'1px solid var(--blue-border)':'', borderRadius:16, position:'relative' }}
-                      onMouseEnter={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.14)';} }}
-                      onMouseLeave={e => { if(!isCurrent){(e.currentTarget as HTMLElement).style.borderColor='';} }}>
+                    <div key={plan.id}
+                      style={{ padding:'20px', position:'relative', borderRadius:'var(--r)',
+                        background: isCurrent ? `${plan.color}08` : 'var(--surface)',
+                        border: isCurrent ? `1.5px solid ${plan.color}35` : '1px solid var(--border)',
+                        transition:'border-color 0.15s' }}
+                      onMouseEnter={e => { if(!isCurrent)(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.18)' }}
+                      onMouseLeave={e => { if(!isCurrent)(e.currentTarget as HTMLElement).style.borderColor='var(--border)' }}>
 
-                      {/* Popular badge */}
                       {plan.popular && !isCurrent && (
-                        <div style={{ position:'absolute', top:-1, right:16, fontSize:9, fontWeight:700, padding:'3px 9px', borderRadius:'0 0 8px 8px', background:plan.color, color:'#000', letterSpacing:'0.05em', textTransform:'uppercase' }}>
+                        <div style={{ position:'absolute', top:-1, right:14, fontSize:9, fontWeight:700, padding:'3px 9px', borderRadius:'0 0 7px 7px', background:plan.color, color:'#000', letterSpacing:'0.05em', textTransform:'uppercase' as const }}>
                           Most popular
                         </div>
                       )}
 
-                      {/* Plan name + badge */}
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                        <span style={{ fontFamily:'var(--display)', fontWeight:700, fontSize:16, letterSpacing:'-0.03em', color:isCurrent?plan.color:'rgba(255,255,255,0.82)' }}>{plan.name}</span>
-                        {isCurrent && (
-                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 9px', borderRadius:100, background:`${plan.color}14`, border:`1px solid ${plan.color}28`, color:plan.color, textTransform:'uppercase', letterSpacing:'0.05em' }}>Active</span>
-                        )}
+                      {/* Name + tagline */}
+                      <div style={{ marginBottom:12 }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                          <span style={{ fontWeight:700, fontSize:16, letterSpacing:'-0.03em', color:isCurrent?plan.color:'var(--text-1)' }}>{plan.name}</span>
+                          {isCurrent && <span style={{ fontSize:9, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:plan.color, padding:'2px 8px', background:`${plan.color}12`, border:`1px solid ${plan.color}25`, borderRadius:99 }}>Active</span>}
+                        </div>
+                        <div style={{ fontSize:11, color:'var(--text-3)', fontStyle:'italic' }}>{plan.tagline}</div>
                       </div>
 
                       {/* Price */}
                       <div style={{ marginBottom:4 }}>
-                        <span style={{ fontFamily:'var(--mono)', fontWeight:300, fontSize:22, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)' }}>
-                          {plan.price === 0 ? 'Free' : `$${plan.price}`}
-                        </span>
-                        {plan.price > 0 && <span style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginLeft:3 }}>/mo</span>}
+                        <span style={{ fontSize:26, fontWeight:800, letterSpacing:'-0.05em', color:'var(--text-1)' }}>${plan.price}</span>
+                        <span style={{ fontSize:12, color:'var(--text-3)', marginLeft:3 }}>/mo</span>
                       </div>
-                      <div style={{ fontSize:11, fontWeight:600, color:plan.color, marginBottom:4 }}>
-                        {plan.credits.toLocaleString()} credits/mo
-                      </div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', lineHeight:1.55, marginBottom:16 }}>{plan.desc}</div>
 
-                      {/* Features */}
-                      <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:18 }}>
+                      {/* Credits with examples */}
+                      <div style={{ padding:'8px 10px', background:`${plan.color}0d`, border:`1px solid ${plan.color}18`, borderRadius:8, marginBottom:14 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:plan.color, marginBottom:4 }}>{plan.credits.toLocaleString()} credits/mo</div>
+                        <div style={{ fontSize:10, color:'var(--text-3)', lineHeight:1.6 }}>
+                          ~{Math.floor(plan.credits/20)} videos (16s) · ~{Math.floor(plan.credits/3)} posts · ~{Math.floor(plan.credits/5)} images
+                        </div>
+                      </div>
+
+                      {/* Included features */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:plan.locked.length>0?10:16 }}>
                         {plan.features.map(f => (
-                          <div key={f} style={{ display:'flex', alignItems:'center', gap:7, fontSize:11, color:'rgba(255,255,255,0.55)' }}>
-                            <span style={{ color:plan.color, display:'flex', flexShrink:0 }}>{Ic.check}</span>{f}
+                          <div key={f} style={{ display:'flex', alignItems:'flex-start', gap:7, fontSize:11, color:'var(--text-2)', lineHeight:1.45 }}>
+                            <span style={{ color:plan.color, flexShrink:0, marginTop:1 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>{f}
                           </div>
                         ))}
                       </div>
 
-                      {!isCurrent && plan.price > 0 && (
-                        <button onClick={() => { if(plan.id !== currentPlan) checkout(plan.id) }}
-                          style={{ width:'100%', padding:'10px', fontSize:12, fontWeight:700, background:plan.color, color:'#000', border:'none', borderRadius:10, cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', boxShadow:`0 4px 14px ${plan.color}35`, letterSpacing:'-0.01em' }}>
-                          Upgrade to {plan.name}
+                      {/* Locked features (upgrade hints) */}
+                      {plan.locked.length > 0 && !isCurrent && (
+                        <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:16, paddingTop:8, borderTop:'1px solid var(--border)' }}>
+                          {plan.locked.map(f => (
+                            <div key={f} style={{ display:'flex', alignItems:'flex-start', gap:7, fontSize:11, color:'var(--text-4)', lineHeight:1.45 }}>
+                              <span style={{ flexShrink:0, marginTop:1, opacity:0.4 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              </span>
+                              <span style={{ textDecoration:'line-through', opacity:0.45 }}>{f}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      {!isCurrent && (
+                        <button onClick={() => checkout(plan.id)} disabled={billingLoading}
+                          style={{ width:'100%', padding:'10px', fontSize:12, fontWeight:700,
+                            background: isDowngrade ? 'transparent' : plan.color,
+                            color: isDowngrade ? 'var(--text-3)' : '#000',
+                            border: isDowngrade ? '1px solid var(--border)' : 'none',
+                            borderRadius:'var(--r)', cursor:'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', letterSpacing:'-0.01em',
+                            opacity: billingLoading ? 0.6 : 1 }}>
+                          {isDowngrade ? `Switch to ${plan.name}` : `Upgrade to ${plan.name} →`}
                         </button>
                       )}
                       {isCurrent && (
-                        <div style={{ padding:'9px', borderRadius:10, background:`${plan.color}08`, border:`1px solid ${plan.color}18`, textAlign:'center', fontSize:12, color:plan.color, fontWeight:600 }}>
-                          Your current plan
+                        <div style={{ padding:'9px', borderRadius:'var(--r)', background:`${plan.color}0d`, border:`1px solid ${plan.color}20`, textAlign:'center' as const, fontSize:12, color:plan.color, fontWeight:600 }}>
+                          ✓ Your current plan
                         </div>
                       )}
                     </div>
                   )
                 })}
               </div>
-            </div>
-          )}
 
-          {/* ════ LEAD PAGE ════ */}
-          {tab === 'leadpage' && (
-            <div style={{ maxWidth:560, animation:'pageUp 0.35s ease both' }}>
-              <div style={{ fontFamily:'var(--display)', fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.03em', marginBottom:4 }}>Lead page</div>
-              <div style={{ fontSize:13, color:'var(--t4)', fontFamily:'var(--sans)', marginBottom:24 }}>
-                Your public page captures leads from your content 24/7
-              </div>
-
-              {/* Slug section */}
-              <div style={{ marginBottom:24 }}>
-                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>Your lead page URL</div>
-                <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-                  <div style={{ display:'flex', alignItems:'center', flex:1, background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, overflow:'hidden' }}>
-                    <div style={{ padding:'10px 12px', fontSize:13, color:'rgba(255,255,255,0.3)', fontFamily:'var(--mono)', fontWeight:300, borderRight:'1px solid rgba(255,255,255,0.07)', whiteSpace:'nowrap' as const, flexShrink:0 }}>nexaa.cc/</div>
-                    <input
-                      value={slug}
-                      onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30))}
-                      placeholder="yourname"
-                      style={{ flex:1, padding:'10px 12px', fontSize:13, background:'transparent', border:'none', color:'#fff', outline:'none', fontFamily:'var(--sans)' }}
-                    />
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (!slug) return
-                      await navigator.clipboard.writeText(`https://nexaa.cc/${slug}`)
-                      toast_('Link copied!')
-                    }}
-                    style={{ padding:'10px 16px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, fontSize:12, color:'var(--t3)', cursor:'pointer', fontFamily:'var(--sans)', whiteSpace:'nowrap' as const }}
-                  >
-                    Copy link
-                  </button>
-                  <button
-                    onClick={() => slug && window.open(`https://nexaa.cc/${slug}`, '_blank')}
-                    style={{ padding:'10px 16px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, fontSize:12, color:'var(--t3)', cursor:'pointer', fontFamily:'var(--sans)', whiteSpace:'nowrap' as const }}
-                  >
-                    Preview
-                  </button>
+              {/* Top-up credits section */}
+              <div style={{ marginBottom:28 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--text-1)', letterSpacing:'-0.02em', marginBottom:4 }}>Need more credits?</div>
+                <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:14 }}>
+                  One-time top-ups — credits never expire and stack on top of your monthly allowance.
                 </div>
-                {slug && (
-                  <div style={{ fontSize:11, color:'rgba(30,142,240,0.7)', fontFamily:'var(--mono)', fontWeight:300 }}>
-                    nexaa.cc/{slug}
-                  </div>
-                )}
-              </div>
-
-              {/* Custom question */}
-              <div style={{ marginBottom:24 }}>
-                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>Custom question on your form</div>
-                <input
-                  value={customQ}
-                  onChange={e => setCustomQ(e.target.value)}
-                  placeholder="e.g. What's your biggest challenge right now?"
-                  style={{ width:'100%', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 14px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none' }}
-                />
-              </div>
-
-              {/* Auto-enrollment */}
-              <div style={{ marginBottom:24 }}>
-                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--t4)', marginBottom:8, fontFamily:'var(--sans)' }}>When someone submits the form...</div>
-                <div style={{ display:'flex', flexDirection:'column' as const, gap:8 }}>
-                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
-                    <input type="radio" checked={!leadAutoEnroll} onChange={() => setLeadAutoEnroll(false)} style={{ accentColor:'#1E8EF0' }} />
-                    <span style={{ fontSize:13, color:'var(--t2)', fontFamily:'var(--sans)' }}>Just add to contacts</span>
-                  </label>
-                  <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
-                    <input type="radio" checked={leadAutoEnroll} onChange={() => setLeadAutoEnroll(true)} style={{ accentColor:'#1E8EF0' }} />
-                    <span style={{ fontSize:13, color:'var(--t2)', fontFamily:'var(--sans)' }}>Auto-enroll in a sequence</span>
-                  </label>
-                </div>
-
-                {leadAutoEnroll && (
-                  <div style={{ marginTop:12 }}>
-                    <select
-                      value={leadSequenceId}
-                      onChange={e => setLeadSequenceId(e.target.value)}
-                      style={{ width:'100%', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 14px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none', cursor:'pointer' }}
-                    >
-                      <option value="">Select a sequence...</option>
-                      {sequences.map((seq: any) => (
-                        <option key={seq.id} value={seq.id}>{seq.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* Kit integration */}
-              <div style={{ marginBottom:24, padding:'16px', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
-                <div style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', marginBottom:4 }}>Kit (ConvertKit) sync</div>
-                <div style={{ fontSize:12, color:'var(--t4)', marginBottom:12, fontFamily:'var(--sans)' }}>Import your existing subscribers as contacts</div>
-                <div style={{ display:'flex', gap:8 }}>
-                  <input
-                    value={kitApiKey}
-                    onChange={e => setKitApiKey(e.target.value)}
-                    placeholder="Your Kit API key"
-                    type="password"
-                    style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'9px 12px', fontSize:13, color:'#fff', fontFamily:'var(--sans)', outline:'none' }}
-                  />
-                  <button
-                    onClick={async () => {
-                      if (!kitApiKey || kitApiKey === '••••••••') return
-                      const res = await fetch('/api/integrations/kit/connect', {
-                        method:'POST',
-                        headers:{ 'Content-Type':'application/json' },
-                        body: JSON.stringify({ api_key: kitApiKey }),
-                      })
-                      const data = await res.json()
-                      if (data.success) toast_(`Connected Kit — imported ${data.imported} subscribers`)
-                      else toast_(data.error || 'Failed to connect Kit', false)
-                    }}
-                    style={{ padding:'9px 16px', background:'var(--blue)', border:'none', borderRadius:8, fontSize:12, fontFamily:'var(--display)', fontWeight:700, color:'#fff', cursor:'pointer', whiteSpace:'nowrap' as const }}
-                  >
-                    Connect →
-                  </button>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
+                  {([
+                    { credits:100,  price:5,  label:'100 cr',   tag:'' },
+                    { credits:300,  price:12, label:'300 cr',   tag:'Popular' },
+                    { credits:700,  price:25, label:'700 cr',   tag:'' },
+                    { credits:1500, price:45, label:'1,500 cr', tag:'Best value' },
+                    { credits:3500, price:89, label:'3,500 cr', tag:'' },
+                  ] as {credits:number,price:number,label:string,tag:string}[]).map(pack => (
+                    <button key={pack.credits}
+                      onClick={() => checkout(null, pack.credits)}
+                      disabled={billingLoading}
+                      style={{ padding:'12px 10px', background:'var(--surface)', border:`1px solid ${pack.tag?'rgba(0,170,255,0.25)':'var(--border)'}`, borderRadius:10, cursor:'pointer', textAlign:'left' as const, position:'relative' as const, transition:'border-color 0.15s', opacity: billingLoading?0.6:1 }}
+                      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.2)'}
+                      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=pack.tag?'rgba(0,170,255,0.25)':'var(--border)'}>
+                      {pack.tag && (
+                        <div style={{ position:'absolute' as const, top:-7, right:8, fontSize:8, fontWeight:700, color:'var(--cyan)', background:'rgba(0,170,255,0.12)', border:'1px solid rgba(0,170,255,0.25)', borderRadius:99, padding:'1px 6px', letterSpacing:'0.06em', textTransform:'uppercase' as const }}>{pack.tag}</div>
+                      )}
+                      <div style={{ fontSize:14, fontWeight:700, color:'var(--text-1)', letterSpacing:'-0.02em', marginBottom:2 }}>{pack.label}</div>
+                      <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:6 }}>~{Math.floor(pack.credits/20)} vids or {Math.floor(pack.credits/3)} posts</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--cyan)' }}>${pack.price}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Typeform */}
-              <div style={{ marginBottom:24, padding:'16px', background:'#0A0A0A', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12 }}>
-                <div style={{ fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', marginBottom:4 }}>Typeform webhook</div>
-                <div style={{ fontSize:12, color:'var(--t4)', marginBottom:10, fontFamily:'var(--sans)' }}>Capture leads from your Typeform forms automatically</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginBottom:8, fontFamily:'var(--mono)', fontWeight:300, wordBreak:'break-all' as const, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderRadius:6 }}>
-                  {ws?.id ? `https://nexaa.cc/api/integrations/typeform/webhook?workspace_id=${ws.id}` : 'Save your workspace first'}
-                </div>
-                <div style={{ fontSize:11, color:'var(--t4)', fontFamily:'var(--sans)' }}>
-                  In Typeform: Connect → Webhooks → paste URL above
+              {/* Credit cost reference */}
+              <div style={{ padding:'16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-3)', letterSpacing:'0.08em', textTransform:'uppercase' as const, marginBottom:12 }}>Credit costs per action</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 24px' }}>
+                  {[
+                    ['Post / Caption / Hook','2–3 cr'],
+                    ['Thread / Email / Ad','5 cr'],
+                    ['Full article','10 cr'],
+                    ['Image (any size)','5 cr'],
+                    ['Video 8s — quick preview','10 cr'],
+                    ['Video 16s — full quality','20 cr'],
+                    ['Voice short (~30s)','5 cr'],
+                    ['Voice medium (~60s)','10 cr'],
+                    ['Voice long (~3 min)','20 cr'],
+                  ].map(([label,cost]) => (
+                    <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11 }}>
+                      <span style={{ color:'var(--text-3)' }}>{label}</span>
+                      <span style={{ fontFamily:'var(--mono)', color:'var(--text-2)', fontWeight:600, fontSize:11 }}>{cost}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Save button */}
-              <button
-                onClick={async () => {
-                  if (!ws) return
-                  const { error } = await supabase.from('workspaces').update({
-                    slug,
-                    lead_page_custom_question: customQ,
-                    lead_page_auto_enroll: leadAutoEnroll,
-                    lead_page_sequence_id: leadSequenceId || null,
-                  }).eq('id', ws.id)
-                  if (!error) toast_('Lead page settings saved')
-                  else toast_('Save failed', false)
-                }}
-                style={{ padding:'11px 28px', background:'var(--blue)', border:'none', borderRadius:9, fontFamily:'var(--display)', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer' }}
-              >
-                Save settings
-              </button>
             </div>
           )}
 
@@ -672,8 +723,8 @@ function SettingsInner() {
           {tab === 'password' && (
             <div style={{ maxWidth:420, animation:'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom:28 }}>
-                <h2 style={{ fontFamily:'var(--display)', fontSize:20, fontWeight:800, letterSpacing:'-0.04em', color:'rgba(255,255,255,0.92)', marginBottom:5 }}>Security</h2>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Update your password</p>
+                <h2 style={{ fontSize:20, fontWeight:700, letterSpacing:'-0.03em', color:'var(--text-1)', marginBottom:5 }}>Security</h2>
+                <p style={{ fontSize:12, color:'var(--text-3)' }}>Update your password</p>
               </div>
               <Field label="New password">
                 <Input value={newPw} onChange={(v:string)=>{setNewPw(v);setPwErr('')}} type="password" placeholder="Minimum 6 characters"/>
@@ -682,33 +733,32 @@ function SettingsInner() {
                 <Input value={confPw} onChange={(v:string)=>{setConfPw(v);setPwErr('')}} type="password" placeholder="Repeat your new password"/>
               </Field>
               {pwErr && (
-                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 13px', background:'rgba(255,87,87,0.07)', border:'1px solid rgba(255,87,87,0.2)', borderRadius:10, fontSize:12, color:'#FF5757', marginBottom:16 }}>
-                  <span style={{ display:'flex' }}>{Ic.warn}</span>{pwErr}
+                <div className="error-state" style={{ marginBottom:16, fontSize:12 }}>
+                  <span style={{ display:'flex', color:'var(--error)' }}>{Ic.warn}</span>{pwErr}
                 </div>
               )}
               <SaveBtn onClick={savePassword} saving={saving} saved={saved} disabled={!newPw||!confPw}/>
 
               {/* Delete account */}
-              <div style={{ marginTop:40, paddingTop:28, borderTop:'1px solid rgba(255,87,87,0.12)' }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,87,87,0.8)', marginBottom:6 }}>Danger zone</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', marginBottom:16, lineHeight:1.55 }}>
+              <div style={{ marginTop:40, paddingTop:28, borderTop:'1px solid var(--error-border)' }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--error)', opacity:0.8, marginBottom:5 }}>Danger zone</div>
+                <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:16, lineHeight:1.55 }}>
                   Permanently delete your account and all workspace data. This cannot be undone.
                 </div>
                 {deleteConfirm && (
-                  <div style={{ padding:'12px 16px', background:'rgba(255,87,87,0.07)', border:'1px solid rgba(255,87,87,0.2)', borderRadius:10, fontSize:12, color:'rgba(255,87,87,0.9)', marginBottom:12, lineHeight:1.55 }}>
+                  <div className="card-danger" style={{ padding:'12px 16px', fontSize:12, color:'var(--error)', marginBottom:12, lineHeight:1.55 }}>
                     <strong>Are you sure?</strong> This will permanently delete your workspace and all data.
                   </div>
                 )}
                 <button
                   onClick={deleteAccount}
                   disabled={deleting}
-                  style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'rgba(255,87,87,0.08)', border:'1px solid rgba(255,87,87,0.22)', borderRadius:10, color:'rgba(255,87,87,0.85)', fontSize:13, fontWeight:600, cursor:deleting?'not-allowed':'pointer', fontFamily:'var(--sans)', transition:'all 0.15s', opacity:deleting?0.6:1 }}
-                  onMouseEnter={e=>{if(!deleting)(e.currentTarget as HTMLElement).style.background='rgba(255,87,87,0.14)'}}
-                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='rgba(255,87,87,0.08)'}}>
+                  className="btn-danger"
+                  style={{ opacity:deleting?0.5:1, cursor:deleting?'not-allowed':'pointer' }}>
                   {deleting ? 'Deleting...' : deleteConfirm ? 'Yes, delete my account' : 'Delete account'}
                 </button>
                 {deleteConfirm && !deleting && (
-                  <button onClick={()=>setDeleteConfirm(false)} style={{ marginTop:8, background:'none', border:'none', color:'rgba(255,255,255,0.35)', fontSize:12, cursor:'pointer', padding:0 }}>
+                  <button onClick={()=>setDeleteConfirm(false)} style={{ marginTop:8, background:'none', border:'none', color:'var(--text-3)', fontSize:12, cursor:'pointer', padding:0 }}>
                     Cancel
                   </button>
                 )}
@@ -720,7 +770,7 @@ function SettingsInner() {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, padding:'12px 20px', borderRadius:12, background:toast.ok?'rgba(52,211,153,0.1)':'rgba(255,87,87,0.12)', border:`1px solid ${toast.ok?'rgba(52,211,153,0.28)':'rgba(255,87,87,0.3)'}`, color:toast.ok?'#34D399':'#FF5757', fontSize:13, fontWeight:600, backdropFilter:'blur(16px)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'pageUp 0.2s ease both' }}>
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, padding:'11px 18px', borderRadius:'var(--r)', background:toast.ok?'var(--success-dim)':'var(--error-dim)', border:`1px solid ${toast.ok?'var(--success-border)':'var(--error-border)'}`, color:toast.ok?'var(--success)':'var(--error)', fontSize:13, fontWeight:600, backdropFilter:'blur(16px)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)', animation:'pageUp 0.2s ease both' }}>
           {toast.msg}
         </div>
       )}
@@ -730,7 +780,7 @@ function SettingsInner() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'rgba(255,255,255,0.28)',fontSize:13 }}>Loading…</div>}>
+    <Suspense fallback={<div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-3)',fontSize:13 }}>Loading…</div>}>
       <SettingsInner/>
     </Suspense>
   )

@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 import { guardWorkspace } from '@/lib/workspace-guard'
+
 
 export async function POST(request: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
           const { data, error } = await resend.emails.send({
             from: `${from_name ?? 'Nexa'} <${from_email ?? process.env.RESEND_FROM_EMAIL ?? 'hello@nexaa.cc'}>`,
             to: recipient.email,
+            reply_to: user.email,  // replies go to the sender's real inbox
             subject,
             text: personalizedBody,
             html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; line-height: 1.6;">

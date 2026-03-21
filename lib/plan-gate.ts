@@ -1,298 +1,437 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// ── Plan feature definitions ──────────────────────────────
-// Each plan unlocks cumulative features
+// ── Constants (re-exported from plan-constants for server use) ─
+export { CREDIT_COSTS, TOPUP_PACKS, CREDIT_THRESHOLDS, PLAN_CREDITS } from '@/lib/plan-constants'
+import { CREDIT_COSTS } from '@/lib/plan-constants'
+
+// ── Plan definitions ──────────────────────────────────────────
 export const PLAN_FEATURES = {
   spark: {
     label: 'Spark',
-    price: 39,
+    tagline: 'The Creator',
+    price: 4900,
     credits: 500,
     trial_days: 7,
     features: {
-      copy_generation:     true,
-      brand_brain:         true,
-      strategy:            true,
-      schedule:            true,
-      analytics_basic:     true,
-      image_generation:    false,
-      video_generation:    false,
-      voice_generation:    false,
-      email_sequences:     false,
-      competitor_analysis: false,
-      agency_mode:         false,
-      webhooks:            false,
-    },
-    limits: {
-      scheduled_posts:  10,
-      brand_assets:     5,
-      sequences:        0,
-      team_members:     1,
+      // Brand Brain — all plans
+      brand_brain:          true,
+      brand_assets_limit:   5,
+      // Studio — all plans get all types, credits handle fairness
+      copy_generation:      true,
+      image_generation:     true,
+      video_generation:     true,
+      voice_generation:     true,
+      studio_amplify_boost: false,   // needs Amplify
+      // Strategy
+      strategy:             true,
+      competitor_analysis:  false,
+      performance_learning: false,
+      // Schedule
+      schedule:             true,
+      schedule_platforms:   2,
+      schedule_posts_mo:    60,
+      // Automate
+      email_sequences:      false,
+      contacts_limit:       0,
+      emails_per_month:     0,
+      behavioral_triggers:  false,
+      ab_testing:           false,
+      kit_integration:      false,
+      typeform_webhook:      false,
+      // Lead Page
+      lead_page:            true,
+      lead_magnet:          true,
+      lead_add_contacts:    false,
+      lead_auto_enroll:     false,
+      lead_remove_branding: false,
+      custom_sender_domain: false,
+      // Amplify
+      amplify:              false,
+      amplify_ai_monitor:   false,
+      // Insights
+      insights_basic:       true,
+      insights_full:        false,
+      insights_export:      false,
+      // Integrations
+      custom_webhooks:      false,
+      zapier:               false,
+      // Workspace
+      team_members:         1,
+      // Agency
+      agency_mode:          false,
     },
   },
+
   grow: {
     label: 'Grow',
-    price: 89,
+    tagline: 'The Grower',
+    price: 8900,
     credits: 1500,
-    trial_days: 7,
+    trial_days: 0,
     features: {
-      copy_generation:     true,
-      brand_brain:         true,
-      strategy:            true,
-      schedule:            true,
-      analytics_basic:     true,
-      image_generation:    true,
-      video_generation:    false,
-      voice_generation:    false,
-      email_sequences:     true,
-      competitor_analysis: false,
-      agency_mode:         false,
-      webhooks:            true,
-    },
-    limits: {
-      scheduled_posts:  50,
-      brand_assets:     20,
-      sequences:        3,
-      team_members:     3,
+      brand_brain:          true,
+      brand_assets_limit:   25,
+      copy_generation:      true,
+      image_generation:     true,
+      video_generation:     true,
+      voice_generation:     true,
+      studio_amplify_boost: true,
+      strategy:             true,
+      competitor_analysis:  true,
+      performance_learning: true,
+      schedule:             true,
+      schedule_platforms:   4,
+      schedule_posts_mo:    9999,
+      email_sequences:      true,
+      contacts_limit:       2500,
+      emails_per_month:     3000,
+      behavioral_triggers:  false,
+      ab_testing:           false,
+      kit_integration:      true,
+      typeform_webhook:      true,
+      lead_page:            true,
+      lead_magnet:          true,
+      lead_add_contacts:    true,
+      lead_auto_enroll:     true,
+      lead_remove_branding: false,
+      custom_sender_domain: false,
+      amplify:              true,
+      amplify_ai_monitor:   false,
+      insights_basic:       true,
+      insights_full:        true,
+      insights_export:      false,
+      custom_webhooks:      false,
+      zapier:               false,
+      team_members:         2,
+      agency_mode:          false,
     },
   },
+
   scale: {
     label: 'Scale',
-    price: 179,
-    credits: 5000,
-    trial_days: 7,
+    tagline: 'The Operator',
+    price: 16900,
+    credits: 4000,
+    trial_days: 0,
     features: {
-      copy_generation:     true,
-      brand_brain:         true,
-      strategy:            true,
-      schedule:            true,
-      analytics_basic:     true,
-      image_generation:    true,
-      video_generation:    true,
-      voice_generation:    true,
-      email_sequences:     true,
-      competitor_analysis: true,
-      agency_mode:         false,
-      webhooks:            true,
-    },
-    limits: {
-      scheduled_posts:  200,
-      brand_assets:     100,
-      sequences:        20,
-      team_members:     5,
+      brand_brain:          true,
+      brand_assets_limit:   100,
+      copy_generation:      true,
+      image_generation:     true,
+      video_generation:     true,
+      voice_generation:     true,
+      studio_amplify_boost: true,
+      strategy:             true,
+      competitor_analysis:  true,
+      performance_learning: true,
+      schedule:             true,
+      schedule_platforms:   9999,
+      schedule_posts_mo:    9999,
+      email_sequences:      true,
+      contacts_limit:       15000,
+      emails_per_month:     20000,
+      behavioral_triggers:  true,
+      ab_testing:           true,
+      kit_integration:      true,
+      typeform_webhook:      true,
+      lead_page:            true,
+      lead_magnet:          true,
+      lead_add_contacts:    true,
+      lead_auto_enroll:     true,
+      lead_remove_branding: true,
+      custom_sender_domain: true,
+      amplify:              true,
+      amplify_ai_monitor:   true,
+      insights_basic:       true,
+      insights_full:        true,
+      insights_export:      true,
+      custom_webhooks:      true,
+      zapier:               true,
+      team_members:         5,
+      agency_mode:          false,
     },
   },
+
   agency: {
     label: 'Agency',
-    price: 349,
-    credits: 15000,
-    trial_days: 7,
+    tagline: 'The Agency',
+    price: 34900,
+    credits: 12000,
+    trial_days: 0,
     features: {
-      copy_generation:     true,
-      brand_brain:         true,
-      strategy:            true,
-      schedule:            true,
-      analytics_basic:     true,
-      image_generation:    true,
-      video_generation:    true,
-      voice_generation:    true,
-      email_sequences:     true,
-      competitor_analysis: true,
-      agency_mode:         true,
-      webhooks:            true,
-    },
-    limits: {
-      scheduled_posts:  9999,
-      brand_assets:     500,
-      sequences:        999,
-      team_members:     25,
+      brand_brain:          true,
+      brand_assets_limit:   9999,
+      copy_generation:      true,
+      image_generation:     true,
+      video_generation:     true,
+      voice_generation:     true,
+      studio_amplify_boost: true,
+      strategy:             true,
+      competitor_analysis:  true,
+      performance_learning: true,
+      schedule:             true,
+      schedule_platforms:   9999,
+      schedule_posts_mo:    9999,
+      email_sequences:      true,
+      contacts_limit:       9999999,
+      emails_per_month:     100000,
+      behavioral_triggers:  true,
+      ab_testing:           true,
+      kit_integration:      true,
+      typeform_webhook:      true,
+      lead_page:            true,
+      lead_magnet:          true,
+      lead_add_contacts:    true,
+      lead_auto_enroll:     true,
+      lead_remove_branding: true,
+      custom_sender_domain: true,
+      amplify:              true,
+      amplify_ai_monitor:   true,
+      insights_basic:       true,
+      insights_full:        true,
+      insights_export:      true,
+      custom_webhooks:      true,
+      zapier:               true,
+      team_members:         25,
+      agency_mode:          true,
     },
   },
+
+  // Trial = Grow features, time-limited
   trial: {
-    // Trial = Grow features, expires after trial_days
     label: 'Trial',
+    tagline: 'Trial',
     price: 0,
     credits: 500,
     trial_days: 7,
     features: {
-      copy_generation:     true,
-      brand_brain:         true,
-      strategy:            true,
-      schedule:            true,
-      analytics_basic:     true,
-      image_generation:    true,   // trial gets a taste of images
-      video_generation:    false,
-      voice_generation:    false,
-      email_sequences:     false,
-      competitor_analysis: false,
-      agency_mode:         false,
-      webhooks:            false,
-    },
-    limits: {
-      scheduled_posts:  5,
-      brand_assets:     3,
-      sequences:        0,
-      team_members:     1,
+      brand_brain:          true,
+      brand_assets_limit:   5,
+      copy_generation:      true,
+      image_generation:     true,
+      video_generation:     true,
+      voice_generation:     true,
+      studio_amplify_boost: false,
+      strategy:             true,
+      competitor_analysis:  false,
+      performance_learning: false,
+      schedule:             true,
+      schedule_platforms:   2,
+      schedule_posts_mo:    20,
+      email_sequences:      false,
+      contacts_limit:       0,
+      emails_per_month:     0,
+      behavioral_triggers:  false,
+      ab_testing:           false,
+      kit_integration:      false,
+      typeform_webhook:      false,
+      lead_page:            true,
+      lead_magnet:          false,
+      lead_add_contacts:    false,
+      lead_auto_enroll:     false,
+      lead_remove_branding: false,
+      custom_sender_domain: false,
+      amplify:              false,
+      amplify_ai_monitor:   false,
+      insights_basic:       true,
+      insights_full:        false,
+      insights_export:      false,
+      custom_webhooks:      false,
+      zapier:               false,
+      team_members:         1,
+      agency_mode:          false,
     },
   },
-}
+} as const
 
+export type PlanId = keyof typeof PLAN_FEATURES
 export type PlanFeature = keyof typeof PLAN_FEATURES.spark.features
 
-// ── Trial status ──────────────────────────────────────────
-export function getTrialStatus(workspace: any): {
-  isTrialing: boolean
-  isExpired: boolean
-  daysLeft: number
-  trialEndDate: Date | null
-} {
+// ── Trial status ──────────────────────────────────────────────
+export function getTrialStatus(workspace: any) {
   if (workspace.plan_status !== 'trialing') {
     return { isTrialing: false, isExpired: false, daysLeft: 0, trialEndDate: null }
   }
-
-  const createdAt   = new Date(workspace.created_at)
-  const trialDays   = PLAN_FEATURES.trial.trial_days
-  const trialEnd    = new Date(createdAt.getTime() + trialDays * 86400000)
-  const now         = new Date()
-  const daysLeft    = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
-  const isExpired   = now > trialEnd
-
-  return { isTrialing: true, isExpired, daysLeft, trialEndDate: trialEnd }
+  const createdAt  = new Date(workspace.created_at)
+  const trialEnd   = new Date(createdAt.getTime() + 7 * 86400000)
+  const now        = new Date()
+  const daysLeft   = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
+  return { isTrialing: true, isExpired: now > trialEnd, daysLeft, trialEndDate: trialEnd }
 }
 
-// ── Main gate function ────────────────────────────────────
-// Returns null if access is allowed, or a NextResponse error if blocked
+// ── Get plan features for a workspace ────────────────────────
+export function getPlanFeatures(plan: string, planStatus: string, createdAt: string) {
+  if (planStatus === 'trialing') {
+    const trial = getTrialStatus({ plan_status: 'trialing', created_at: createdAt })
+    if (!trial.isExpired) return PLAN_FEATURES.trial.features
+  }
+  return PLAN_FEATURES[plan as PlanId]?.features ?? PLAN_FEATURES.spark.features
+}
+
+// ── Main gate — checks plan feature access ───────────────────
 export async function checkPlanAccess(
   workspaceId: string,
   feature: PlanFeature,
 ): Promise<NextResponse | null> {
   const supabase = createClient()
-
-  const { data: workspace } = await supabase
+  const { data: ws } = await supabase
     .from('workspaces')
     .select('plan, plan_status, created_at')
     .eq('id', workspaceId)
     .single()
 
-  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+  if (!ws) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
-  const plan   = workspace.plan ?? 'spark'
-  const status = workspace.plan_status ?? 'trialing'
+  const status = ws.plan_status ?? 'trialing'
 
-  // ── CANCELED: hard block ──
+  // Hard block canceled/past_due
   if (status === 'canceled' || status === 'past_due') {
     return NextResponse.json({
       error: 'Subscription required',
       code: 'SUBSCRIPTION_INACTIVE',
       message: status === 'past_due'
-        ? 'Your payment failed. Please update your payment method to continue.'
-        : 'Your subscription has been canceled. Reactivate to access Nexa.',
+        ? 'Your payment failed. Please update your payment method.'
+        : 'Your subscription has been canceled. Reactivate to continue.',
       upgrade_url: '/dashboard/settings?tab=billing',
     }, { status: 402 })
   }
 
-  // ── TRIALING: check expiry ──
+  // Trial expiry
   if (status === 'trialing') {
-    const trial = getTrialStatus(workspace)
-
+    const trial = getTrialStatus(ws)
     if (trial.isExpired) {
       return NextResponse.json({
         error: 'Trial expired',
         code: 'TRIAL_EXPIRED',
-        message: 'Your 7-day trial has ended. Upgrade to continue building your brand.',
-        days_left: 0,
+        message: 'Your 7-day trial has ended. Choose a plan to continue.',
         upgrade_url: '/dashboard/settings?tab=billing',
       }, { status: 402 })
     }
-
-    // Trial is active — check trial feature set
-    const trialFeatures = PLAN_FEATURES.trial.features
-    if (!trialFeatures[feature]) {
-      const requiredPlan = getRequiredPlan(feature)
+    const allowed = PLAN_FEATURES.trial.features[feature]
+    if (!allowed) {
       return NextResponse.json({
-        error: 'Feature not available on trial',
+        error: 'Upgrade required',
         code: 'UPGRADE_REQUIRED',
-        message: `${formatFeature(feature)} requires the ${requiredPlan} plan. Your trial includes copy, images, strategy, and scheduling.`,
+        message: `${formatFeature(feature)} is not available on trial. Upgrade to unlock it.`,
         feature,
-        required_plan: requiredPlan,
-        trial_days_left: trial.daysLeft,
-        upgrade_url: `/dashboard/settings?tab=billing`,
+        upgrade_url: '/dashboard/settings?tab=billing',
       }, { status: 402 })
     }
-
-    return null // trial access granted
+    return null
   }
 
-  // ── ACTIVE subscription: check plan tier ──
-  const planFeatures = PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.features
-  if (!planFeatures) return null // unknown plan, allow
+  // Active subscription
+  const planFeatures = PLAN_FEATURES[ws.plan as PlanId]?.features
+  if (!planFeatures) return null
 
   if (!planFeatures[feature]) {
     const requiredPlan = getRequiredPlan(feature)
+    const currentLabel = PLAN_FEATURES[ws.plan as PlanId]?.label ?? ws.plan
     return NextResponse.json({
       error: 'Plan upgrade required',
       code: 'UPGRADE_REQUIRED',
-      message: `${formatFeature(feature)} requires the ${requiredPlan} plan. You're on ${PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.label ?? plan}.`,
+      message: `${formatFeature(feature)} requires the ${requiredPlan} plan. You&apos;re on ${currentLabel}.`,
       feature,
-      current_plan: plan,
-      required_plan: requiredPlan,
-      upgrade_url: `/dashboard/settings?tab=billing`,
+      current_plan: ws.plan,
+      required_plan: requiredPlan.toLowerCase(),
+      upgrade_url: '/dashboard/settings?tab=billing',
     }, { status: 402 })
   }
 
-  return null // access granted
+  return null
 }
 
-// ── Helpers ───────────────────────────────────────────────
+// ── Credit gate — blocks generation when credits = 0 ─────────
+export async function checkCredits(
+  workspaceId: string,
+  userId: string,
+  amount: number,
+  action: string,
+  description: string,
+): Promise<{ ok: boolean; error?: NextResponse }> {
+  const supabase = createClient()
+
+  const { data: deducted } = await supabase.rpc('deduct_credits', {
+    p_workspace_id: workspaceId,
+    p_amount:       amount,
+    p_action:       action,
+    p_user_id:      userId,
+    p_description:  description,
+  })
+
+  if (!deducted) {
+    return {
+      ok: false,
+      error: NextResponse.json({
+        error: 'Insufficient credits',
+        code: 'NO_CREDITS',
+        message: `This action costs ${amount} credits. Top up to continue.`,
+        credits_needed: amount,
+        topup_url: '/dashboard/settings?tab=billing',
+      }, { status: 402 }),
+    }
+  }
+
+  return { ok: true }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
 function getRequiredPlan(feature: PlanFeature): string {
   const tiers = ['spark', 'grow', 'scale', 'agency'] as const
   for (const tier of tiers) {
-    if (PLAN_FEATURES[tier].features[feature]) return tier
+    if (PLAN_FEATURES[tier].features[feature]) return PLAN_FEATURES[tier].label
   }
-  return 'scale'
+  return 'Scale'
 }
 
 function formatFeature(feature: PlanFeature): string {
   const map: Partial<Record<PlanFeature, string>> = {
-    image_generation:    'Image generation',
-    video_generation:    'Video generation',
-    voice_generation:    'Voice generation',
-    email_sequences:     'Email sequences',
-    competitor_analysis: 'Competitor analysis',
-    agency_mode:         'Agency mode',
-    webhooks:            'Webhooks & automations',
-    strategy:            'Strategy builder',
+    image_generation:     'Image generation',
+    video_generation:     'Video generation',
+    voice_generation:     'Voice generation',
+    email_sequences:      'Email sequences',
+    competitor_analysis:  'Competitor analysis',
+    agency_mode:          'Agency mode',
+    custom_webhooks:      'Custom webhooks',
+    amplify:              'Amplify (Meta Ads)',
+    amplify_ai_monitor:   'AI ad monitor',
+    lead_remove_branding: 'Remove Nexa branding',
+    custom_sender_domain: 'Custom sender domain',
+    behavioral_triggers:  'Behavioral triggers',
+    ab_testing:           'A/B testing',
+    insights_full:        'Full analytics',
+    insights_export:      'Analytics export',
+    studio_amplify_boost: 'Boost to Amplify',
+    lead_add_contacts:    'Add leads to contacts',
+    lead_auto_enroll:     'Auto-enroll leads',
+    zapier:               'Zapier integration',
   }
   return map[feature] ?? feature.replace(/_/g, ' ')
 }
 
-// ── Expose plan info for UI ───────────────────────────────
+// ── Expose for UI ─────────────────────────────────────────────
 export async function getWorkspacePlanInfo(workspaceId: string) {
   const supabase = createClient()
-  const { data: workspace } = await supabase
+  const { data: ws } = await supabase
     .from('workspaces')
     .select('plan, plan_status, created_at')
     .eq('id', workspaceId)
     .single()
 
-  if (!workspace) return null
+  if (!ws) return null
 
-  const plan   = workspace.plan ?? 'spark'
-  const status = workspace.plan_status ?? 'trialing'
-  const trial  = getTrialStatus(workspace)
-  const config = PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES] ?? PLAN_FEATURES.spark
+  const plan    = ws.plan ?? 'spark'
+  const status  = ws.plan_status ?? 'trialing'
+  const trial   = getTrialStatus(ws)
+  const config  = PLAN_FEATURES[plan as PlanId] ?? PLAN_FEATURES.spark
 
   return {
-    plan,
-    status,
-    config,
-    trial,
-    isActive: status === 'active',
+    plan, status, config, trial,
+    isActive:   status === 'active',
     isTrialing: trial.isTrialing && !trial.isExpired,
-    isExpired: trial.isExpired,
+    isExpired:  trial.isExpired,
     isCanceled: status === 'canceled' || status === 'past_due',
-    features: status === 'trialing' && !trial.isExpired
-      ? PLAN_FEATURES.trial.features
-      : config.features,
+    features:   getPlanFeatures(plan, status, ws.created_at),
   }
 }

@@ -1,5 +1,8 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-internal-secret')

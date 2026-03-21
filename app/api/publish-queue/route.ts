@@ -1,5 +1,8 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
 
 // This route is called by Vercel Cron every 15 minutes
 // Add to vercel.json: { "crons": [{ "path": "/api/publish-queue", "schedule": "*/15 * * * *" }] }

@@ -1,8 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
+import { checkPlanAccess } from '@/lib/plan-gate'
+
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -16,6 +20,10 @@ export async function POST(request: NextRequest) {
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
+
+    // Plan gate
+    const planError = await checkPlanAccess(workspace_id, 'brand_brain')
+    if (planError) return planError
 
     const brand = await getBrandContext(workspace_id)
     if (!brand) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
@@ -59,7 +67,7 @@ Return ONLY a JSON array:
 ]`
 
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }],
       })
@@ -122,7 +130,7 @@ Return ONLY JSON:
 }`
 
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       })
@@ -166,7 +174,7 @@ Return ONLY JSON:
 ]`
 
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }],
       })
@@ -214,7 +222,7 @@ Return ONLY JSON:
 }`
 
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }],
       })
