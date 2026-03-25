@@ -15,12 +15,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const agency_workspace_id = searchParams.get('agency_workspace_id')
 
-  const deny = await guardWorkspace(supabase, agency_workspace_id!, user.id)
+  if (!agency_workspace_id) return NextResponse.json({ error: 'agency_workspace_id required' }, { status: 400 })
+
+  const deny = await guardWorkspace(supabase, agency_workspace_id, user.id)
   if (deny) return deny
 
-    // Plan gate
-    const planError = await checkPlanAccess(agency_workspace_id, 'agency_mode')
-    if (planError) return planError
+  // Plan gate
+  const planError = await checkPlanAccess(agency_workspace_id, 'agency_mode')
+  if (planError) return planError
 
   // Get client workspaces with their data
   const { data: clients } = await supabase

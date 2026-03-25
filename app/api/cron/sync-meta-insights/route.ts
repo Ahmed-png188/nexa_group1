@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { createNotification } from '@/lib/notifications'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -15,7 +16,7 @@ import { fetchCampaignInsights, fetchCampaignStatus } from '@/lib/meta-api'
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
-  if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -73,11 +74,27 @@ export async function GET(request: NextRequest) {
           if (statusResult.rejectionReason) {
             updatePayload.rejection_reason = statusResult.rejectionReason
           }
-          await service
-            .from('amplify_campaigns')
-            .update(updatePayload)
-            .eq('id', camp.id)
+          await service.from('amplify_campaigns').update(updatePayload).eq('id', camp.id)
           statusUpdates++
+
+          if (statusChanged) {
+            if (statusResult.nexaStatus === 'ACTIVE' && camp.status === 'IN_REVIEW') {
+              await createNotification({
+                workspace_id: camp.workspace_id,
+                type: 'ad_live',
+                message: `"${camp.name}" is now live — your ad is running on Meta.`,
+                link: '/dashboard/amplify',
+              })
+            } else if (statusResult.nexaStatus === 'REJECTED') {
+              const reason = statusResult.rejectionReason || 'Review your creative and resubmit.'
+              await createNotification({
+                workspace_id: camp.workspace_id,
+                type: 'ad_rejected',
+                message: `"${camp.name}" was rejected by Meta. ${reason}`,
+                link: '/dashboard/amplify',
+              })
+            }
+          }
         }
 
         // ── 2. Sync insights (only for active/paused — not for rejected/review) ──
@@ -114,6 +131,42 @@ export async function GET(request: NextRequest) {
             }
           }
         }
+
+        // Daily performance alert
+        try {
+          const { data: latestIns } = await service
+            .from('amplify_insights')
+            .select('spend, reach, clicks, cpc, ctr')
+            .eq('campaign_id', camp.id)
+            .order('recorded_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (latestIns && latestIns.spend > 0) {
+            const cpc = latestIns.cpc || 0
+            const ctrPct = latestIns.ctr ? (latestIns.ctr * 100) : 0
+            const todayStr = new Date().toISOString().split('T')[0]
+            const { data: alreadyNotified } = await service
+              .from('notifications')
+              .select('id')
+              .eq('workspace_id', camp.workspace_id)
+              .eq('type', 'ad_performance')
+              .gte('created_at', todayStr + 'T00:00:00')
+              .maybeSingle()
+
+            if (!alreadyNotified) {
+              const isGreat = cpc < 1.0 && ctrPct > 2.0
+              const isBad   = cpc > 2.5 || ctrPct < 0.5
+              const signal  = isGreat ? 'Strong performance' : isBad ? 'Needs attention' : 'Running normally'
+              await createNotification({
+                workspace_id: camp.workspace_id,
+                type: 'ad_performance',
+                message: `"${camp.name}" — ${signal}. $${latestIns.spend.toFixed(2)} spent, ${latestIns.reach?.toLocaleString() || 0} reached, ${ctrPct.toFixed(2)}% CTR, $${cpc.toFixed(2)} CPC.`,
+                link: '/dashboard/amplify',
+              })
+            }
+          }
+        } catch {}
 
         synced++
       } catch (campErr: any) {

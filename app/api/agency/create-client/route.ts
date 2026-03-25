@@ -10,13 +10,13 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    // Plan gate
-    const _planErr = await checkPlanAccess(agency_workspace_id, 'agency_mode')
-    if (_planErr) return _planErr
-
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { client_name, client_email, brand_name, agency_workspace_id, monthly_retainer } = await request.json()
+
+    // Plan gate
+    const _planErr = await checkPlanAccess(agency_workspace_id, 'agency_mode')
+    if (_planErr) return _planErr
 
     const { data: member } = await supabase
       .from('workspace_members')
