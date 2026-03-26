@@ -11,36 +11,47 @@ const PLANS = {
   spark: {
     name: 'Spark',
     price: 4900,   // $49/mo
-    credits: 500,
+    credits: 1000,
     priceId: process.env.STRIPE_PRICE_SPARK ?? '',
   },
   grow: {
     name: 'Grow',
     price: 8900,   // $89/mo
-    credits: 1500,
+    credits: 3000,
     priceId: process.env.STRIPE_PRICE_GROW ?? '',
   },
   scale: {
     name: 'Scale',
     price: 16900,  // $169/mo
-    credits: 4000,
+    credits: 7000,
     priceId: process.env.STRIPE_PRICE_SCALE ?? '',
   },
   agency: {
     name: 'Agency',
     price: 34900,  // $349/mo
-    credits: 12000,
+    credits: 20000,
     priceId: process.env.STRIPE_PRICE_AGENCY ?? '',
   },
 }
 
-// Top-up packs — must match TOPUP_PACKS in lib/plan-gate.ts
+// Top-up packs — must match TOPUP_PACKS_BY_PLAN in lib/plan-constants.ts
 const TOPUP_PRICES: Record<number, number> = {
-  100:  500,   // $5
-  300:  1200,  // $12
-  700:  2500,  // $25
-  1500: 4500,  // $45
-  3500: 8900,  // $89
+  // spark/trial tier
+  200:   1000,  // $10
+  500:   2500,  // $25
+  1000:  4500,  // $45
+  2500:  9900,  // $99
+  // grow tier
+  1500:  4500,  // $45
+  3000:  8900,  // $89
+  7500:  19900, // $199
+  // scale tier
+  3500:  8400,  // $84
+  7000:  16900, // $169
+  15000: 32900, // $329
+  // agency tier
+  20000: 34900, // $349
+  50000: 79900, // $799
 }
 
 export async function POST(request: NextRequest) {

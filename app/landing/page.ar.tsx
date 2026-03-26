@@ -154,7 +154,7 @@ export default function LandingPageAr() {
           ))}
         </div>
         <div style={{ display:'flex', gap:10, alignItems:'center', flexShrink:0 }}>
-          <button onClick={() => setLang('en')} style={{ fontFamily:"'DM Sans', sans-serif", fontSize:13, color:'rgba(255,255,255,0.40)', background:'none', border:'0.5px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'5px 12px', cursor:'pointer', transition:'color 0.2s, border-color 0.2s', letterSpacing:'0.04em' }} onMouseEnter={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.80)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.40)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}}>English</button>
+          <button onClick={() => { setLang('en'); localStorage.setItem('nexa_lang','en') }} style={{ fontFamily:"'DM Sans', sans-serif", fontSize:13, color:'rgba(255,255,255,0.40)', background:'none', border:'0.5px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'5px 12px', cursor:'pointer', transition:'color 0.2s, border-color 0.2s', letterSpacing:'0.04em' }} onMouseEnter={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.80)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.40)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}}>English</button>
           <Link href="/auth/login" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'8px 18px', borderRadius:8, border:`1px solid ${LINE2}`, background:'none', color:T2, fontSize:14, fontFamily:F, fontWeight:500, textDecoration:'none', whiteSpace:'nowrap' }}>دخول</Link>
           <Link href="/auth/signup" className="cta-glow" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'8px 22px', borderRadius:8, background:CYAN, color:'#000', fontSize:14, fontWeight:800, fontFamily:F, textDecoration:'none', whiteSpace:'nowrap' }}>ابدأ مجاناً ←</Link>
         </div>
@@ -208,7 +208,7 @@ export default function LandingPageAr() {
               <div style={{ position:'absolute', top:40, left:40, width:200, height:160, borderRadius:'50%', background:CYAN, filter:'blur(90px)', opacity:0.09, pointerEvents:'none' }}/>
               <div style={{ position:'relative', zIndex:1 }}>
                 <div style={{ marginBottom:16 }}>
-                  <div style={{ fontSize:9, fontWeight:600, letterSpacing:0, textTransform:'uppercase', color:T4, fontFamily:F, marginBottom:5 }}>صباح الخير · لوحة التحكم</div>
+                  <div style={{ fontSize:9, fontWeight:600, letterSpacing:'0.10em', textTransform:'uppercase', color:T4, fontFamily:F, marginBottom:5 }}>صباح الخير · لوحة التحكم</div>
                   <div style={{ fontFamily:F, fontSize:26, fontWeight:900, color:T1, lineHeight:1.2 }}>أحمد</div>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:14 }}>
@@ -331,7 +331,7 @@ export default function LandingPageAr() {
       <section id="story" className="sp" style={{ padding:'120px 40px', maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
         <Reveal>
           <div style={{ textAlign:'center', marginBottom:80 }}>
-            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:20 }}>القصة اللي تعرفها</div>
+            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:20 }}>القصة اللي تعرفها</div>
             <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(28px,4.5vw,52px)', color:T1, lineHeight:1.45, marginBottom:0 }}>
               أنت شاطر فيما تسويه.<br/>
               <span style={{ color:T3, fontSize:'clamp(22px,3.5vw,42px)', display:'block', marginTop:8 }}>المحتوى ما المفروض يكون وظيفة ثانية.</span>
@@ -372,7 +372,7 @@ export default function LandingPageAr() {
           <div className="grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
             <Reveal from="right">
               <div>
-                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:0, textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠١ — من هنا تبدأ</div>
+                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠١ — من هنا تبدأ</div>
                 <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,4.5vw,50px)', color:T1, lineHeight:1.35, marginBottom:22 }}>Nexa تتعلّم<br/>تفكّر مثلك.</h2>
                 <p style={{ fontFamily:F, fontWeight:400, fontSize:17, color:T3, marginBottom:22, lineHeight:1.9 }}>
                   ارفع محتواك السابق، موقعك، أو وثيقة علامتك التجارية. الدماغ التجاري يقرأ كل شيء ويبني نموذجاً لصوتك — نبرتك، إيقاع جملك، آراؤك، وطريقتك في رؤية العالم.
@@ -423,7 +423,7 @@ export default function LandingPageAr() {
           <div className="grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
             <Reveal from="right" delay={100}>
               <div>
-                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:0, textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠٢ — ثم تنشئ</div>
+                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠٢ — ثم تنشئ</div>
                 <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,4.5vw,50px)', color:T1, lineHeight:1.35, marginBottom:22 }}>كل تنسيق.<br/>كل منصة.<br/>كله بصوتك.</h2>
                 <p style={{ fontFamily:F, fontWeight:400, fontSize:17, color:T3, marginBottom:24, lineHeight:1.9 }}>
                   منشورات. صور. فيديوهات. تسجيلات صوتية. إعلانات. رسائل بريد. كلها تُنتَج من الاستوديو — وكل مخرج يبدو وكأنك أنت كتبته، مو روبوت يتظاهر بأنه أنت.
@@ -483,7 +483,7 @@ export default function LandingPageAr() {
           <div className="grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
             <Reveal from="right">
               <div>
-                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:0, textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠٣ — ثم تخطّط</div>
+                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:20, opacity:0.8 }}>٠٣ — ثم تخطّط</div>
                 <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,4.5vw,50px)', color:T1, lineHeight:1.35, marginBottom:22 }}>خطة ٣٠ يوم.<br/>تُبنى في ثوانٍ.<br/>تنشر تلقائياً.</h2>
                 <p style={{ fontFamily:F, fontWeight:400, fontSize:17, color:T3, marginBottom:24, lineHeight:1.9 }}>
                   أخبر Nexa بأهدافك. تبني لك جدول محتوى كامل — المواضيع، التنسيقات، أوقات النشر، توزيع المنصات — كله مضبوط على جمهورك وبيئتك التنافسية.
@@ -500,7 +500,7 @@ export default function LandingPageAr() {
             <Reveal from="left" delay={150}>
               <div style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${LINE}`, borderRadius:16, padding:24, position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${CYAN}40,transparent)` }}/>
-                <div style={{ fontSize:10, color:T4, fontFamily:F, fontWeight:600, letterSpacing:0, textTransform:'uppercase', marginBottom:16 }}>جدول المحتوى — مارس</div>
+                <div style={{ fontSize:10, color:T4, fontFamily:F, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:16 }}>جدول المحتوى — مارس</div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:6 }}>
                   {['إث','ثل','أر','خم','جم','سب','أح'].map(d=>(
                     <div key={d} style={{ textAlign:'center', fontSize:9, color:T4, fontFamily:F }}>{d}</div>
@@ -536,7 +536,7 @@ export default function LandingPageAr() {
         <div className="sp" style={{ padding:'80px 40px 100px', maxWidth:1100, margin:'0 auto' }}>
           <Reveal>
             <div style={{ textAlign:'center', marginBottom:56 }}>
-              <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:0, textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٤ — ثم تشتغل وحدها</div>
+              <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٤ — ثم تشتغل وحدها</div>
               <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,5vw,58px)', color:T1, lineHeight:1.3, marginBottom:18 }}>تسويق يشتغل<br/>وأنت نايم.</h2>
               <p style={{ fontFamily:F, fontWeight:400, fontSize:17, color:T3, maxWidth:480, margin:'0 auto', lineHeight:1.9 }}>وكلاء أذكياء. تسلسلات بريد. أتمتة كاملة. اضبطها مرة واحدة. لا تتوقف أبداً.</p>
             </div>
@@ -610,7 +610,7 @@ export default function LandingPageAr() {
             <Reveal from="right" delay={100}>
               <div className="lift" style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${LINE}`, borderRadius:16, padding:28, position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${CYAN}55,transparent)` }}/>
-                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:0, textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٥ — استقطاب العملاء</div>
+                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:CYAN, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٥ — استقطاب العملاء</div>
                 <h3 style={{ fontFamily:F, fontWeight:800, fontSize:24, color:T1, marginBottom:14, lineHeight:1.4 }}>حوّل المتابعين<br/>لعملاء محتملين.</h3>
                 <p style={{ fontSize:13, color:T3, fontFamily:F, lineHeight:1.9, marginBottom:18 }}>
                   صفحتك على Nexa تعيش على nexaa.cc/اسمك. ضعها في البايو. كل زائر يُستقطب تلقائياً — يُضاف لتسلسل بريدك ويُتابَع معه بدون أي تدخل منك.
@@ -630,7 +630,7 @@ export default function LandingPageAr() {
             <Reveal from="left" delay={150}>
               <div className="lift" style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${LINE}`, borderRadius:16, padding:28, position:'relative', overflow:'hidden' }}>
                 <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,transparent,rgba(74,222,128,0.55),transparent)' }}/>
-                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:'#4ade80', letterSpacing:0, textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٦ — التحليلات</div>
+                <div style={{ fontSize:11, fontFamily:F, fontWeight:700, color:'#4ade80', letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16, opacity:0.8 }}>٠٦ — التحليلات</div>
                 <h3 style={{ fontFamily:F, fontWeight:800, fontSize:24, color:T1, marginBottom:14, lineHeight:1.4 }}>شوف ايش فعلاً<br/>يشتغل.</h3>
                 <p style={{ fontSize:13, color:T3, fontFamily:F, lineHeight:1.9, marginBottom:18 }}>
                   كل بيانات أدائك في نظرة واحدة. ظهور، تفاعل، نمو المتابعين، ونسب فتح البريد. اضغط "اشرح بالذكاء" وNexa تخبرك بالضبط ايش تسوي الأسبوع القادم.
@@ -690,7 +690,7 @@ export default function LandingPageAr() {
       <section style={{ padding:'80px 40px', maxWidth:1100, margin:'0 auto', position:'relative', zIndex:1 }}>
         <Reveal>
           <div style={{ textAlign:'center', marginBottom:64 }}>
-            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:16 }}>أشخاص حقيقيون. نتائج حقيقية.</div>
+            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16 }}>أشخاص حقيقيون. نتائج حقيقية.</div>
             <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,5vw,50px)', color:T1, lineHeight:1.35 }}>
               ايش يصير لمّا تتوقف<br/>عن المعاناة مع المحتوى.
             </h2>
@@ -728,17 +728,17 @@ export default function LandingPageAr() {
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <Reveal>
             <div style={{ textAlign:'center', marginBottom:64 }}>
-              <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:16 }}>الأسعار</div>
+              <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16 }}>الأسعار</div>
               <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(34px,5.5vw,62px)', color:T1, marginBottom:14, lineHeight:1.25 }}>بسيط. واضح. يكبر معك.</h2>
               <p style={{ fontFamily:F, fontWeight:400, fontSize:17, color:T3, lineHeight:1.8 }}>ابدأ مجاناً. طوّر حين تكون جاهزاً. ألغِ في أي وقت.</p>
             </div>
           </Reveal>
           <div className="grid-4" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24, paddingTop:16 }}>
             {[
-              {id:'spark', name:'Spark', tagline:'للمبدع',  price:49,  credits:500,   color:'rgba(255,255,255,0.65)', popular:false, trial:'١٥٠ رصيد مجاناً للبدء', cta:'ابدأ بـ Spark'},
-              {id:'grow',  name:'Grow',  tagline:'للنمو',   price:89,  credits:1500,  color:CYAN,                    popular:true,  trial:null,                    cta:'ابدأ بـ Grow'},
-              {id:'scale', name:'Scale', tagline:'للتوسع',  price:169, credits:4000,  color:'#a78bfa',               popular:false, trial:null,                    cta:'ابدأ بـ Scale'},
-              {id:'agency',name:'Agency',tagline:'للوكالة', price:349, credits:12000, color:'#fb923c',               popular:false, trial:null,                    cta:'ابدأ بـ Agency'},
+              {id:'spark', name:'Spark', tagline:'للمبدع',  price:49,  credits:1000,  color:'rgba(255,255,255,0.65)', popular:false, trial:'٢٠٠ رصيد مجاناً للبدء', cta:'ابدأ بـ Spark'},
+              {id:'grow',  name:'Grow',  tagline:'للنمو',   price:89,  credits:3000,  color:CYAN,                    popular:true,  trial:null,                    cta:'ابدأ بـ Grow'},
+              {id:'scale', name:'Scale', tagline:'للتوسع',  price:169, credits:7000,  color:'#a78bfa',               popular:false, trial:null,                    cta:'ابدأ بـ Scale'},
+              {id:'agency',name:'Agency',tagline:'للوكالة', price:349, credits:20000, color:'#fb923c',               popular:false, trial:null,                    cta:'ابدأ بـ Agency'},
             ].map((plan,i)=>(
               <Reveal key={plan.id} delay={i*80} from="scale">
                 <div className="lift" style={{ background:plan.popular?'rgba(0,170,255,0.06)':'rgba(255,255,255,0.02)', border:`1px solid ${plan.popular?'rgba(0,170,255,0.30)':LINE}`, borderRadius:16, padding:'32px 22px', position:'relative', height:'100%' }}>
@@ -777,7 +777,7 @@ export default function LandingPageAr() {
       <section id="faq" style={{ padding:'80px 40px', maxWidth:720, margin:'0 auto', position:'relative', zIndex:1 }}>
         <Reveal>
           <div style={{ textAlign:'center', marginBottom:56 }}>
-            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:16 }}>أسئلة</div>
+            <div style={{ fontSize:11, fontFamily:F, fontWeight:600, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:16 }}>أسئلة</div>
             <h2 style={{ fontFamily:F, fontWeight:900, fontSize:'clamp(30px,5vw,50px)', color:T1, lineHeight:1.35 }}>كل سؤال<br/>إجابة واضحة.</h2>
           </div>
         </Reveal>
@@ -834,7 +834,7 @@ export default function LandingPageAr() {
               <p style={{ fontSize:12, color:T4, fontFamily:F }}>دبي، الإمارات · hello@nexaa.cc</p>
             </div>
             <div>
-              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:18 }}>المنتج</div>
+              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:18 }}>المنتج</div>
               {['الدماغ التجاري','الاستوديو','الاستراتيجية','الوكلاء','التسلسلات','Amplify','التكاملات','التحليلات'].map(item=>(
                 <div key={item} style={{ marginBottom:10 }}>
                   <Link href="/auth/signup" style={{ fontSize:13, color:T3, textDecoration:'none', fontFamily:F, transition:'color 0.15s' }}
@@ -844,7 +844,7 @@ export default function LandingPageAr() {
               ))}
             </div>
             <div>
-              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:18 }}>الشركة</div>
+              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:18 }}>الشركة</div>
               {[['عن Nexa','about'],['الأسعار','#pricing'],['الأسئلة الشائعة','#faq'],['تسجيل الدخول','/auth/login'],['ابدأ مجاناً','/auth/signup']].map(([label,href])=>(
                 <div key={label} style={{ marginBottom:10 }}>
                   <a href={href.startsWith('/')||href.startsWith('#')?href:`/landing/${href}`} style={{ fontSize:13, color:T3, textDecoration:'none', fontFamily:F, transition:'color 0.15s' }}
@@ -854,7 +854,7 @@ export default function LandingPageAr() {
               ))}
             </div>
             <div>
-              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:18 }}>القانوني</div>
+              <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:18 }}>القانوني</div>
               {[['سياسة الخصوصية','/landing/privacy'],['شروط الخدمة','/landing/terms']].map(([label,href])=>(
                 <div key={label} style={{ marginBottom:10 }}>
                   <Link href={href} style={{ fontSize:13, color:T3, textDecoration:'none', fontFamily:F, transition:'color 0.15s' }}
@@ -863,7 +863,7 @@ export default function LandingPageAr() {
                 </div>
               ))}
               <div style={{ marginTop:24 }}>
-                <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:0, textTransform:'uppercase', marginBottom:10 }}>تواصل</div>
+                <div style={{ fontSize:10, fontFamily:F, fontWeight:700, color:T4, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:10 }}>تواصل</div>
                 <a href="mailto:hello@nexaa.cc" style={{ fontSize:13, color:T3, textDecoration:'none', fontFamily:F }}>hello@nexaa.cc</a>
               </div>
             </div>

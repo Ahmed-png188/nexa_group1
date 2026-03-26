@@ -11,7 +11,7 @@ export const PLAN_FEATURES = {
     label: 'Spark',
     tagline: 'The Creator',
     price: 4900,
-    credits: 500,
+    credits: 1000,
     trial_days: 7,
     features: {
       // Brand Brain — all plans
@@ -67,7 +67,7 @@ export const PLAN_FEATURES = {
     label: 'Grow',
     tagline: 'The Grower',
     price: 8900,
-    credits: 1500,
+    credits: 3000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -112,7 +112,7 @@ export const PLAN_FEATURES = {
     label: 'Scale',
     tagline: 'The Operator',
     price: 16900,
-    credits: 4000,
+    credits: 7000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -157,7 +157,7 @@ export const PLAN_FEATURES = {
     label: 'Agency',
     tagline: 'The Agency',
     price: 34900,
-    credits: 12000,
+    credits: 20000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -203,7 +203,7 @@ export const PLAN_FEATURES = {
     label: 'Trial',
     tagline: 'Trial',
     price: 0,
-    credits: 500,
+    credits: 200,
     trial_days: 7,
     features: {
       brand_brain:          true,

@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { TOPUP_PACKS_BY_PLAN, PLAN_CREDITS } from '@/lib/plan-constants'
 
 // ─── الخطوط والثوابت ─────────────────────────────────────────────
 const F    = "'Tajawal', system-ui, sans-serif"
@@ -12,11 +13,11 @@ type Tab = 'profile' | 'workspace' | 'billing' | 'password'
 // ─── خطط الاشتراك ─────────────────────────────────────────────────
 const PLANS = [
   {
-    id: 'spark', name: 'Spark', tagline: 'المبدع', price: 49, credits: 500,
+    id: 'spark', name: 'Spark', tagline: 'المبدع', price: 49, credits: 1000,
     color: 'rgba(255,255,255,0.5)', popular: false,
     desc: 'ابنِ براندك وأنشئ بثبات',
     features: [
-      '٥٠٠ كريديت/شهر (~٢٥ فيديو أو ١٦٦ منشور)',
+      '١٠٠٠ كريديت/شهر (~٧ فيديو سينمائي أو ٣٣٣ منشور)',
       'Brand Brain — تدريب الصوت',
       'كل أنواع المحتوى (نص، صورة، فيديو، صوت)',
       'دردشة Nexa AI — بلا حدود',
@@ -36,11 +37,11 @@ const PLANS = [
     ],
   },
   {
-    id: 'grow', name: 'Grow', tagline: 'المنمّي', price: 89, credits: 1500,
+    id: 'grow', name: 'Grow', tagline: 'المنمّي', price: 89, credits: 3000,
     color: '#00AAFF', popular: true,
     desc: 'اجمع العملاء المحتملين، أدر إعلانات، كبّر جمهورك',
     features: [
-      '١٥٠٠ كريديت/شهر (~٧٥ فيديو أو ٥٠٠ منشور)',
+      '٣٠٠٠ كريديت/شهر (~٢١ فيديو سينمائي أو ١٠٠٠ منشور)',
       'كل مزايا Spark',
       'تسلسلات إيميل (٣ نشطة)',
       'تسلسلات مكتوبة بالذكاء',
@@ -61,11 +62,11 @@ const PLANS = [
     ],
   },
   {
-    id: 'scale', name: 'Scale', tagline: 'المشغّل', price: 169, credits: 4000,
+    id: 'scale', name: 'Scale', tagline: 'المشغّل', price: 169, credits: 7000,
     color: '#A78BFA', popular: false,
     desc: 'احترافي، وايت ليبل، مؤتمت بالكامل',
     features: [
-      '٤٠٠٠ كريديت/شهر (~٢٠٠ فيديو أو ١٣٣٣ منشور)',
+      '٧٠٠٠ كريديت/شهر (~٥٠ فيديو سينمائي أو ٢٣٣٣ منشور)',
       'كل مزايا Grow',
       'إزالة علامة Nexa من كل مكان',
       'نطاق مرسل مخصص',
@@ -84,11 +85,11 @@ const PLANS = [
     ],
   },
   {
-    id: 'agency', name: 'Agency', tagline: 'الوكالة', price: 349, credits: 12000,
+    id: 'agency', name: 'Agency', tagline: 'الوكالة', price: 349, credits: 20000,
     color: '#FF7A40', popular: false,
     desc: 'أدر براندات عملاء متعددين من مكان واحد',
     features: [
-      '١٢٠٠٠ كريديت/شهر (~٦٠٠ فيديو أو ٤٠٠٠ منشور)',
+      '٢٠٠٠٠ كريديت/شهر (~١٤٤ فيديو سينمائي أو ٦٦٦٦ منشور)',
       'كل مزايا Scale',
       'مساحات عمل عملاء بلا حدود',
       'Brand Brain مستقل لكل عميل',
@@ -364,7 +365,7 @@ function SettingsInnerAr() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--topbar-h))', flexDirection: 'column', gap: 16 }}>
       <div className="nexa-spinner" style={{ width: 22, height: 22 }} />
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontFamily: F, letterSpacing: 0 }}>يحمّل...</div>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontFamily: F, letterSpacing: '0.06em' }}>يحمّل...</div>
     </div>
   )
 
@@ -386,7 +387,7 @@ function SettingsInnerAr() {
                 {initial}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                   {user?.full_name || 'حسابك'}
                 </div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
@@ -397,7 +398,7 @@ function SettingsInnerAr() {
             {/* شارة الخطة */}
             <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 7, padding: '5px 10px', borderRadius: 8, background: `${planColor}0d`, border: `1px solid ${planColor}22` }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: planColor, boxShadow: `0 0 6px ${planColor}` }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: planColor, letterSpacing: 0, fontFamily: F }}>{currentPlan}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: planColor, letterSpacing: '-0.01em', fontFamily: F }}>{currentPlan}</span>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginRight: 'auto', fontFamily: MONO }}>
                 {credits?.balance?.toLocaleString() || 0} cr
               </span>
@@ -460,7 +461,7 @@ function SettingsInnerAr() {
           {tab === 'profile' && (
             <div style={{ maxWidth: 520, animation: 'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom: 28 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الحساب الشخصي</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الحساب الشخصي</h2>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>كيف تظهر في مساحة عملك</p>
               </div>
 
@@ -518,7 +519,7 @@ function SettingsInnerAr() {
           {tab === 'workspace' && (
             <div style={{ maxWidth: 560, animation: 'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom: 28 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>مساحة العمل</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>مساحة العمل</h2>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>هذه الإعدادات تُشغّل كل توليد ذكاء اصطناعي في المنتج</p>
               </div>
 
@@ -533,7 +534,7 @@ function SettingsInnerAr() {
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '24px 0' }} />
 
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#00AAFF', letterSpacing: 0, textTransform: 'uppercase' as const, marginBottom: 4, fontFamily: F }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#00AAFF', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4, fontFamily: F }}>
                   صوت البراند
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginBottom: 16, lineHeight: 1.65, fontFamily: F }}>
@@ -558,7 +559,7 @@ function SettingsInnerAr() {
               {/* هوية المرسل */}
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '32px 0' }} />
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#00AAFF', letterSpacing: 0, textTransform: 'uppercase' as const, marginBottom: 4, fontFamily: F }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#00AAFF', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4, fontFamily: F }}>
                   هوية المرسل
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', lineHeight: 1.7, fontFamily: F }}>
@@ -604,17 +605,17 @@ function SettingsInnerAr() {
           {tab === 'billing' && (
             <div style={{ animation: 'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom: 28 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الفوترة</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الفوترة</h2>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>أدر خطتك ورصيدك</p>
               </div>
 
               {/* بطاقة الاستخدام الحالي */}
               <div className="card" style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' as const }}>
                 <div>
-                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
                     الخطة الحالية
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 0, color: planColor, textTransform: 'capitalize', fontFamily: F }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: planColor, textTransform: 'capitalize', fontFamily: F }}>
                     {currentPlan}
                   </div>
 
@@ -640,10 +641,10 @@ function SettingsInnerAr() {
                 <div style={{ width: 1, height: 44, background: 'rgba(255,255,255,0.10)' }} />
 
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
                     الرصيد المتبقي
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', fontFamily: MONO }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#FFFFFF', fontFamily: MONO }}>
                     {credits?.balance?.toLocaleString() || 0}
                   </div>
                 </div>
@@ -651,10 +652,10 @@ function SettingsInnerAr() {
                 <div style={{ width: 1, height: 44, background: 'rgba(255,255,255,0.10)' }} />
 
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.38)', marginBottom: 5, fontFamily: F }}>
                     الكلي المستهلك
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', fontFamily: MONO }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.04em', color: '#FFFFFF', fontFamily: MONO }}>
                     {credits?.lifetime_used?.toLocaleString() || 0}
                   </div>
                 </div>
@@ -696,7 +697,7 @@ function SettingsInnerAr() {
                     >
                       {/* شارة الأكثر شيوعاً */}
                       {plan.popular && !isCurrent && (
-                        <div style={{ position: 'absolute', top: -1, left: 14, fontSize: 9, fontWeight: 700, padding: '3px 9px', borderRadius: '0 0 7px 7px', background: plan.color, color: '#000', letterSpacing: 0, fontFamily: F }}>
+                        <div style={{ position: 'absolute', top: -1, left: 14, fontSize: 9, fontWeight: 700, padding: '3px 9px', borderRadius: '0 0 7px 7px', background: plan.color, color: '#000', letterSpacing: '0.05em', fontFamily: F }}>
                           الأكثر شيوعاً
                         </div>
                       )}
@@ -704,11 +705,11 @@ function SettingsInnerAr() {
                       {/* الاسم والتصنيف */}
                       <div style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: 0, color: isCurrent ? plan.color : '#FFFFFF', fontFamily: F }}>
+                          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.03em', color: isCurrent ? plan.color : '#FFFFFF', fontFamily: F }}>
                             {plan.name}
                           </span>
                           {isCurrent && (
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0, color: plan.color, padding: '2px 8px', background: `${plan.color}12`, border: `1px solid ${plan.color}25`, borderRadius: 99, fontFamily: F }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: plan.color, padding: '2px 8px', background: `${plan.color}12`, border: `1px solid ${plan.color}25`, borderRadius: 99, fontFamily: F }}>
                               نشطة
                             </span>
                           )}
@@ -718,7 +719,7 @@ function SettingsInnerAr() {
 
                       {/* السعر */}
                       <div style={{ marginBottom: 4 }}>
-                        <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: 0, color: '#FFFFFF', fontFamily: MONO }}>${plan.price}</span>
+                        <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.05em', color: '#FFFFFF', fontFamily: MONO }}>${plan.price}</span>
                         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginRight: 3, fontFamily: F }}>/شهر</span>
                       </div>
 
@@ -728,7 +729,7 @@ function SettingsInnerAr() {
                           {plan.credits.toLocaleString()} كريديت/شهر
                         </div>
                         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', lineHeight: 1.6, fontFamily: F }}>
-                          ~{Math.floor(plan.credits / 20)} فيديو · ~{Math.floor(plan.credits / 3)} منشور · ~{Math.floor(plan.credits / 5)} صورة
+                          ~{Math.floor(plan.credits / 138)} فيديو سينمائي · ~{Math.floor(plan.credits / 3)} منشور · ~{Math.floor(plan.credits / 5)} صورة
                         </div>
                       </div>
 
@@ -769,7 +770,7 @@ function SettingsInnerAr() {
                             color: isDowngrade ? 'rgba(255,255,255,0.38)' : '#000',
                             border: isDowngrade ? '1px solid rgba(255,255,255,0.10)' : 'none',
                             borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
-                            opacity: billingLoading ? 0.6 : 1, letterSpacing: 0,
+                            opacity: billingLoading ? 0.6 : 1, letterSpacing: '-0.01em',
                           }}
                         >
                           {isDowngrade ? `التحويل لـ ${plan.name}` : `الترقية لـ ${plan.name} ←`}
@@ -785,69 +786,107 @@ function SettingsInnerAr() {
                 })}
               </div>
 
+              {/* بانر انخفاض الرصيد */}
+              {(() => {
+                const planKey = currentPlan as keyof typeof PLAN_CREDITS
+                const planTotal = PLAN_CREDITS[planKey] || PLAN_CREDITS.spark
+                const bal = credits?.balance || 0
+                const isTrial = ws?.plan_status === 'trialing'
+                const isLow = bal < planTotal * 0.15
+                if (!isLow) return null
+                return (
+                  <div dir="rtl" style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: '#F59E0B', flexShrink: 0 }}>{Ic.warn}</span>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#F59E0B', marginBottom: 2, fontFamily: F, letterSpacing: 0 }}>الرصيد على وشك النفاد</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: F, letterSpacing: 0 }}>أضف رصيداً أو رقّ خطتك.</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      {!isTrial && (
+                        <button onClick={() => {
+                          const section = document.getElementById('topup-section-ar')
+                          section?.scrollIntoView({ behavior: 'smooth' })
+                        }} style={{ padding: '7px 14px', fontSize: 11, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, cursor: 'pointer', fontFamily: F, letterSpacing: 0 }}>
+                          إضافة رصيد
+                        </button>
+                      )}
+                      <button onClick={() => checkout('grow')} style={{ padding: '7px 14px', fontSize: 11, fontWeight: 600, background: 'rgba(0,170,255,0.10)', color: '#00AAFF', border: '1px solid rgba(0,170,255,0.22)', borderRadius: 8, cursor: 'pointer', fontFamily: F, letterSpacing: 0 }}>
+                        ترقية الخطة →
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* إضافة رصيد */}
-              <div style={{ marginBottom: 32 }}>
+              {ws?.plan_status !== 'trialing' && (
+              <div id="topup-section-ar" style={{ marginBottom: 32 }} dir="rtl">
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: 4, fontFamily: F }}>
                   تحتاج رصيداً إضافياً؟
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginBottom: 16, lineHeight: 1.6, fontFamily: F }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginBottom: 16, lineHeight: 1.6, fontFamily: F, letterSpacing: 0 }}>
                   إضافات لمرة واحدة — الكريديتات لا تنتهي صلاحيتها وتُضاف فوق رصيدك الشهري.
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px,1fr))', gap: 9 }}>
-                  {([
-                    { credits: 100,  price: 5,  label: '١٠٠ cr',   tag: '' },
-                    { credits: 300,  price: 12, label: '٣٠٠ cr',   tag: 'شائع' },
-                    { credits: 700,  price: 25, label: '٧٠٠ cr',   tag: '' },
-                    { credits: 1500, price: 45, label: '١٥٠٠ cr',  tag: 'الأوفر' },
-                    { credits: 3500, price: 89, label: '٣٥٠٠ cr',  tag: '' },
-                  ] as { credits: number; price: number; label: string; tag: string }[]).map(pack => (
-                    <button
-                      key={pack.credits}
-                      onClick={() => checkout(null, pack.credits)}
-                      disabled={billingLoading}
-                      style={{
-                        padding: '12px 10px', background: '#141414',
-                        border: `1px solid ${pack.tag ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.10)'}`,
-                        borderRadius: 10, cursor: 'pointer', textAlign: 'right' as const,
-                        position: 'relative' as const, transition: 'border-color 0.15s',
-                        opacity: billingLoading ? 0.6 : 1,
-                      }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.22)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = pack.tag ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.10)'}
-                    >
-                      {pack.tag && (
-                        <div style={{ position: 'absolute' as const, top: -7, right: 8, fontSize: 8, fontWeight: 700, color: '#00AAFF', background: 'rgba(0,170,255,0.12)', border: '1px solid rgba(0,170,255,0.25)', borderRadius: 99, padding: '1px 7px', letterSpacing: 0, fontFamily: F }}>
-                          {pack.tag}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px,1fr))', gap: 9 }}>
+                  {(TOPUP_PACKS_BY_PLAN[currentPlan as keyof typeof TOPUP_PACKS_BY_PLAN] || TOPUP_PACKS_BY_PLAN.spark).map(pack => {
+                    const perCredit = ((pack.price / 100) / pack.credits * 100).toFixed(1)
+                    const cinemaVids = Math.floor(pack.credits / 138)
+                    return (
+                      <button
+                        key={pack.credits}
+                        onClick={() => checkout(null, pack.credits)}
+                        disabled={billingLoading}
+                        style={{
+                          padding: '14px 12px', background: '#141414',
+                          border: `1px solid ${pack.tag ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.10)'}`,
+                          borderRadius: 10, cursor: 'pointer', textAlign: 'right' as const,
+                          position: 'relative' as const, transition: 'border-color 0.15s',
+                          opacity: billingLoading ? 0.6 : 1,
+                        }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.22)'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = pack.tag ? 'rgba(0,170,255,0.25)' : 'rgba(255,255,255,0.10)'}
+                      >
+                        {pack.tag && (
+                          <div style={{ position: 'absolute' as const, top: -7, right: 8, fontSize: 8, fontWeight: 700, color: '#00AAFF', background: 'rgba(0,170,255,0.12)', border: '1px solid rgba(0,170,255,0.25)', borderRadius: 99, padding: '1px 7px', letterSpacing: 0, fontFamily: F }}>
+                            {pack.tag === 'Quick boost' ? 'شحن سريع' : pack.tag === 'Best value' ? 'الأوفر' : pack.tag}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: 1, fontFamily: F }}>
+                          {pack.label}
                         </div>
-                      )}
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: 2, fontFamily: MONO }}>
-                        {pack.label}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginBottom: 6, fontFamily: F }}>
-                        ~{Math.floor(pack.credits / 20)} فيديو أو {Math.floor(pack.credits / 3)} منشور
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#00AAFF', fontFamily: MONO }}>${pack.price}</div>
-                    </button>
-                  ))}
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', marginBottom: 8, fontFamily: F, letterSpacing: 0 }}>
+                          {cinemaVids > 0 ? `~${cinemaVids} فيديو سينمائي (٨ث)` : `~${Math.floor(pack.credits / 3)} منشور`}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'space-between', flexDirection: 'row-reverse' }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#00AAFF', fontFamily: MONO }}>${(pack.price / 100).toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.30)', fontFamily: MONO }}>{perCredit}¢/cr</div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
+              )}
 
               {/* تكلفة الكريديت لكل إجراء */}
               <div style={{ padding: 16, background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.38)', letterSpacing: 0, textTransform: 'uppercase' as const, marginBottom: 14, fontFamily: F }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 14, fontFamily: F }}>
                   تكلفة الكريديت لكل إجراء
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 24px' }}>
                   {[
-                    ['منشور / كابشن / هوك',     '٢–٣ cr'],
-                    ['ثريد / إيميل / إعلان',    '٥ cr'],
-                    ['مقالة كاملة',              '١٠ cr'],
-                    ['صورة (أي حجم)',             '٥ cr'],
-                    ['فيديو ٨ ثواني — معاينة',   '١٠ cr'],
-                    ['فيديو ١٦ ثانية — جودة كاملة', '٢٠ cr'],
-                    ['صوت قصير (~٣٠ ث)',          '٥ cr'],
-                    ['صوت متوسط (~٦٠ ث)',          '١٠ cr'],
-                    ['صوت طويل (~٣ د)',            '٢٠ cr'],
+                    ['منشور / كابشن / هوك / بايو', '٣ cr'],
+                    ['ثريد / إيميل / إعلان',        '٥ cr'],
+                    ['مقالة كاملة',                  '١٠ cr'],
+                    ['صورة (أي حجم)',                 '٥ cr'],
+                    ['فيديو ٥ث ستاندرد (صامت)',       '٦٥ cr'],
+                    ['فيديو ٨ث ستاندرد (مع صوت)',     '١٥٥ cr'],
+                    ['فيديو ٨ث سينمائي (مع صوت)',     '١٣٨ cr'],
+                    ['صوت قصير (~٣٠ ث)',              '٥ cr'],
+                    ['صوت متوسط (~٦٠ ث)',             '١٠ cr'],
+                    ['صوت طويل (~٣ د)',               '٣٩ cr'],
                   ].map(([label, cost]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
                       <span style={{ color: 'rgba(255,255,255,0.40)', fontFamily: F }}>{label}</span>
@@ -863,7 +902,7 @@ function SettingsInnerAr() {
           {tab === 'password' && (
             <div style={{ maxWidth: 420, animation: 'pageUp 0.35s ease both' }}>
               <div style={{ marginBottom: 28 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الأمان</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>الأمان</h2>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>حدّث كلمة سرك</p>
               </div>
 

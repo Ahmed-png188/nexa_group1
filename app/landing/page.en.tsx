@@ -248,7 +248,7 @@ export default function LandingPage() {
           <Link href="/landing/about" className="nav-link">About</Link>
         </div>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          <button onClick={() => setLang('ar')} style={{ fontFamily:"'Noto Naskh Arabic', serif", fontSize:13, color:'rgba(255,255,255,0.40)', background:'none', border:'0.5px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'5px 12px', cursor:'pointer', transition:'color 0.2s, border-color 0.2s', letterSpacing:0 }} onMouseEnter={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.80)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.40)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}}>عربي</button>
+          <button onClick={() => { setLang('ar'); localStorage.setItem('nexa_lang','ar') }} style={{ fontFamily:"'Noto Naskh Arabic', serif", fontSize:13, color:'rgba(255,255,255,0.40)', background:'none', border:'0.5px solid rgba(255,255,255,0.12)', borderRadius:6, padding:'5px 12px', cursor:'pointer', transition:'color 0.2s, border-color 0.2s', letterSpacing:0 }} onMouseEnter={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.80)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.color='rgba(255,255,255,0.40)';(e.target as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}}>عربي</button>
           <Link href="/auth/login" style={{ padding:'7px 16px', borderRadius:8, border:`1px solid ${LINE2}`, background:'none', color:T2, fontSize:13, fontFamily:SANS, textDecoration:'none', transition:'border-color 0.15s' }}>Sign in</Link>
           <Link href="/auth/signup" className="cta-glow" style={{ padding:'7px 20px', borderRadius:8, background:CYAN, color:'#000', fontSize:13, fontWeight:700, fontFamily:DISPLAY, textDecoration:'none', letterSpacing:'-0.02em', transition:'all 0.2s' }}>Start free →</Link>
         </div>
@@ -984,10 +984,10 @@ export default function LandingPage() {
           {/* Plan cards */}
           <div className="grid-4" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
             {[
-              { id:'spark', name:'Spark', tagline:'The Creator', price:49, credits:500, color:'rgba(255,255,255,0.65)', popular:false, trial:'150 credits free to start', cta:'Start with Spark' },
-              { id:'grow', name:'Grow', tagline:'The Grower', price:89, credits:1500, color:CYAN, popular:true, trial:null, cta:'Start with Grow' },
-              { id:'scale', name:'Scale', tagline:'The Operator', price:169, credits:4000, color:'#a78bfa', popular:false, trial:null, cta:'Start with Scale' },
-              { id:'agency', name:'Agency', tagline:'The Agency', price:349, credits:12000, color:'#fb923c', popular:false, trial:null, cta:'Start with Agency' },
+              { id:'spark', name:'Spark', tagline:'The Creator', price:49, credits:1000, color:'rgba(255,255,255,0.65)', popular:false, trial:'200 credits free to start', cta:'Start with Spark' },
+              { id:'grow', name:'Grow', tagline:'The Grower', price:89, credits:3000, color:CYAN, popular:true, trial:null, cta:'Start with Grow' },
+              { id:'scale', name:'Scale', tagline:'The Operator', price:169, credits:7000, color:'#a78bfa', popular:false, trial:null, cta:'Start with Scale' },
+              { id:'agency', name:'Agency', tagline:'The Agency', price:349, credits:20000, color:'#fb923c', popular:false, trial:null, cta:'Start with Agency' },
             ].map((plan, i) => (
               <Reveal key={plan.id} delay={i * 80} from="scale">
                 <div className="lift" style={{ background:plan.popular?'rgba(0,170,255,0.06)':'rgba(255,255,255,0.02)', border:`1px solid ${plan.popular?'rgba(0,170,255,0.30)':LINE}`, borderRadius:16, padding:'28px 22px', position:'relative', height:'100%' }}>
