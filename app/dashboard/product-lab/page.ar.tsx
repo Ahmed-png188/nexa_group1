@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
@@ -105,11 +105,11 @@ export default function ProductLabAr() {
   const [pkgSpecOpen,   setPkgSpecOpen]   = useState(false)
   const [pkgError,      setPkgError]      = useState('')
 
-  useState(() => {
+  useEffect(() => {
     supabase.from('workspace_members')
       .select('workspace_id').limit(1).single()
       .then(({ data }) => { if (data) setWorkspaceId(data.workspace_id) })
-  })
+  }, [])
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) { setError('الرجاء رفع صورة'); return }
@@ -316,114 +316,116 @@ export default function ProductLabAr() {
       <div style={{ display:'flex', gap:24, alignItems:'flex-start', flexDirection:'row-reverse' }}>
         {/* ── RIGHT PANEL (results) ── */}
         <div style={{ flex:1, minWidth:0 }}>
-          {!hasResults && !generating && tab !== 'packaging' ? (
-            <div style={{
-              background:C.surface, border:`1px solid ${C.borderS}`,
-              borderRadius:14, padding:'64px 32px',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center',
-            }}>
-              <div style={{ color:C.t4 }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {/* Tabs — always visible */}
+            <div style={{ display:'flex', flexDirection:'row-reverse', borderBottom:`1px solid ${C.borderS}`, marginBottom:20 }}>
+              {[
+                { id:'shots',     label:'لقطات الاستوديو', count:generatedShots.length },
+                { id:'lifestyle', label:'مشاهد حياتية',    count:generatedLifestyle.length },
+                { id:'packaging', label:'التغليف',          count: pkgDesign ? 1 : 0 },
+              ].map(t => (
+                <button key={t.id}
+                  onClick={()=>setTab(t.id as any)}
+                  style={{
+                    padding:'10px 16px', background:'transparent', border:'none',
+                    borderBottom:`2px solid ${tab===t.id ? C.cyan : 'transparent'}`,
+                    fontSize:13, fontWeight: tab===t.id ? 600 : 400,
+                    color: tab===t.id ? C.t1 : C.t3,
+                    cursor:'pointer', marginBottom:'-1px',
+                    display:'flex', alignItems:'center', gap:6, fontFamily:F, letterSpacing:0,
+                  }}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span style={{ background:C.cyanD, color:C.cyan, borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700 }}>{t.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Loading state */}
+            {generating && (
+              <div style={{
+                background:C.cyanD, border:`1px solid ${C.cyanB}`,
+                borderRadius:12, padding:'24px',
+                display:'flex', alignItems:'center', gap:12, marginBottom:20, flexDirection:'row-reverse',
+              }}>
+                <LoadingDots/>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:C.t1 }}>جاري توليد صورك…</div>
+                  <div style={{ fontSize:12, color:C.t3, marginTop:2 }}>قد يستغرق ذلك 30–60 ثانية</div>
+                </div>
               </div>
+            )}
+
+            {/* Shots tab */}
+            {tab === 'shots' && (
               <div>
-                <div style={{ fontSize:16, fontWeight:600, color:C.t2, marginBottom:4 }}>ستظهر صورك هنا</div>
-                <div style={{ fontSize:13, color:C.t4 }}>ارفع صورة المنتج واضغط توليد</div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-              {/* Tabs */}
-              <div style={{ display:'flex', flexDirection:'row-reverse', borderBottom:`1px solid ${C.borderS}`, marginBottom:20 }}>
-                {[
-                  { id:'shots',     label:'لقطات الاستوديو', count:generatedShots.length },
-                  { id:'lifestyle', label:'مشاهد حياتية',    count:generatedLifestyle.length },
-                  { id:'packaging', label:'التغليف', count: pkgDesign ? 1 : 0 },
-                ].map(t => (
-                  <button key={t.id}
-                    onClick={()=>setTab(t.id as any)}
-                    style={{
-                      padding:'10px 16px', background:'transparent', border:'none',
-                      borderBottom:`2px solid ${tab===t.id ? C.cyan : 'transparent'}`,
-                      fontSize:13, fontWeight: tab===t.id ? 600 : 400,
-                      color: tab===t.id ? C.t1 : C.t3,
-                      cursor:'pointer', marginBottom:'-1px',
-                      display:'flex', alignItems:'center', gap:6, fontFamily:F, letterSpacing:0,
-                    }}
-                  >
-                    {t.label}
-                    {t.count > 0 && (
-                      <span style={{ background:C.cyanD, color:C.cyan, borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700 }}>{t.count}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {generating && (
-                <div style={{
-                  background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                  borderRadius:12, padding:'24px',
-                  display:'flex', alignItems:'center', gap:12, marginBottom:20, flexDirection:'row-reverse',
-                }}>
-                  <LoadingDots/>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:13, fontWeight:500, color:C.t1 }}>جاري توليد صورك…</div>
-                    <div style={{ fontSize:12, color:C.t3, marginTop:2 }}>قد يستغرق ذلك 30–60 ثانية</div>
+                {generatedShots.length > 0 ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
+                    {generatedShots.map(shot => (
+                      <ImageCardAr key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {tab === 'shots' && (
-                <div>
-                  {generatedShots.length > 0 ? (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                      {generatedShots.map(shot => (
-                        <ImageCardAr key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                      ))}
+                ) : (
+                  !generating && (
+                    <div style={{
+                      background:C.surface, border:`1px solid ${C.borderS}`,
+                      borderRadius:14, padding:'64px 32px',
+                      display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center',
+                    }}>
+                      <div style={{ color:C.t4 }}>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:16, fontWeight:600, color:C.t2, marginBottom:4 }}>ستظهر صورك هنا</div>
+                        <div style={{ fontSize:13, color:C.t4 }}>ارفع صورة المنتج واضغط توليد</div>
+                      </div>
                     </div>
-                  ) : (
-                    !generating && <EmptyTabAr label="لا توجد لقطات بعد" sub="اختر 'لقطات الاستوديو' ثم اضغط توليد" />
-                  )}
-                </div>
-              )}
+                  )
+                )}
+              </div>
+            )}
 
-              {tab === 'lifestyle' && (
-                <div>
-                  {generatedLifestyle.length > 0 ? (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                      {generatedLifestyle.map(shot => (
-                        <ImageCardAr key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                      ))}
-                    </div>
-                  ) : (
-                    !generating && <EmptyTabAr label="لا توجد مشاهد حياتية بعد" sub="اختر 'مشاهد حياتية' ثم اضغط توليد" />
-                  )}
-                </div>
-              )}
+            {/* Lifestyle tab */}
+            {tab === 'lifestyle' && (
+              <div>
+                {generatedLifestyle.length > 0 ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
+                    {generatedLifestyle.map(shot => (
+                      <ImageCardAr key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
+                    ))}
+                  </div>
+                ) : (
+                  !generating && <EmptyTabAr label="لا توجد مشاهد حياتية بعد" sub="اختر 'مشاهد حياتية' ثم اضغط توليد" />
+                )}
+              </div>
+            )}
 
-              {tab === 'packaging' && (
-                <PackagingTabAr
-                  pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
-                  pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
-                  pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
-                  pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
-                  pkgGenerating={pkgGenerating}
-                  pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
-                  pkgDesignId={pkgDesignId}
-                  pkgExporting={pkgExporting}
-                  pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
-                  pkgHistory={pkgHistory}
-                  pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
-                  pkgError={pkgError}
-                  onGenerate={generatePackaging}
-                  onExportPDF={exportPDF}
-                />
-              )}
-            </div>
-          )}
+            {/* Packaging tab — always accessible */}
+            {tab === 'packaging' && (
+              <PackagingTabAr
+                pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
+                pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
+                pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
+                pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
+                pkgGenerating={pkgGenerating}
+                pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
+                pkgDesignId={pkgDesignId}
+                pkgExporting={pkgExporting}
+                pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
+                pkgHistory={pkgHistory}
+                pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
+                pkgError={pkgError}
+                onGenerate={generatePackaging}
+                onExportPDF={exportPDF}
+              />
+            )}
+          </div>
         </div>
 
         {/* ── LEFT PANEL (controls) ── */}
@@ -1092,7 +1094,7 @@ function PackagingTabAr({
             <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginBottom:8, textAlign:'right', fontFamily:FA, letterSpacing:0 }}>التصاميم السابقة</div>
             <div style={{ display:'flex', gap:8, flexDirection:'row-reverse' }}>
               {pkgHistory.slice(1, 5).map((h, i) => (
-                <button key={i} title={h.brand_name_display||'تصميم'}
+                <button key={i} onClick={()=>setPkgDesign(h)} title={h.brand_name_display||'تصميم'}
                   style={{ width:60, height:60, borderRadius:8, cursor:'pointer', background:h.bg_color||'#1A1A1A', border:'1px solid rgba(255,255,255,0.12)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, overflow:'hidden', padding:4 }}>
                   <div style={{ fontSize:8, color:h.text_color||'#fff', fontWeight:700, textAlign:'center', overflow:'hidden', maxWidth:52, fontFamily:FA, letterSpacing:0 }}>
                     {(h.brand_name_display||'براند').slice(0,8)}

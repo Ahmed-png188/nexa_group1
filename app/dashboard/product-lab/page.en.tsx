@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
@@ -174,11 +174,11 @@ export default function ProductLabEn() {
   const [pkgError,      setPkgError]      = useState('')
 
   // Load workspace on mount
-  useState(() => {
+  useEffect(() => {
     supabase.from('workspace_members')
       .select('workspace_id').limit(1).single()
       .then(({ data }) => { if (data) setWorkspaceId(data.workspace_id) })
-  })
+  }, [])
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) { setError('Please upload an image file'); return }
@@ -707,120 +707,116 @@ export default function ProductLabEn() {
 
         {/* ── RIGHT PANEL ── */}
         <div style={{ flex:1, minWidth:0 }}>
-          {!hasResults && !generating && tab !== 'packaging' ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {/* Tabs — always visible */}
             <div style={{
-              background:C.surface, border:`1px solid ${C.borderS}`,
-              borderRadius:14, padding:'64px 32px',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center',
+              display:'flex', gap:0,
+              borderBottom:`1px solid ${C.borderS}`, marginBottom:20,
             }}>
-              <div style={{ color:C.t4 }}>
-                <ImageIcon/>
-              </div>
-              <div>
-                <div style={{ fontSize:16, fontWeight:600, color:C.t2, marginBottom:4 }}>Your shots will appear here</div>
-                <div style={{ fontSize:13, color:C.t4 }}>Upload a product image and click Generate</div>
-              </div>
+              {[
+                { id:'shots',     label:'Studio Shots', count:generatedShots.length },
+                { id:'lifestyle', label:'Lifestyle',    count:generatedLifestyle.length },
+                { id:'packaging', label:'Packaging',    count: pkgDesign ? 1 : 0 },
+              ].map(t => (
+                <button key={t.id}
+                  onClick={()=>setTab(t.id as any)}
+                  style={{
+                    padding:'10px 16px', background:'transparent', border:'none',
+                    borderBottom:`2px solid ${tab===t.id ? C.cyan : 'transparent'}`,
+                    fontSize:13, fontWeight: tab===t.id ? 600 : 400,
+                    color: tab===t.id ? C.t1 : C.t3,
+                    cursor:'pointer', marginBottom:'-1px',
+                    display:'flex', alignItems:'center', gap:6, fontFamily:F,
+                  }}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span style={{
+                      background:C.cyanD, color:C.cyan,
+                      borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700,
+                    }}>{t.count}</span>
+                  )}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-              {/* Tabs */}
+
+            {/* Loading state (photos) */}
+            {generating && (
               <div style={{
-                display:'flex', gap:0,
-                borderBottom:`1px solid ${C.borderS}`, marginBottom:20,
+                background:C.cyanD, border:`1px solid ${C.cyanB}`,
+                borderRadius:12, padding:'24px',
+                display:'flex', alignItems:'center', gap:12, marginBottom:20,
               }}>
-                {[
-                  { id:'shots', label:'Studio Shots', count:generatedShots.length },
-                  { id:'lifestyle', label:'Lifestyle', count:generatedLifestyle.length },
-                  { id:'packaging', label:'Packaging', count: pkgDesign ? 1 : 0 },
-                ].map(t => (
-                  <button key={t.id}
-                    onClick={()=>setTab(t.id as any)}
-                    style={{
-                      padding:'10px 16px', background:'transparent', border:'none',
-                      borderBottom:`2px solid ${tab===t.id ? C.cyan : 'transparent'}`,
-                      fontSize:13, fontWeight: tab===t.id ? 600 : 400,
-                      color: tab===t.id ? C.t1 : C.t3,
-                      cursor:'pointer', marginBottom:'-1px',
-                      display:'flex', alignItems:'center', gap:6, fontFamily:F,
-                    }}
-                  >
-                    {t.label}
-                    {t.count > 0 && (
-                      <span style={{
-                        background:C.cyanD, color:C.cyan,
-                        borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700,
-                      }}>{t.count}</span>
-                    )}
-                  </button>
-                ))}
+                <LoadingDots/>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:500, color:C.t1 }}>Generating your images…</div>
+                  <div style={{ fontSize:12, color:C.t3, marginTop:2 }}>This may take 30–60 seconds</div>
+                </div>
               </div>
+            )}
 
-              {/* Loading state */}
-              {generating && (
-                <div style={{
-                  background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                  borderRadius:12, padding:'24px',
-                  display:'flex', alignItems:'center', gap:12, marginBottom:20,
-                }}>
-                  <LoadingDots/>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:500, color:C.t1 }}>Generating your images…</div>
-                    <div style={{ fontSize:12, color:C.t3, marginTop:2 }}>This may take 30–60 seconds</div>
+            {/* Shots tab */}
+            {tab === 'shots' && (
+              <div>
+                {generatedShots.length > 0 ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
+                    {generatedShots.map(shot => (
+                      <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
+                    ))}
                   </div>
-                </div>
-              )}
-
-              {/* Shots grid */}
-              {tab === 'shots' && (
-                <div>
-                  {generatedShots.length > 0 ? (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                      {generatedShots.map(shot => (
-                        <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                      ))}
+                ) : (
+                  !generating && (
+                    <div style={{
+                      background:C.surface, border:`1px solid ${C.borderS}`,
+                      borderRadius:14, padding:'64px 32px',
+                      display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center',
+                    }}>
+                      <div style={{ color:C.t4 }}><ImageIcon/></div>
+                      <div>
+                        <div style={{ fontSize:16, fontWeight:600, color:C.t2, marginBottom:4 }}>Your shots will appear here</div>
+                        <div style={{ fontSize:13, color:C.t4 }}>Upload a product image and click Generate</div>
+                      </div>
                     </div>
-                  ) : (
-                    !generating && <EmptyTab label="No studio shots yet" sub="Select 'Studio Shots' and generate" />
-                  )}
-                </div>
-              )}
+                  )
+                )}
+              </div>
+            )}
 
-              {/* Lifestyle grid */}
-              {tab === 'lifestyle' && (
-                <div>
-                  {generatedLifestyle.length > 0 ? (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                      {generatedLifestyle.map(shot => (
-                        <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                      ))}
-                    </div>
-                  ) : (
-                    !generating && <EmptyTab label="No lifestyle shots yet" sub="Select 'Lifestyle Scenes' and generate" />
-                  )}
-                </div>
-              )}
+            {/* Lifestyle tab */}
+            {tab === 'lifestyle' && (
+              <div>
+                {generatedLifestyle.length > 0 ? (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
+                    {generatedLifestyle.map(shot => (
+                      <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
+                    ))}
+                  </div>
+                ) : (
+                  !generating && <EmptyTab label="No lifestyle shots yet" sub="Select 'Lifestyle Scenes' and generate" />
+                )}
+              </div>
+            )}
 
-              {/* Packaging design tab */}
-              {tab === 'packaging' && (
-                <PackagingTab
-                  pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
-                  pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
-                  pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
-                  pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
-                  pkgGenerating={pkgGenerating}
-                  pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
-                  pkgDesignId={pkgDesignId}
-                  pkgExporting={pkgExporting}
-                  pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
-                  pkgHistory={pkgHistory} setPkgHistory={setPkgHistory}
-                  pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
-                  pkgError={pkgError}
-                  onGenerate={generatePackaging}
-                  onExportPDF={exportPDF}
-                />
-              )}
-            </div>
-          )}
+            {/* Packaging design tab — always accessible */}
+            {tab === 'packaging' && (
+              <PackagingTab
+                pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
+                pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
+                pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
+                pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
+                pkgGenerating={pkgGenerating}
+                pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
+                pkgDesignId={pkgDesignId}
+                pkgExporting={pkgExporting}
+                pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
+                pkgHistory={pkgHistory} setPkgHistory={setPkgHistory}
+                pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
+                pkgError={pkgError}
+                onGenerate={generatePackaging}
+                onExportPDF={exportPDF}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1303,7 +1299,7 @@ function PackagingTab({
             <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginBottom:8 }}>Previous designs</div>
             <div style={{ display:'flex', gap:8 }}>
               {pkgHistory.slice(1, 5).map((h, i) => (
-                <button key={i} onClick={()=>{ /* restore from history */ }}
+                <button key={i} onClick={()=>setPkgDesign(h)}
                   title={h.brand_name_display || 'Design'}
                   style={{
                     width:60, height:60, borderRadius:8, cursor:'pointer',
