@@ -1,35 +1,58 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
 import Anthropic from '@anthropic-ai/sdk'
-import { buildBrandSystemPrompt, morningBriefPrompt } from '@/lib/prompts'
+import { ARABIC_VOICE_SYSTEM_PROMPT, ENGLISH_VOICE_SYSTEM_PROMPT, morningBriefPrompt } from '@/lib/prompts'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
+/** Validate a cached brief has the expected v2 fields — reject old-format caches */
+function isBriefValid(b: any): boolean {
+  return b && typeof b === 'object' && typeof b.headline === 'string' && typeof b.todays_priority === 'string' && typeof b.one_thing === 'string'
+}
+
+async function generateBrief(workspaceIdFromBody: string | null, lang: 'en' | 'ar') {
   const supabase = createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Look up workspace_id from user_id
-  const { data: member } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', user.id)
-    .limit(1)
-    .single()
-  if (!member?.workspace_id) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
+  // Resolve workspace_id: prefer body param (validated against membership), else first membership
+  let workspaceId: string | null = null
 
-  const brand = await getBrandContext(member.workspace_id)
-  if (!brand) return NextResponse.json({ error: 'No brand context' }, { status: 400 })
+  if (workspaceIdFromBody) {
+    // Verify the user is actually a member of the requested workspace
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .eq('workspace_id', workspaceIdFromBody)
+      .limit(1)
+      .single()
+    if (membership?.workspace_id) workspaceId = membership.workspace_id
+  }
 
-  const workspaceId = member.workspace_id
+  if (!workspaceId) {
+    // Fall back to first workspace membership
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single()
+    workspaceId = member?.workspace_id ?? null
+  }
 
-  // Cache is per-language — Arabic users get Arabic brief
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'No workspace' }, { status: 400 })
+  }
+
+  // Cache check per language — reject stale format briefs
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('brief_generated_at, weekly_brief, weekly_brief_ar, top_angle')
+    .select('brief_generated_at, weekly_brief, weekly_brief_ar, top_angle, name, brand_voice, brand_audience, brand_tone, brand_name')
     .eq('id', workspaceId)
     .single()
 
@@ -38,11 +61,21 @@ async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
   if (
     workspace?.brief_generated_at &&
     new Date(workspace.brief_generated_at) > sixHoursAgo &&
-    cachedBrief
+    isBriefValid(cachedBrief)
   ) {
     return NextResponse.json({ success: true, brief: cachedBrief, cached: true })
   }
 
+  // Get brand context — non-blocking: proceed even if null (new users without brand data)
+  const brand = await getBrandContext(workspaceId)
+
+  // Build brand context string from whatever we have
+  const brandName = brand?.brandName || workspace?.brand_name || workspace?.name || 'this brand'
+  const brandVoice = brand?.workspace?.brand_voice || workspace?.brand_voice || ''
+  const brandAudience = brand?.workspace?.brand_audience || workspace?.brand_audience || ''
+  const brandContextStr = `${brandName}${brandVoice ? ` — ${brandVoice}` : ''}${brandAudience ? ` — ${brandAudience}` : ''}`
+
+  // Recent content
   const { data: recentContent } = await supabase
     .from('content')
     .select('platform, body, status, likes, comments, shares, impressions, created_at')
@@ -58,7 +91,6 @@ async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const brandContext = `${brand.brandName} — ${brand.workspace.brand_voice ?? ''} — ${brand.workspace.brand_audience ?? ''}`
   const recentContentStr = recentContent
     ?.map(c => `[${c.platform}] ${c.body?.slice(0, 100)}… | ❤️${c.likes} 💬${c.comments}`)
     .join('\n') || (lang === 'ar' ? 'لا محتوى سابق' : 'No previous content')
@@ -67,12 +99,17 @@ async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
     ?.map(l => `[${l.insight_type}] ${l.insight}`)
     .join('\n') || (lang === 'ar' ? 'لا رؤى بعد' : 'No insights yet')
 
-  const systemPrompt = buildBrandSystemPrompt(brand, lang)
-  const userPrompt = morningBriefPrompt(brandContext, recentContentStr, insightsStr, lang)
+  // Build system prompt directly — don't use buildBrandSystemPrompt (wrong shape)
+  const baseVoice = lang === 'ar' ? ARABIC_VOICE_SYSTEM_PROMPT : ENGLISH_VOICE_SYSTEM_PROMPT
+  const systemPrompt = brandVoice
+    ? `${baseVoice}\n\n${lang === 'ar' ? `--- سياق العلامة ---\nالاسم: ${brandName}\nالصوت: ${brandVoice}\n${brandAudience ? `الجمهور: ${brandAudience}` : ''}` : `--- Brand Context ---\nName: ${brandName}\nVoice: ${brandVoice}\n${brandAudience ? `Audience: ${brandAudience}` : ''}`}`
+    : baseVoice
+
+  const userPrompt = morningBriefPrompt(brandContextStr, recentContentStr, insightsStr, lang)
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 800,
+    max_tokens: 1400,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })
@@ -83,13 +120,28 @@ async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
     const match = raw.match(/\{[\s\S]*\}/)
     if (match) brief = JSON.parse(match[0])
   } catch {
-    brief = { nexaRead: raw }
+    // Fallback: wrap raw text into the expected shape
+    brief = {
+      headline: brandName,
+      status: 'just_starting',
+      todays_priority: lang === 'ar' ? 'أنشئ أول محتوى لك اليوم' : 'Create your first piece of content today',
+      todays_angle: '',
+      todays_platform: '',
+      one_thing: lang === 'ar' ? 'ابدأ بمنشور واحد — الحركة تبني الزخم' : 'Start with one post — motion builds momentum',
+      insight: raw.slice(0, 200),
+    }
   }
 
-  // Save to lang-specific column
+  // Validate that Claude returned the expected fields — fill any missing ones
+  if (!brief.headline) brief.headline = brandName
+  if (!brief.status) brief.status = 'just_starting'
+  if (!brief.todays_priority) brief.todays_priority = lang === 'ar' ? 'أنشئ محتوى اليوم' : 'Create content today'
+  if (!brief.one_thing) brief.one_thing = lang === 'ar' ? 'ابدأ الآن' : 'Start now'
+
+  // Persist to lang-specific column
   const updateData: Record<string, any> = {
     brief_generated_at: new Date().toISOString(),
-    top_angle: brief.topAngle,
+    top_angle: brief.todays_angle || brief.topAngle || null,
   }
   if (lang === 'ar') {
     updateData.weekly_brief_ar = brief
@@ -105,7 +157,8 @@ async function generateBrief(request: NextRequest, lang: 'en' | 'ar') {
 export async function GET(request: NextRequest) {
   try {
     const lang = (request.nextUrl.searchParams.get('lang') ?? 'en') as 'en' | 'ar'
-    return await generateBrief(request, lang)
+    const workspaceId = request.nextUrl.searchParams.get('workspace_id')
+    return await generateBrief(workspaceId, lang)
   } catch (error: unknown) {
     console.error('[morning-brief GET]', error instanceof Error ? error.message : 'Unknown')
     return NextResponse.json({ error: 'Brief generation failed' }, { status: 500 })
@@ -116,11 +169,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const lang = (body.lang ?? 'en') as 'en' | 'ar'
-    return await generateBrief(request, lang)
+    const workspaceId = body.workspace_id ?? null
+    return await generateBrief(workspaceId, lang)
   } catch (error: unknown) {
     console.error('[morning-brief POST]', error instanceof Error ? error.message : 'Unknown')
     return NextResponse.json({ error: 'Brief generation failed' }, { status: 500 })
   }
 }
-
-
