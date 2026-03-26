@@ -60,6 +60,7 @@ export const PLAN_FEATURES = {
       team_members:         1,
       // Agency
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 
@@ -105,6 +106,7 @@ export const PLAN_FEATURES = {
       zapier:               false,
       team_members:         2,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 
@@ -150,6 +152,7 @@ export const PLAN_FEATURES = {
       zapier:               true,
       team_members:         5,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 
@@ -195,6 +198,7 @@ export const PLAN_FEATURES = {
       zapier:               true,
       team_members:         25,
       agency_mode:          true,
+      product_lab:          true,
     },
   },
 
@@ -241,6 +245,7 @@ export const PLAN_FEATURES = {
       zapier:               false,
       team_members:         1,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 } as const

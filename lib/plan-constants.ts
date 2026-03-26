@@ -1,57 +1,137 @@
 // ── Pure constants — safe to import in both client and server ──
 // No server-only imports here. Used by DashboardShell and settings page.
 
+// ── Dynamic credit thresholds (plan-relative) ────────────────
+export function getCreditThresholds(planCredits: number) {
+  return {
+    LOW:      Math.round(planCredits * 0.20),
+    CRITICAL: Math.round(planCredits * 0.08),
+    EMPTY:    0,
+  }
+}
+
+// Legacy static thresholds — kept for backward compat; prefer getCreditThresholds
 export const CREDIT_THRESHOLDS = {
-  LOW:      100,   // show yellow "Low" badge
-  CRITICAL:  20,   // show red "Critical" badge + top-up prompt
-  EMPTY:      0,   // block generation, show top-up modal
+  LOW:      200,
+  CRITICAL:  80,
+  EMPTY:      0,
 } as const
 
-export const TOPUP_PACKS = [
-  { credits: 100,  price: 500,   label: '100 credits',   tag: '' },
-  { credits: 300,  price: 1200,  label: '300 credits',   tag: 'Popular' },
-  { credits: 700,  price: 2500,  label: '700 credits',   tag: '' },
-  { credits: 1500, price: 4500,  label: '1,500 credits', tag: 'Best value' },
-  { credits: 3500, price: 8900,  label: '3,500 credits', tag: '' },
-] as const
+// ── Plan-aware top-up packs ───────────────────────────────────
+export const TOPUP_PACKS_BY_PLAN: Record<string, { credits: number; price: number; label: string; tag: string }[]> = {
+  spark: [
+    { credits: 200,  price: 1000, label: '200 credits',   tag: 'Quick boost' },
+    { credits: 500,  price: 2500, label: '500 credits',   tag: '' },
+    { credits: 1000, price: 4500, label: '1,000 credits', tag: 'Best value' },
+    { credits: 2500, price: 9900, label: '2,500 credits', tag: 'Power pack' },
+  ],
+  grow: [
+    { credits: 500,  price: 1500,  label: '500 credits',   tag: 'Quick boost' },
+    { credits: 1500, price: 4500,  label: '1,500 credits', tag: '' },
+    { credits: 3000, price: 8900,  label: '3,000 credits', tag: 'Best value' },
+    { credits: 7500, price: 19900, label: '7,500 credits', tag: 'Power pack' },
+  ],
+  scale: [
+    { credits: 1000,  price: 2400,  label: '1,000 credits',  tag: 'Quick boost' },
+    { credits: 3500,  price: 8400,  label: '3,500 credits',  tag: '' },
+    { credits: 7000,  price: 16900, label: '7,000 credits',  tag: 'Best value' },
+    { credits: 15000, price: 32900, label: '15,000 credits', tag: 'Power pack' },
+  ],
+  agency: [
+    { credits: 2500,  price: 4300,  label: '2,500 credits',  tag: 'Quick boost' },
+    { credits: 7500,  price: 13000, label: '7,500 credits',  tag: '' },
+    { credits: 20000, price: 34900, label: '20,000 credits', tag: 'Best value' },
+    { credits: 50000, price: 79900, label: '50,000 credits', tag: 'Power pack' },
+  ],
+  trial: [
+    { credits: 200,  price: 1000, label: '200 credits',   tag: 'Quick boost' },
+    { credits: 500,  price: 2500, label: '500 credits',   tag: '' },
+    { credits: 1000, price: 4500, label: '1,000 credits', tag: 'Best value' },
+    { credits: 2500, price: 9900, label: '2,500 credits', tag: 'Power pack' },
+  ],
+}
 
+// Backward compat: default pack list uses spark tier
+export const TOPUP_PACKS = TOPUP_PACKS_BY_PLAN.spark
+
+// ── Credit costs ─────────────────────────────────────────────
 export const CREDIT_COSTS = {
   // Text
   post:       3,
-  caption:    2,
-  hook:       2,
-  bio:        2,
-  story:      2,
+  caption:    3,
+  hook:       3,
+  bio:        3,
+  story:      3,
   thread:     5,
   email:      5,
   ad:         5,
   full_piece: 10,
   // Media
   image:      5,
-  video_8s:   10,
-  video_16s:  20,
   voice_30s:  5,
   voice_60s:  10,
-  voice_3min: 20,
+  voice_3min: 39,
+  // Product Lab
+  product_bg_remove: 2,
+  product_shot:      5,
+  product_lifestyle: 5,
 } as const
 
-export const PLAN_CREDITS: Record<string, number> = {
-  spark:  500,
-  grow:   1500,
-  scale:  4000,
-  agency: 12000,
-  trial:  150,
+// ── Video credit costs ────────────────────────────────────────
+// Structure: VIDEO_CREDIT_COSTS[duration][mode][audio]
+// duration: 5 | 8 | 10 | 16
+// mode: 'standard' | 'cinema' | 'frame'
+// audio: true (with audio) | false (silent)
+export const VIDEO_CREDIT_COSTS: Record<number, Record<string, { silent: number; audio: number }>> = {
+  5: {
+    standard: { silent: 65,  audio: 97  },
+    cinema:   { silent: 58,  audio: 86  },
+    frame:    { silent: 49,  audio: 65  },
+  },
+  8: {
+    standard: { silent: 103, audio: 155 },
+    cinema:   { silent: 92,  audio: 138 },
+    frame:    { silent: 78,  audio: 103 },
+  },
+  10: {
+    standard: { silent: 129, audio: 193 },
+    cinema:   { silent: 115, audio: 172 },
+    frame:    { silent: 97,  audio: 129 },
+  },
+  16: {
+    standard: { silent: 206, audio: 309 },
+    cinema:   { silent: 184, audio: 276 },
+    frame:    { silent: 155, audio: 206 },
+  },
 }
 
+export function getVideoCreditCost(
+  duration: 5 | 8 | 10 | 16,
+  mode: 'standard' | 'cinema' | 'frame',
+  audio: boolean
+): number {
+  const tier = VIDEO_CREDIT_COSTS[duration]?.[mode]
+  if (!tier) return VIDEO_CREDIT_COSTS[8].standard.audio
+  return audio ? tier.audio : tier.silent
+}
 
-// ── Plan features + helpers (safe for client) ────────────────
+// ── Plan credits ──────────────────────────────────────────────
+export const PLAN_CREDITS: Record<string, number> = {
+  trial:  200,
+  spark:  1000,
+  grow:   3000,
+  scale:  7000,
+  agency: 20000,
+}
+
+// ── Plan features + helpers (safe for client) ─────────────────
 
 export const PLAN_FEATURES = {
   spark: {
     label: 'Spark',
     tagline: 'The Creator',
     price: 4900,
-    credits: 500,
+    credits: 1000,
     trial_days: 7,
     features: {
       // Brand Brain — all plans
@@ -100,6 +180,8 @@ export const PLAN_FEATURES = {
       team_members:         1,
       // Agency
       agency_mode:          false,
+      // Product Lab
+      product_lab:          true,
     },
   },
 
@@ -107,7 +189,7 @@ export const PLAN_FEATURES = {
     label: 'Grow',
     tagline: 'The Grower',
     price: 8900,
-    credits: 1500,
+    credits: 3000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -145,6 +227,7 @@ export const PLAN_FEATURES = {
       zapier:               false,
       team_members:         2,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 
@@ -152,7 +235,7 @@ export const PLAN_FEATURES = {
     label: 'Scale',
     tagline: 'The Operator',
     price: 16900,
-    credits: 4000,
+    credits: 7000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -190,6 +273,7 @@ export const PLAN_FEATURES = {
       zapier:               true,
       team_members:         5,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 
@@ -197,7 +281,7 @@ export const PLAN_FEATURES = {
     label: 'Agency',
     tagline: 'The Agency',
     price: 34900,
-    credits: 12000,
+    credits: 20000,
     trial_days: 0,
     features: {
       brand_brain:          true,
@@ -235,15 +319,16 @@ export const PLAN_FEATURES = {
       zapier:               true,
       team_members:         25,
       agency_mode:          true,
+      product_lab:          true,
     },
   },
 
-  // Trial = 7-day limited access, 150 credits only
+  // Trial = 7-day limited access, 200 credits only
   trial: {
     label: 'Trial',
     tagline: 'Trial',
     price: 0,
-    credits: 150,
+    credits: 200,
     trial_days: 7,
     features: {
       brand_brain:          true,
@@ -281,6 +366,7 @@ export const PLAN_FEATURES = {
       zapier:               false,
       team_members:         1,
       agency_mode:          false,
+      product_lab:          true,
     },
   },
 } as const
