@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
 
@@ -42,6 +43,7 @@ const LIFESTYLE_SCENES: { id: string; label: string; desc: string }[] = [
 ]
 
 export default function ProductLabAR() {
+  const router = useRouter()
   const [stage, setStage]             = useState<Stage>('upload')
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [productId, setProductId]     = useState<string | null>(null)
@@ -412,6 +414,19 @@ export default function ProductLabAR() {
                 <button onClick={() => downloadAsset(selected)} style={{ width:'100%', padding:'9px 0', borderRadius:10, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, letterSpacing:0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   تنزيل
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('studio_reference_image', selected.url)
+                    localStorage.setItem('studio_reference_type', selected.type)
+                    router.push('/dashboard/studio?tab=video&ref=product')
+                  }}
+                  style={{ width:'100%', padding:'9px 0', borderRadius:10, background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.22)', color:'#00AAFF', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:8, transition:'all 0.15s', letterSpacing:0, fontFamily:AR }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,170,255,0.14)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,170,255,0.08)'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  حرّك في الاستوديو
                 </button>
               </div>
               <div style={{ borderTop:`1px solid ${C.border}`, padding:16 }}>

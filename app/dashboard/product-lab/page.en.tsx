@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
 
@@ -43,9 +44,10 @@ const LIFESTYLE_SCENES: { id: string; label: string; desc: string }[] = [
 ]
 
 export default function ProductLabEN() {
-  const [stage, setStage]           = useState<Stage>('upload')
+  const router = useRouter()
+  const [stage, setStage]             = useState<Stage>('upload')
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
-  const [productId, setProductId]   = useState<string | null>(null)
+  const [productId, setProductId]     = useState<string | null>(null)
   const [originalUrl, setOriginalUrl] = useState<string>('')
   const [cleanedUrl, setCleanedUrl]   = useState<string>('')
   const [productType, setProductType] = useState<string>('general')
@@ -56,13 +58,22 @@ export default function ProductLabEN() {
   const [analysisStep, setAnalysisStep]     = useState(0)
   const [shootingStep, setShootingStep]     = useState(0)
   const [shootingTotal, setShootingTotal]   = useState(0)
-  const [assets, setAssets]         = useState<Asset[]>([])
-  const [selected, setSelected]     = useState<Asset | null>(null)
-  const [editPrompt, setEditPrompt] = useState('')
-  const [editing, setEditing]       = useState(false)
-  const [dragOver, setDragOver]     = useState(false)
-  const [error, setError]           = useState<string | null>(null)
+  const [assets, setAssets]           = useState<Asset[]>([])
+  const [selected, setSelected]       = useState<Asset | null>(null)
+  const [editPrompt, setEditPrompt]   = useState('')
+  const [editing, setEditing]         = useState(false)
+  const [dragOver, setDragOver]       = useState(false)
+  const [error, setError]             = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const resetToUpload = () => {
+    setStage('upload')
+    setOriginalUrl('')
+    setCleanedUrl('')
+    setProductId(null)
+    setAssets([])
+    setSelected(null)
+  }
 
   useEffect(() => {
     const sb = createClient()
@@ -92,12 +103,10 @@ export default function ProductLabEN() {
     setAnalysisStep(0)
 
     try {
-      // Upload original
       const url = await uploadToStorage(file)
       setOriginalUrl(url)
       setAnalysisStep(1)
 
-      // Detect product type
       const detectRes = await fetch('/api/product-lab/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,21 +117,15 @@ export default function ProductLabEN() {
       setProductName(detected.suggested_name || 'My product')
       setAnalysisStep(2)
 
-      // Remove background
       const cleanRes = await fetch('/api/product-lab/clean', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: url, workspace_id: workspaceId, product_id: productId }),
       })
       const cleaned = await cleanRes.json()
-      if (cleaned.cleaned_url) {
-        setCleanedUrl(cleaned.cleaned_url)
-      } else {
-        setCleanedUrl(url)
-      }
+      setCleanedUrl(cleaned.cleaned_url || url)
       setAnalysisStep(3)
 
-      // Create product record
       if (workspaceId) {
         const sb = createClient()
         const { data: prod } = await sb.from('products').insert({
@@ -152,7 +155,7 @@ export default function ProductLabEN() {
     if (!cleanedUrl || !workspaceId) return
     setStage('shooting')
     setShootingStep(0)
-    const newAssets: Asset[] = []
+    const collectedAssets: Asset[] = []
 
     const needStudio = outputType !== 'lifestyle'
     const needLife   = outputType !== 'studio'
@@ -174,7 +177,7 @@ export default function ProductLabEN() {
       const data = await res.json()
       if (data.shots) {
         data.shots.forEach((s: any) => {
-          newAssets.push({ id: s.id, url: s.url, type: 'studio', style: s.style, label: s.label })
+          collectedAssets.push({ id: s.id, url: s.url, type: 'studio', style: s.style, label: s.label })
           setShootingStep(p => p + 1)
         })
       }
@@ -195,15 +198,21 @@ export default function ProductLabEN() {
       const data = await res.json()
       if (data.scenes) {
         data.scenes.forEach((s: any) => {
-          newAssets.push({ id: s.id, url: s.url, type: 'lifestyle', scene: s.scene, label: s.label })
+          collectedAssets.push({ id: s.id, url: s.url, type: 'lifestyle', scene: s.scene, label: s.label })
           setShootingStep(p => p + 1)
         })
       }
     }
 
-    setAssets(newAssets)
-    if (newAssets.length > 0) setSelected(newAssets[0])
-    setStage('gallery')
+    setAssets(collectedAssets)
+
+    if (collectedAssets.length === 0) {
+      setError('No photos were generated — please check your credits and try again.')
+      setStage('configure')
+    } else {
+      setSelected(collectedAssets[0])
+      setStage('gallery')
+    }
   }
 
   const handleEdit = async () => {
@@ -236,11 +245,8 @@ export default function ProductLabEN() {
     a.download = `product-${asset.type}-${Date.now()}.png`; a.click()
   }
 
-  const toggleShot = (id: ShotStyle) =>
-    setSelectedShots(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
-
-  const toggleScene = (id: string) =>
-    setSelectedScenes(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
+  const toggleShot  = (id: ShotStyle) => setSelectedShots(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
+  const toggleScene = (id: string)    => setSelectedScenes(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
 
   const creditCost = (() => {
     if (outputType === 'studio')    return CREDIT_COSTS.product_clean + selectedShots.length  * CREDIT_COSTS.product_studio
@@ -286,18 +292,29 @@ export default function ProductLabEN() {
       </div>
       <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
 
-      <div style={{ display:'flex', gap:24, marginTop:36 }}>
-        {[
-          { icon:'🖼', label:'Auto BG Removal', sub:'Clean cutout in seconds' },
-          { icon:'📸', label:'Studio Shots',     sub:'6 pro angles available' },
-          { icon:'🌿', label:'Lifestyle Scenes', sub:'11 scene settings' },
-        ].map(f => (
-          <div key={f.label} style={{ textAlign:'center', width:130 }}>
-            <div style={{ fontSize:22, marginBottom:6 }}>{f.icon}</div>
-            <div style={{ fontSize:12, fontWeight:600, color:C.t2 }}>{f.label}</div>
-            <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{f.sub}</div>
+      {/* Feature cards — SVG icons, no emoji */}
+      <div style={{ display:'flex', gap:36, marginTop:44 }}>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </div>
-        ))}
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2 }}>Auto BG Removal</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3 }}>Clean cutout in seconds</div>
+        </div>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2 }}>Studio Shots</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3 }}>6 pro angles available</div>
+        </div>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2 }}>Lifestyle Scenes</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3 }}>11 scene settings</div>
+        </div>
       </div>
     </div>
   )
@@ -331,33 +348,37 @@ export default function ProductLabEN() {
 
   // ── CONFIGURE ───────────────────────────────────────────────────────
   if (stage === 'configure') return (
-    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column' }}>
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', height:56, borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <button onClick={() => setStage('upload')} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border}`, color:C.t3, cursor:'pointer', fontSize:12 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    <div style={{ height:'100vh', background:C.bg, fontFamily:EN, display:'flex', overflow:'hidden' }}>
+      {/* Left panel — 220px fixed */}
+      <div style={{ width:220, flexShrink:0, borderRight:`1px solid ${C.border}`, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+
+        {/* Mini header row */}
+        <div style={{ padding:'16px 16px 0', flexShrink:0 }}>
+          <button
+            onClick={resetToUpload}
+            style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:C.t3, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:EN }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             New upload
           </button>
-          <span style={{ fontSize:14, fontWeight:600, color:C.t1 }}>{productName}</span>
-          <span style={{ fontSize:11, padding:'3px 8px', borderRadius:99, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{productType}</span>
         </div>
-        <button
-          onClick={handleShoot}
-          disabled={selectedShots.length === 0 && selectedScenes.length === 0}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 20px', borderRadius:10, background:C.cyan, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', border:'none', opacity: (selectedShots.length === 0 && selectedScenes.length === 0) ? 0.4 : 1 }}
-        >
-          Shoot — {creditCost} credits
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-      </div>
 
-      <div style={{ flex:1, display:'grid', gridTemplateColumns:'220px 1fr', overflow:'hidden' }}>
-        {/* Left — product preview + type */}
-        <div style={{ borderRight:`1px solid ${C.border}`, padding:20, display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
+        {/* Product name + type badge */}
+        <div style={{ padding:'10px 16px 0', flexShrink:0 }}>
+          <div style={{ fontSize:14, fontWeight:600, color:C.t1, lineHeight:1.3 }}>{productName}</div>
+          <span style={{ display:'inline-block', marginTop:4, fontSize:10, padding:'2px 7px', borderRadius:99, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{productType}</span>
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{ flex:1, overflowY:'auto', padding:'16px', display:'flex', flexDirection:'column', gap:14 }}>
           {cleanedUrl && (
             <div style={{ borderRadius:12, overflow:'hidden', background:C.surface, border:`1px solid ${C.border}`, aspectRatio:'1' }}>
-              <img src={cleanedUrl} alt="Product" style={{ width:'100%', height:'100%', objectFit:'contain', padding:12 }}/>
+              <img src={cleanedUrl} alt="Product" style={{ width:'100%', height:'100%', objectFit:'contain', padding:10 }}/>
+            </div>
+          )}
+          {error && (
+            <div style={{ padding:'8px 10px', borderRadius:8, background:'rgba(239,68,68,0.10)', border:'1px solid rgba(239,68,68,0.25)', color:'#EF4444', fontSize:11 }}>
+              {error}
             </div>
           )}
           <div>
@@ -370,38 +391,49 @@ export default function ProductLabEN() {
           </div>
         </div>
 
-        {/* Right — shot/scene selectors */}
-        <div style={{ overflowY:'auto', padding:24 }}>
-          {(outputType === 'studio' || outputType === 'both') && (
-            <div style={{ marginBottom:32 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Studio shots <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_studio} credits each</span></div>
-              <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Professional white-background photography from 6 angles</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:10 }}>
-                {SHOT_STYLES.map(s => (
-                  <button key={s.id} onClick={() => toggleShot(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedShots.includes(s.id) ? C.cyan : C.border}`, background: selectedShots.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
-                    <div style={{ fontSize:12, fontWeight:600, color: selectedShots.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
-                    <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(outputType === 'lifestyle' || outputType === 'both') && (
-            <div>
-              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Lifestyle scenes <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_lifestyle} credits each</span></div>
-              <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Your product in real-world editorial environments</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
-                {LIFESTYLE_SCENES.map(s => (
-                  <button key={s.id} onClick={() => toggleScene(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedScenes.includes(s.id) ? C.cyan : C.border}`, background: selectedScenes.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
-                    <div style={{ fontSize:12, fontWeight:600, color: selectedScenes.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
-                    <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Shoot button — pinned to bottom */}
+        <div style={{ padding:'12px 16px', background:'linear-gradient(to bottom, transparent 0%, #0C0C0C 40%)', flexShrink:0 }}>
+          <button
+            onClick={handleShoot}
+            disabled={selectedShots.length === 0 && selectedScenes.length === 0}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'10px 0', borderRadius:10, background:C.cyan, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', border:'none', opacity: (selectedShots.length === 0 && selectedScenes.length === 0) ? 0.4 : 1 }}
+          >
+            Shoot — {creditCost} credits
+          </button>
         </div>
+      </div>
+
+      {/* Right — shot/scene selectors */}
+      <div style={{ flex:1, overflowY:'auto', padding:24 }}>
+        {(outputType === 'studio' || outputType === 'both') && (
+          <div style={{ marginBottom:32 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Studio shots <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_studio} credits each</span></div>
+            <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Professional white-background photography from 6 angles</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:10 }}>
+              {SHOT_STYLES.map(s => (
+                <button key={s.id} onClick={() => toggleShot(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedShots.includes(s.id) ? C.cyan : C.border}`, background: selectedShots.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
+                  <div style={{ fontSize:12, fontWeight:600, color: selectedShots.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(outputType === 'lifestyle' || outputType === 'both') && (
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Lifestyle scenes <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_lifestyle} credits each</span></div>
+            <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Your product in real-world editorial environments</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
+              {LIFESTYLE_SCENES.map(s => (
+                <button key={s.id} onClick={() => toggleScene(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedScenes.includes(s.id) ? C.cyan : C.border}`, background: selectedScenes.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
+                  <div style={{ fontSize:12, fontWeight:600, color: selectedScenes.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -426,7 +458,6 @@ export default function ProductLabEN() {
         </div>
       )}
 
-      {/* Live preview grid */}
       {assets.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 120px)', gap:8 }}>
           {assets.map(a => (
@@ -441,11 +472,10 @@ export default function ProductLabEN() {
 
   // ── GALLERY ─────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', overflow:'hidden', height:'100vh' }}>
-      {/* Header */}
+    <div style={{ height:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 24px', height:52, borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <button onClick={() => { setStage('upload'); setAssets([]); setSelected(null); setOriginalUrl(''); setCleanedUrl('') }}
+          <button onClick={resetToUpload}
             style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border}`, color:C.t3, cursor:'pointer', fontSize:12 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             New shoot
@@ -460,7 +490,6 @@ export default function ProductLabEN() {
       </div>
 
       <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 320px', overflow:'hidden' }}>
-        {/* Masonry grid */}
         <div style={{ overflowY:'auto', padding:20 }}>
           <div style={{ columns:'3', columnGap:12 }}>
             {assets.map(a => (
@@ -478,7 +507,6 @@ export default function ProductLabEN() {
           </div>
         </div>
 
-        {/* Detail panel */}
         <div style={{ borderLeft:`1px solid ${C.border}`, display:'flex', flexDirection:'column', overflow:'hidden', background:C.surface }}>
           {selected ? (
             <>
@@ -490,9 +518,21 @@ export default function ProductLabEN() {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Download
                 </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('studio_reference_image', selected.url)
+                    localStorage.setItem('studio_reference_type', selected.type)
+                    router.push('/dashboard/studio?tab=video&ref=product')
+                  }}
+                  style={{ width:'100%', padding:'9px 0', borderRadius:10, background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.22)', color:'#00AAFF', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:8, transition:'all 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,170,255,0.14)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,170,255,0.08)'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  Animate in Studio
+                </button>
               </div>
 
-              {/* Art direction */}
               <div style={{ borderTop:`1px solid ${C.border}`, padding:16 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:C.t3, marginBottom:10, letterSpacing:'0.08em', textTransform:'uppercase' }}>Art direction — {CREDIT_COSTS.product_edit} credits</div>
                 <textarea

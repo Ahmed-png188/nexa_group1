@@ -222,6 +222,7 @@ function StudioInner() {
   const [sched,           setSched]           = useState(false)
   const [copyErr,         setCopyErr]         = useState<string|null>(null)
   const [showBriefBanner, setShowBriefBanner] = useState(false)
+  const [productLabRef,   setProductLabRef]   = useState(false)
   const [iPrompt,  setIPrompt]  = useState('')
   const [iStyle,   setIStyle]   = useState('photorealistic')
   const [iRatio,   setIRatio]   = useState('1:1')
@@ -312,6 +313,23 @@ function StudioInner() {
 
     localStorage.removeItem('nexa_ready_post')
     localStorage.removeItem('nexa_ready_platform')
+  }, [searchParams])
+
+  // Read product image from Product Lab
+  useEffect(() => {
+    const refParam = searchParams.get('ref')
+    if (refParam !== 'product') return
+
+    const refImage = localStorage.getItem('studio_reference_image')
+    if (!refImage) return
+
+    setVImg(refImage)
+    setVMode('image')
+    setTab('video')
+    setProductLabRef(true)
+
+    localStorage.removeItem('studio_reference_image')
+    localStorage.removeItem('studio_reference_type')
   }, [searchParams])
 
   async function loadWs() {
@@ -1023,6 +1041,15 @@ function StudioInner() {
               {vMode==='image' && (
                 <div style={{ marginBottom:'20px' }}>
                   <Label>Source image</Label>
+                  {productLabRef && vImg && (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:8, marginBottom:10, background:'rgba(0,170,255,0.06)', border:'1px solid rgba(0,170,255,0.15)' }}>
+                      <div style={{ width:5, height:5, borderRadius:'50%', background:'#00AAFF', flexShrink:0 }}/>
+                      <span style={{ fontSize:11, color:'rgba(0,170,255,0.80)', fontFamily:"'Geist', -apple-system, sans-serif" }}>
+                        From Product Lab — your product is ready to animate
+                      </span>
+                      <button onClick={() => setProductLabRef(false)} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', padding:0, fontSize:16, lineHeight:1 }}>×</button>
+                    </div>
+                  )}
                   {vImg ? (
                     <div style={{ position:'relative', borderRadius:'10px', overflow:'hidden', border:'1px solid rgba(255,255,255,0.10)' }}>
                       <img src={vImg} alt="" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }}/>
