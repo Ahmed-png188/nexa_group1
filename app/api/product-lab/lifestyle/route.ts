@@ -50,50 +50,110 @@ export async function POST(request: NextRequest) {
     if (!ok) return creditErr!
 
     const results = await Promise.all(requestedScenes.map(async (sceneId) => {
-      const scene = SCENES[sceneId] ?? SCENES.marble_minimal
+      const scene = SCENES[sceneId] ?? SCENES.home_cozy
+      const scenePrompt = scene.prompt
+
+      const kontextPrompt = `Take this exact product and place it naturally into this scene: ${scenePrompt}. CRITICAL: The product must remain completely identical — same shape, same colors, same materials, same details. Only the background and environment change. The product is the hero of the image. Photorealistic, professional commercial photography, 8K quality.`
+
+      let resultUrl: string | null = null
+
+      // Try Flux Kontext first
       try {
-        const result = await fal.subscribe('fal-ai/flux-pro/v1.1', {
+        const result = await fal.subscribe('fal-ai/flux-pro/kontext', {
           input: {
-            prompt: `Professional lifestyle product photography: ${scene.prompt}. The product type is ${product_type || 'general'}. No text, no watermarks, no people.`,
-            image_size: 'square_hd',
-            num_images: 1,
-            output_format: 'png',
-            guidance_scale: 3.5,
+            prompt: kontextPrompt,
+            image_url,
+            output_format: 'jpeg',
+            safety_tolerance: '5',
           } as any,
           logs: false,
           onQueueUpdate: () => {},
         })
+        resultUrl = (result as any).data?.images?.[0]?.url
+          || (result as any).images?.[0]?.url
+          || null
+      } catch (e1) {
+        console.error('[lifestyle] kontext failed:', e1)
+      }
 
-        const url = (result as any).data?.images?.[0]?.url
-        if (!url) throw new Error('No image returned')
+      // Fallback to Flux Pro with image conditioning
+      if (!resultUrl) {
+        try {
+          const result = await fal.subscribe('fal-ai/flux-pro/v1.1', {
+            input: {
+              prompt: kontextPrompt,
+              image_url,
+              image_prompt_strength: 0.75,
+              num_images: 1,
+              output_format: 'jpeg',
+              aspect_ratio: '1:1',
+              safety_tolerance: '5',
+            } as any,
+            logs: false,
+            onQueueUpdate: () => {},
+          })
+          resultUrl = (result as any).data?.images?.[0]?.url
+            || (result as any).images?.[0]?.url
+            || null
+        } catch (e2) {
+          console.error('[lifestyle] flux-pro failed:', e2)
+        }
+      }
 
-        const permanentUrl = await persistFile(url, workspace_id, 'image', undefined)
-        const finalUrl = permanentUrl || url
+      // Last fallback — Nano Banana with reference
+      if (!resultUrl) {
+        try {
+          const result = await fal.subscribe('fal-ai/nano-banana-2', {
+            input: {
+              prompt: `${scenePrompt}. The product shown in the reference image must appear prominently in this scene, exactly as it looks.`,
+              image_url,
+              resolution: '1K',
+              output_format: 'jpeg',
+              num_images: 1,
+            } as any,
+            logs: false,
+            onQueueUpdate: () => {},
+          })
+          resultUrl = (result as any).data?.images?.[0]?.url
+            || (result as any).images?.[0]?.url
+            || null
+        } catch (e3) {
+          console.error('[lifestyle] all models failed:', e3)
+        }
+      }
 
-        if (product_id) {
+      if (!resultUrl) {
+        try {
+          await supabase.rpc('deduct_credits', {
+            p_workspace_id: workspace_id,
+            p_amount:       -CREDIT_COSTS.product_lifestyle,
+            p_action:       'product_lifestyle_refund',
+            p_user_id:      user.id,
+            p_description:  `Refund: lifestyle scene ${sceneId} failed`,
+          })
+        } catch {}
+        return null
+      }
+
+      const permanentUrl = await persistFile(resultUrl, workspace_id, 'image', undefined)
+        .catch(() => resultUrl as string)
+      const finalUrl = permanentUrl || resultUrl
+
+      if (product_id) {
+        try {
           await supabase.from('product_assets').insert({
             product_id,
             workspace_id,
             asset_type: 'lifestyle',
             url: finalUrl,
-            prompt: scene.prompt,
+            prompt: scenePrompt,
             credits_used: CREDIT_COSTS.product_lifestyle,
             metadata: { scene_id: sceneId, product_type },
           })
-        }
-
-        return { id: sceneId, url: finalUrl, scene: sceneId, label: scene.label }
-      } catch (err) {
-        console.error(`[product-lab/lifestyle] scene ${sceneId} failed:`, err)
-        await supabase.rpc('deduct_credits', {
-          p_workspace_id: workspace_id,
-          p_amount:       -CREDIT_COSTS.product_lifestyle,
-          p_action:       'product_lifestyle_refund',
-          p_user_id:      user.id,
-          p_description:  `Refund: lifestyle scene ${sceneId} failed`,
-        })
-        return null
+        } catch (err) { console.error('[lifestyle] asset insert failed:', err) }
       }
+
+      return { id: sceneId, url: finalUrl, scene: sceneId, label: scene.label }
     }))
 
     return NextResponse.json({
@@ -102,6 +162,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     console.error('[product-lab/lifestyle]', err)
-    return NextResponse.json({ error: 'Lifestyle generation failed' }, { status: 500 })
+    return NextResponse.json({ scenes: [] })
   }
 }

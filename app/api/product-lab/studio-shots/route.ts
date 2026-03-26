@@ -9,24 +9,83 @@ import { fal } from '@fal-ai/client'
 
 fal.config({ credentials: process.env.FAL_KEY })
 
-const SHOT_CONFIGS: Record<string, { label: string; prompt: string }> = {
-  hero:         { label: 'Hero',       prompt: 'hero product shot, front-facing, pure white background, dramatic studio lighting, commercial photography, ultra sharp' },
-  angle_34:     { label: '3/4 Angle', prompt: 'three-quarter angle product shot, pure white background, soft directional light, professional commercial photography' },
-  top_down:     { label: 'Top Down',  prompt: 'overhead top-down flat lay product shot, pure white background, even lighting, minimal composition' },
-  detail:       { label: 'Detail',    prompt: 'extreme close-up detail product shot, pure white background, macro lens, ultra sharp focus, commercial photography' },
-  side_profile: { label: 'Side',      prompt: 'side profile product shot, pure white background, clean studio lighting, sharp commercial photography' },
-  floating:     { label: 'Floating',  prompt: 'product floating on pure white background, soft drop shadow, levitating product shot, professional studio photography' },
+const SHOT_CONFIGS: Record<string, { label: string }> = {
+  hero:         { label: 'Hero' },
+  angle_34:     { label: '3/4 Angle' },
+  top_down:     { label: 'Top Down' },
+  detail:       { label: 'Detail' },
+  side_profile: { label: 'Side' },
+  floating:     { label: 'Floating' },
 }
 
-async function generateShot(prompt: string): Promise<string | null> {
-  // Try flux-pro/v1.1 first
+const KONTEXT_PROMPTS: Record<string, string> = {
+  hero: `Place this exact product on a pure white background. Professional studio photography lighting, soft boxes from both sides. Product centered, filling 70% of frame, perfectly straight front view. Remove all original background. Keep the product exactly as it appears.`,
+  angle_34: `Place this exact product on a pure white background. Rotate the view to show a three-quarter angle perspective. Professional studio lighting, product sharp and clear. Remove all original background. Keep every detail of the product identical.`,
+  top_down: `Place this exact product on a pure white background shot from directly above. Flat lay composition, perfectly overhead bird's eye view. Even diffused lighting, no shadows. Remove original background. Keep the product exactly as it appears.`,
+  detail: `Show an extreme close-up macro photograph of the most interesting detail of this product. Pure white background, ring light, razor sharp focus. Remove original background. Keep product details identical.`,
+  side_profile: `Place this exact product on a pure white background. Rotate to show the exact side profile at 90 degrees. Professional studio lighting. Remove all original background. Keep every detail of the product identical.`,
+  floating: `Place this exact product floating against a pure white background. Slight upward angle view, dramatic overhead studio lighting. Soft shadow directly below the product. Remove original background. Keep product identical.`,
+}
+
+async function generateShot(
+  cleanedUrl: string,
+  shotStyle: string,
+  productType: string,
+  productMaterial: string,
+  productColor: string,
+): Promise<string | null> {
+  const prompt = KONTEXT_PROMPTS[shotStyle] || KONTEXT_PROMPTS.hero
+
+  // Try Flux Kontext first — best for image consistency
+  try {
+    const result = await fal.subscribe('fal-ai/flux-pro/kontext', {
+      input: {
+        prompt,
+        image_url: cleanedUrl,
+        output_format: 'png',
+        safety_tolerance: '5',
+      } as any,
+      logs: false,
+      onQueueUpdate: () => {},
+    })
+    const url = (result as any).data?.images?.[0]?.url
+      || (result as any).images?.[0]?.url
+    if (url) return url
+  } catch (e1) {
+    console.error(`[studio-shots] kontext failed for ${shotStyle}:`, e1)
+  }
+
+  // Fallback: Flux Pro with image conditioning
   try {
     const result = await fal.subscribe('fal-ai/flux-pro/v1.1', {
       input: {
-        prompt,
+        prompt: `Professional product photography studio shot. ${prompt} Product type: ${productType}, material: ${productMaterial}, color: ${productColor}.`,
+        image_url: cleanedUrl,
+        image_prompt_strength: 0.85,
         num_images: 1,
         output_format: 'png',
-        image_size: 'square_hd',
+        aspect_ratio: '1:1',
+        safety_tolerance: '5',
+      } as any,
+      logs: false,
+      onQueueUpdate: () => {},
+    })
+    const url = (result as any).data?.images?.[0]?.url
+      || (result as any).images?.[0]?.url
+    if (url) return url
+  } catch (e2) {
+    console.error(`[studio-shots] flux-pro/v1.1 failed for ${shotStyle}:`, e2)
+  }
+
+  // Last fallback: Nano Banana with reference image
+  try {
+    const result = await fal.subscribe('fal-ai/nano-banana-2', {
+      input: {
+        prompt: `Professional product photography, pure white background, studio lighting, ${shotStyle} view of ${productColor} ${productType}. Sharp focus, commercial quality, isolated product.`,
+        image_url: cleanedUrl,
+        resolution: '1K',
+        output_format: 'png',
+        num_images: 1,
       } as any,
       logs: false,
       onQueueUpdate: () => {},
@@ -34,26 +93,9 @@ async function generateShot(prompt: string): Promise<string | null> {
     return (result as any).data?.images?.[0]?.url
       || (result as any).images?.[0]?.url
       || null
-  } catch {
-    // Fallback to nano-banana-2 which is confirmed working
-    try {
-      const result2 = await fal.subscribe('fal-ai/nano-banana-2', {
-        input: {
-          prompt,
-          resolution: '1K',
-          output_format: 'png',
-          num_images: 1,
-        },
-        logs: false,
-        onQueueUpdate: () => {},
-      })
-      return (result2 as any).data?.images?.[0]?.url
-        || (result2 as any).images?.[0]?.url
-        || null
-    } catch (e2) {
-      console.error('[studio-shots] both models failed:', e2)
-      return null
-    }
+  } catch (e3) {
+    console.error(`[studio-shots] all models failed for ${shotStyle}:`, e3)
+    return null
   }
 }
 
@@ -63,7 +105,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, product_id, image_url, product_type, shots } = await request.json()
+    const { workspace_id, product_id, image_url, product_type, product_material, product_color, shots } = await request.json()
     if (!workspace_id || !image_url) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
@@ -85,12 +127,16 @@ export async function POST(request: NextRequest) {
 
     const results = await Promise.all(requestedShots.map(async (shotId) => {
       const config = SHOT_CONFIGS[shotId] ?? SHOT_CONFIGS.hero
-      const prompt = `Professional product photography: ${config.prompt}. Product type: ${product_type || 'general'}. Isolated product, no text, no watermarks, no people.`
 
-      const url = await generateShot(prompt)
+      const url = await generateShot(
+        image_url,
+        shotId,
+        product_type || 'general',
+        product_material || 'unknown',
+        product_color || 'unknown',
+      )
 
       if (!url) {
-        // Refund credit for this shot
         try {
           await supabase.rpc('deduct_credits', {
             p_workspace_id: workspace_id,
@@ -114,7 +160,7 @@ export async function POST(request: NextRequest) {
             workspace_id,
             asset_type: 'studio',
             url: finalUrl,
-            prompt: config.prompt,
+            prompt: KONTEXT_PROMPTS[shotId] || '',
             credits_used: CREDIT_COSTS.product_studio,
             metadata: { shot_id: shotId, product_type },
           })
@@ -129,6 +175,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     console.error('[product-lab/studio-shots]', err)
-    return NextResponse.json({ shots: [] }) // Never throw — always return
+    return NextResponse.json({ shots: [] })
   }
 }

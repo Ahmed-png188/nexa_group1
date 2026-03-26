@@ -30,15 +30,14 @@ export async function POST(request: NextRequest) {
     if (!ok) return creditErr!
 
     try {
+      const safePrompt = `Keep the product completely identical. Only apply this specific change: ${edit_prompt.trim().slice(0, 700)}. Do not alter the product itself.`
       const result = await fal.subscribe('fal-ai/flux-pro/kontext', {
         input: {
-          prompt: edit_prompt.trim().slice(0, 800),
+          prompt: safePrompt,
           image_url,
-          aspect_ratio: '1:1',
-          num_images: 1,
           output_format: 'png',
-          guidance_scale: 3.5,
-        },
+          safety_tolerance: '5',
+        } as any,
         logs: false,
         onQueueUpdate: () => {},
       })
