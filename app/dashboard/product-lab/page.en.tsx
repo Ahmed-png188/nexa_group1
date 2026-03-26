@@ -1,6 +1,8 @@
 'use client'
 import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
+import { CREDIT_COSTS } from '@/lib/plan-constants'
 
 const C = {
   bg:      '#0C0C0C',
@@ -156,6 +158,20 @@ export default function ProductLabEn() {
 
   // Workspace
   const [workspaceId, setWorkspaceId]     = useState<string|null>(null)
+
+  // Packaging state
+  const [pkgType,       setPkgType]       = useState<string>('label')
+  const [pkgSizeId,     setPkgSizeId]     = useState<string>('label_rect_md')
+  const [pkgCustomW,    setPkgCustomW]    = useState<number>(100)
+  const [pkgCustomH,    setPkgCustomH]    = useState<number>(70)
+  const [pkgGenerating, setPkgGenerating] = useState(false)
+  const [pkgDesign,     setPkgDesign]     = useState<any>(null)
+  const [pkgDesignId,   setPkgDesignId]   = useState<string|null>(null)
+  const [pkgExporting,  setPkgExporting]  = useState(false)
+  const [pkgEditField,  setPkgEditField]  = useState<string|null>(null)
+  const [pkgHistory,    setPkgHistory]    = useState<any[]>([])
+  const [pkgSpecOpen,   setPkgSpecOpen]   = useState(false)
+  const [pkgError,      setPkgError]      = useState('')
 
   // Load workspace on mount
   useState(() => {
@@ -316,6 +332,54 @@ export default function ProductLabEn() {
     if (outputMode === 'lifestyle') return 5 * (shotCount === 1 ? 1 : Math.min(shotCount, 4))
     return 5 * shotCount + 5 * 2 // both: shots + 2 lifestyle
   })()
+
+  async function generatePackaging(isRegen = false) {
+    if (!workspaceId || pkgGenerating) return
+    setPkgGenerating(true); setPkgError('')
+    try {
+      const isCustom = pkgSizeId === 'label_custom'
+      const res = await fetch('/api/product-lab/packaging-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          product_id: productId || undefined,
+          packaging_type: pkgType,
+          size_id: pkgSizeId,
+          custom_dims: isCustom ? { width_mm: pkgCustomW, height_mm: pkgCustomH, depth_mm: 0, bleed_mm: 2 } : undefined,
+          lang: 'en',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPkgError(data.error || 'Generation failed'); return }
+      setPkgDesign({ ...data.design, logo_url: data.logo_url, dims: data.dims })
+      setPkgDesignId(data.id)
+      setPkgHistory(prev => [{ ...data.design, logo_url: data.logo_url, dims: data.dims }, ...prev].slice(0, 5))
+    } catch {
+      setPkgError('Generation failed')
+    } finally {
+      setPkgGenerating(false)
+    }
+  }
+
+  async function exportPDF() {
+    if (!pkgDesignId || !workspaceId || pkgExporting) return
+    setPkgExporting(true); setPkgError('')
+    try {
+      const res = await fetch('/api/product-lab/packaging-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspaceId, design_id: pkgDesignId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setPkgError('PDF export failed'); return }
+      window.open(data.pdf_url, '_blank')
+    } catch {
+      setPkgError('PDF export failed')
+    } finally {
+      setPkgExporting(false)
+    }
+  }
 
   const hasResults = generatedShots.length > 0 || generatedLifestyle.length > 0
   const imageToShow = cleanedUrl || uploadedUrl
@@ -643,7 +707,7 @@ export default function ProductLabEn() {
 
         {/* ── RIGHT PANEL ── */}
         <div style={{ flex:1, minWidth:0 }}>
-          {!hasResults && !generating ? (
+          {!hasResults && !generating && tab !== 'packaging' ? (
             <div style={{
               background:C.surface, border:`1px solid ${C.borderS}`,
               borderRadius:14, padding:'64px 32px',
@@ -667,7 +731,7 @@ export default function ProductLabEn() {
                 {[
                   { id:'shots', label:'Studio Shots', count:generatedShots.length },
                   { id:'lifestyle', label:'Lifestyle', count:generatedLifestyle.length },
-                  { id:'packaging', label:'Packaging', count:0 },
+                  { id:'packaging', label:'Packaging', count: pkgDesign ? 1 : 0 },
                 ].map(t => (
                   <button key={t.id}
                     onClick={()=>setTab(t.id as any)}
@@ -686,9 +750,6 @@ export default function ProductLabEn() {
                         background:C.cyanD, color:C.cyan,
                         borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700,
                       }}>{t.count}</span>
-                    )}
-                    {t.id==='packaging' && (
-                      <span style={{ fontSize:10, color:C.t4 }}>Soon</span>
                     )}
                   </button>
                 ))}
@@ -739,27 +800,24 @@ export default function ProductLabEn() {
                 </div>
               )}
 
-              {/* Packaging — coming soon */}
+              {/* Packaging design tab */}
               {tab === 'packaging' && (
-                <div style={{
-                  background:C.surface, border:`1px solid ${C.borderS}`,
-                  borderRadius:12, padding:'48px 24px',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center',
-                }}>
-                  <div style={{
-                    width:48, height:48, borderRadius:12,
-                    background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                    display:'flex', alignItems:'center', justifyContent:'center', color:C.cyan,
-                  }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:600, color:C.t1, marginBottom:4 }}>Packaging mockups coming soon</div>
-                    <div style={{ fontSize:13, color:C.t4 }}>Generate your product on boxes, bags, and labels</div>
-                  </div>
-                </div>
+                <PackagingTab
+                  pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
+                  pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
+                  pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
+                  pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
+                  pkgGenerating={pkgGenerating}
+                  pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
+                  pkgDesignId={pkgDesignId}
+                  pkgExporting={pkgExporting}
+                  pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
+                  pkgHistory={pkgHistory} setPkgHistory={setPkgHistory}
+                  pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
+                  pkgError={pkgError}
+                  onGenerate={generatePackaging}
+                  onExportPDF={exportPDF}
+                />
               )}
             </div>
           )}
@@ -827,6 +885,446 @@ function EmptyTab({ label, sub }: { label: string; sub: string }) {
     }}>
       <div style={{ fontSize:14, fontWeight:500, color:'rgba(255,255,255,0.35)' }}>{label}</div>
       <div style={{ fontSize:12, color:'rgba(255,255,255,0.20)' }}>{sub}</div>
+    </div>
+  )
+}
+
+// ─── Packaging icons ───────────────────────────────────────────
+const PKG_ICONS: Record<string, JSX.Element> = {
+  bag:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+  box:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+  label:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
+  pouch:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><line x1="4" y1="11" x2="20" y2="11"/></svg>,
+  sleeve: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M2 14h20"/></svg>,
+}
+
+// ─── Packaging preview ─────────────────────────────────────────
+function PackagingPreview({ design, packagingType }: { design: any; packagingType: string }) {
+  const bg      = design?.bg_color      || '#1A1A1A'
+  const textCol = design?.text_color    || '#FFFFFF'
+  const accent  = design?.accent_color  || '#00AAFF'
+  const dims    = design?.dims          || { width_mm: 100, height_mm: 100, depth_mm: 0 }
+  const scale   = 2.2
+  const maxW    = 320
+  const maxH    = 240
+  const previewW = Math.min(maxW, dims.width_mm  * scale)
+  const previewH = Math.min(maxH, dims.height_mm * scale)
+
+  const isOval   = packagingType === 'label' && previewW / previewH > 1.3
+  const isCircle = packagingType === 'label' && Math.abs(previewW - previewH) < 10
+
+  const borderRadius = isCircle ? '50%' : isOval ? '50%' : packagingType === 'pouch' ? '12px 12px 4px 4px' : '8px'
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+      <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.08em', color:'rgba(255,255,255,0.25)', textTransform:'uppercase' }}>
+        Preview
+      </div>
+
+      {/* Main shape */}
+      <div style={{
+        width: previewW, height: previewH,
+        background: bg,
+        border: '3px solid rgba(255,255,255,0.15)',
+        borderRadius,
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        padding: 16, textAlign:'center', position:'relative', overflow:'hidden',
+        boxShadow:'0 12px 40px rgba(0,0,0,0.6)',
+        transition:'all 0.25s',
+      }}>
+        {/* Box side panels indicator */}
+        {packagingType === 'box' && dims.depth_mm > 0 && (
+          <>
+            <div style={{
+              position:'absolute', left:0, top:0, bottom:0, width: Math.min(40, dims.depth_mm * scale * 0.4),
+              background: shadeColor(bg, -20), borderRight:'1px dashed rgba(255,255,255,0.15)',
+            }}/>
+            <div style={{
+              position:'absolute', right:0, top:0, bottom:0, width: Math.min(40, dims.depth_mm * scale * 0.4),
+              background: shadeColor(bg, -20), borderLeft:'1px dashed rgba(255,255,255,0.15)',
+            }}/>
+          </>
+        )}
+        {/* Pouch zipper */}
+        {packagingType === 'pouch' && (
+          <div style={{ position:'absolute', top:14, left:8, right:8, height:4, background:'rgba(255,255,255,0.2)', borderRadius:2 }}/>
+        )}
+        {/* Bag handle */}
+        {packagingType === 'bag' && (
+          <div style={{
+            position:'absolute', top:-8, left:'50%', transform:'translateX(-50%)',
+            width:60, height:16, border:'3px solid rgba(255,255,255,0.25)',
+            borderBottom:'none', borderRadius:'8px 8px 0 0',
+          }}/>
+        )}
+
+        {/* Logo */}
+        {design?.logo_url && (
+          <img src={design.logo_url} alt="logo"
+            style={{ maxWidth:60, maxHeight:40, objectFit:'contain', marginBottom:8, position:'relative', zIndex:1 }}/>
+        )}
+
+        {/* Brand name */}
+        <div style={{
+          fontSize: Math.max(10, Math.min(20, previewW / 10)),
+          fontWeight:700, color: textCol, letterSpacing:'-0.02em',
+          position:'relative', zIndex:1, wordBreak:'break-word',
+        }}>
+          {design?.brand_name_display || 'Brand'}
+        </div>
+
+        {/* Tagline */}
+        {design?.tagline_display && (
+          <div style={{ fontSize: Math.max(7, Math.min(11, previewW / 16)), color: accent, marginTop:4, position:'relative', zIndex:1 }}>
+            {design.tagline_display}
+          </div>
+        )}
+
+        {/* Main copy */}
+        {design?.main_copy && (
+          <div style={{
+            fontSize: Math.max(6, Math.min(9, previewW / 20)),
+            color: textCol, opacity:0.65, marginTop:6, lineHeight:1.4,
+            position:'relative', zIndex:1, maxWidth:'80%',
+          }}>
+            {design.main_copy.split('\n')[0]}
+          </div>
+        )}
+      </div>
+
+      {/* Dimensions badge */}
+      <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)' }}>
+        {dims.width_mm}×{dims.height_mm}mm{dims.depth_mm ? `×${dims.depth_mm}mm` : ''} + {dims.bleed_mm || 3}mm bleed
+      </div>
+    </div>
+  )
+}
+
+function shadeColor(hex: string, pct: number): string {
+  try {
+    const n = parseInt(hex.replace('#',''), 16)
+    const r = Math.min(255, Math.max(0, (n>>16) + pct))
+    const g = Math.min(255, Math.max(0, ((n>>8)&0xff) + pct))
+    const b = Math.min(255, Math.max(0, (n&0xff) + pct))
+    return `rgb(${r},${g},${b})`
+  } catch { return hex }
+}
+
+// ─── Full packaging tab ────────────────────────────────────────
+function PackagingTab({
+  pkgType, setPkgType, pkgSizeId, setPkgSizeId,
+  pkgCustomW, setPkgCustomW, pkgCustomH, setPkgCustomH,
+  pkgGenerating, pkgDesign, setPkgDesign, pkgDesignId,
+  pkgExporting, pkgEditField, setPkgEditField,
+  pkgHistory, setPkgHistory, pkgSpecOpen, setPkgSpecOpen,
+  pkgError, onGenerate, onExportPDF,
+}: {
+  pkgType: string; setPkgType: (t: string) => void
+  pkgSizeId: string; setPkgSizeId: (s: string) => void
+  pkgCustomW: number; setPkgCustomW: (n: number) => void
+  pkgCustomH: number; setPkgCustomH: (n: number) => void
+  pkgGenerating: boolean
+  pkgDesign: any; setPkgDesign: (d: any) => void
+  pkgDesignId: string | null
+  pkgExporting: boolean
+  pkgEditField: string | null; setPkgEditField: (f: string | null) => void
+  pkgHistory: any[]; setPkgHistory: (h: any[]) => void
+  pkgSpecOpen: boolean; setPkgSpecOpen: (o: boolean) => void
+  pkgError: string
+  onGenerate: (isRegen?: boolean) => void
+  onExportPDF: () => void
+}) {
+  const tmpl = getTemplate(pkgType)
+  const selectedSize = tmpl?.sizes.find(s => s.id === pkgSizeId)
+  const dims = selectedSize?.dims
+
+  const editableFields = [
+    { key:'bg_color',           label:'Background',   type:'color' },
+    { key:'text_color',         label:'Text',         type:'color' },
+    { key:'accent_color',       label:'Accent',       type:'color' },
+    { key:'brand_name_display', label:'Brand name',   type:'text'  },
+    { key:'tagline_display',    label:'Tagline',      type:'text'  },
+    { key:'main_copy',          label:'Main copy',    type:'textarea' },
+  ]
+
+  return (
+    <div style={{ display:'flex', gap:24 }}>
+      {/* ── LEFT CONTROLS ── */}
+      <div style={{ width:320, flexShrink:0, display:'flex', flexDirection:'column', gap:14 }}>
+
+        {/* Packaging type */}
+        <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:10 }}>
+            Packaging Type
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+            {PACKAGING_TEMPLATES.map(t => (
+              <button key={t.id} onClick={()=>setPkgType(t.id)}
+                style={{
+                  background: pkgType===t.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${pkgType===t.id ? 'rgba(0,170,255,0.22)' : 'rgba(255,255,255,0.07)'}`,
+                  borderRadius:10, padding:'12px 14px', cursor:'pointer',
+                  display:'flex', alignItems:'center', gap:8,
+                  color: pkgType===t.id ? '#00AAFF' : 'rgba(255,255,255,0.50)',
+                  fontSize:12, fontWeight: pkgType===t.id ? 600 : 400,
+                  transition:'all 0.14s', fontFamily:"'Geist', -apple-system, sans-serif",
+                  height:46,
+                }}
+              >
+                {PKG_ICONS[t.id]}
+                {t.name_en}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Size */}
+        <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:8 }}>
+            Size
+          </div>
+          <div style={{ position:'relative' }}>
+            <select
+              value={pkgSizeId}
+              onChange={e => setPkgSizeId(e.target.value)}
+              style={{
+                width:'100%', padding:'10px 14px', borderRadius:9,
+                background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)',
+                color:'#FFFFFF', fontSize:13, fontFamily:"'Geist', -apple-system, sans-serif",
+                outline:'none', cursor:'pointer', appearance:'none',
+              }}
+            >
+              {tmpl?.sizes.map(s => (
+                <option key={s.id} value={s.id} style={{ background:'#1A1A1A' }}>{s.label_en}</option>
+              ))}
+            </select>
+            <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'rgba(255,255,255,0.35)' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          {pkgSizeId === 'label_custom' && (
+            <div style={{ display:'flex', gap:8, marginTop:8 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:4 }}>Width (mm)</div>
+                <input type="number" value={pkgCustomW} onChange={e=>setPkgCustomW(Number(e.target.value))}
+                  style={{ width:'100%', padding:'7px 10px', borderRadius:7, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:4 }}>Height (mm)</div>
+                <input type="number" value={pkgCustomH} onChange={e=>setPkgCustomH(Number(e.target.value))}
+                  style={{ width:'100%', padding:'7px 10px', borderRadius:7, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
+              </div>
+            </div>
+          )}
+
+          {dims && pkgSizeId !== 'label_custom' && (
+            <div style={{ marginTop:8, fontSize:11, color:'rgba(255,255,255,0.25)' }}>
+              {dims.width_mm}×{dims.height_mm}mm{dims.depth_mm ? `×${dims.depth_mm}mm` : ''} · Includes {dims.bleed_mm}mm bleed
+            </div>
+          )}
+        </div>
+
+        {/* Editable fields (when design exists) */}
+        {pkgDesign && (
+          <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)' }}>
+              Brand Settings
+            </div>
+            {editableFields.map(f => (
+              <div key={f.key}>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.04em' }}>{f.label}</div>
+                {pkgEditField === f.key ? (
+                  f.type === 'textarea' ? (
+                    <textarea
+                      autoFocus
+                      defaultValue={pkgDesign[f.key] || ''}
+                      onBlur={e => { setPkgDesign({ ...pkgDesign, [f.key]: e.target.value }); setPkgEditField(null) }}
+                      style={{ width:'100%', padding:'6px 10px', borderRadius:7, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(0,170,255,0.30)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', resize:'none', rows:3, boxSizing:'border-box' as const } as React.CSSProperties}
+                      rows={3}
+                    />
+                  ) : f.type === 'color' ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <input type="color" value={pkgDesign[f.key] || '#000000'}
+                        onChange={e => setPkgDesign({ ...pkgDesign, [f.key]: e.target.value })}
+                        onBlur={() => setPkgEditField(null)}
+                        style={{ width:36, height:28, borderRadius:6, border:'none', cursor:'pointer', background:'none' }} />
+                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.60)', fontFamily:"'Geist Mono', monospace" }}>{pkgDesign[f.key]}</span>
+                    </div>
+                  ) : (
+                    <input autoFocus type="text" defaultValue={pkgDesign[f.key] || ''}
+                      onBlur={e => { setPkgDesign({ ...pkgDesign, [f.key]: e.target.value }); setPkgEditField(null) }}
+                      onKeyDown={e => { if (e.key === 'Enter') { setPkgDesign({ ...pkgDesign, [f.key]: (e.target as HTMLInputElement).value }); setPkgEditField(null) } }}
+                      style={{ width:'100%', padding:'6px 10px', borderRadius:7, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(0,170,255,0.30)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
+                  )
+                ) : (
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+                      {f.type === 'color' && (
+                        <div style={{ width:20, height:20, borderRadius:4, background: pkgDesign[f.key] || '#000', border:'1px solid rgba(255,255,255,0.15)', flexShrink:0 }}/>
+                      )}
+                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:180 }}>
+                        {pkgDesign[f.key] || '—'}
+                      </span>
+                    </div>
+                    <button onClick={()=>setPkgEditField(f.key)}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.25)', padding:3, display:'flex', alignItems:'center', flexShrink:0 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {pkgError && (
+          <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#EF4444' }}>
+            {pkgError}
+          </div>
+        )}
+
+        {/* Credit info + action buttons */}
+        {!pkgDesign ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.18)', borderRadius:8, padding:'8px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)' }}>Credits required</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'#00AAFF' }}>{CREDIT_COSTS.packaging_generate} cr</span>
+            </div>
+            <button onClick={()=>onGenerate(false)} disabled={pkgGenerating}
+              style={{
+                background: pkgGenerating ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+                color: pkgGenerating ? 'rgba(255,255,255,0.35)' : '#0C0C0C',
+                border:'none', borderRadius:10, padding:'12px 20px',
+                fontSize:14, fontWeight:700, cursor: pkgGenerating ? 'not-allowed' : 'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                fontFamily:"'Geist', -apple-system, sans-serif",
+              }}
+            >
+              {pkgGenerating ? <><LoadingDots/> Generating…</> : <>✦ Generate packaging →</>}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>onGenerate(true)} disabled={pkgGenerating}
+              style={{
+                flex:1, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)',
+                borderRadius:10, padding:'10px 14px', fontSize:12, fontWeight:600, cursor:'pointer',
+                color: pkgGenerating ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.70)',
+                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                fontFamily:"'Geist', -apple-system, sans-serif",
+              }}
+            >
+              {pkgGenerating ? <LoadingDots/> : '↺'} Regenerate
+              <span style={{ fontSize:10, color:'rgba(255,255,255,0.30)' }}>5 cr</span>
+            </button>
+            <button onClick={onExportPDF} disabled={pkgExporting}
+              style={{
+                flex:1, background:'rgba(0,170,255,0.10)', border:'1px solid rgba(0,170,255,0.22)',
+                borderRadius:10, padding:'10px 14px', fontSize:12, fontWeight:700, cursor:'pointer',
+                color: pkgExporting ? 'rgba(0,170,255,0.40)' : '#00AAFF',
+                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                fontFamily:"'Geist', -apple-system, sans-serif",
+              }}
+            >
+              {pkgExporting ? <LoadingDots/> : '↓'} Export PDF →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── RIGHT PREVIEW ── */}
+      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{
+          background:'#0C0C0C', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14,
+          padding:'40px 32px', display:'flex', alignItems:'center', justifyContent:'center',
+          minHeight:300,
+        }}>
+          {!pkgDesign && !pkgGenerating ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center' }}>
+              <div style={{ color:'rgba(255,255,255,0.15)' }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+              </div>
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.30)' }}>Configure packaging and generate your design</div>
+            </div>
+          ) : pkgGenerating ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+              <LoadingDots/>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.40)' }}>Designing your packaging…</div>
+            </div>
+          ) : (
+            <PackagingPreview design={pkgDesign} packagingType={pkgType} />
+          )}
+        </div>
+
+        {/* Design spec card */}
+        {pkgDesign && (
+          <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, overflow:'hidden' }}>
+            <button onClick={()=>setPkgSpecOpen(!pkgSpecOpen)}
+              style={{
+                width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+                fontFamily:"'Geist', -apple-system, sans-serif",
+              }}>
+              <span style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.55)' }}>Design specifications</span>
+              <span style={{ fontSize:12, color:'rgba(255,255,255,0.30)' }}>{pkgSpecOpen ? '↑' : '↓'}</span>
+            </button>
+            {pkgSpecOpen && (
+              <div style={{ padding:'0 16px 14px', display:'flex', flexDirection:'column', gap:5 }}>
+                {[
+                  ['Style',       pkgDesign.design_style],
+                  ['Layout',      pkgDesign.layout],
+                  ['Font weight', pkgDesign.font_weight],
+                  ['Elements',    (pkgDesign.special_elements || []).join(', ')],
+                  ['Secondary',   pkgDesign.secondary_copy],
+                ].filter(([,v])=>v).map(([k,v]) => (
+                  <div key={k} style={{ display:'flex', gap:8, fontSize:12 }}>
+                    <span style={{ color:'rgba(255,255,255,0.30)', width:90, flexShrink:0 }}>{k}</span>
+                    <span style={{ color:'rgba(255,255,255,0.65)' }}>{v}</span>
+                  </div>
+                ))}
+                {pkgDesign.print_notes && (
+                  <div style={{ marginTop:4, fontSize:11, color:'rgba(255,255,255,0.30)', fontStyle:'italic' }}>{pkgDesign.print_notes}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* History row */}
+        {pkgHistory.length > 1 && (
+          <div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginBottom:8 }}>Previous designs</div>
+            <div style={{ display:'flex', gap:8 }}>
+              {pkgHistory.slice(1, 5).map((h, i) => (
+                <button key={i} onClick={()=>{ /* restore from history */ }}
+                  title={h.brand_name_display || 'Design'}
+                  style={{
+                    width:60, height:60, borderRadius:8, cursor:'pointer',
+                    background: h.bg_color || '#1A1A1A',
+                    border:'1px solid rgba(255,255,255,0.12)',
+                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                    overflow:'hidden', padding:4,
+                  }}
+                >
+                  <div style={{ fontSize:8, color: h.text_color || '#fff', fontWeight:700, textAlign:'center', overflow:'hidden', maxWidth:52 }}>
+                    {(h.brand_name_display || 'Brand').slice(0, 8)}
+                  </div>
+                  {h.accent_color && (
+                    <div style={{ width:20, height:3, borderRadius:2, background: h.accent_color }} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
