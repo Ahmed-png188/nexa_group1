@@ -128,10 +128,15 @@ export default function ProductLabAR() {
     const file = e.dataTransfer.files[0]; if (file) handleFile(file)
   }, [handleFile])
 
+  const resetToUpload = () => {
+    setStage('upload'); setOriginalUrl(''); setCleanedUrl('')
+    setProductId(null); setAssets([]); setSelected(null)
+  }
+
   const handleShoot = async () => {
     if (!cleanedUrl || !workspaceId) return
     setStage('shooting'); setShootingStep(0)
-    const newAssets: Asset[] = []
+    const collectedAssets: Asset[] = []
     const needStudio = outputType !== 'lifestyle'
     const needLife   = outputType !== 'studio'
     const total = (needStudio ? selectedShots.length : 0) + (needLife ? selectedScenes.length : 0)
@@ -142,7 +147,7 @@ export default function ProductLabAR() {
         body: JSON.stringify({ workspace_id: workspaceId, product_id: productId, image_url: cleanedUrl, product_type: productType, shots: selectedShots }),
       })
       const data = await res.json()
-      if (data.shots) data.shots.forEach((s: any) => { newAssets.push({ id: s.id, url: s.url, type: 'studio', style: s.style, label: s.label }); setShootingStep(p => p + 1) })
+      if (data.shots) data.shots.forEach((s: any) => { collectedAssets.push({ id: s.id, url: s.url, type: 'studio', style: s.style, label: s.label }); setShootingStep(p => p + 1) })
     }
     if (needLife) {
       const res = await fetch('/api/product-lab/lifestyle', {
@@ -150,11 +155,16 @@ export default function ProductLabAR() {
         body: JSON.stringify({ workspace_id: workspaceId, product_id: productId, image_url: cleanedUrl, product_type: productType, scenes: selectedScenes }),
       })
       const data = await res.json()
-      if (data.scenes) data.scenes.forEach((s: any) => { newAssets.push({ id: s.id, url: s.url, type: 'lifestyle', scene: s.scene, label: s.label }); setShootingStep(p => p + 1) })
+      if (data.scenes) data.scenes.forEach((s: any) => { collectedAssets.push({ id: s.id, url: s.url, type: 'lifestyle', scene: s.scene, label: s.label }); setShootingStep(p => p + 1) })
     }
-    setAssets(newAssets)
-    if (newAssets.length > 0) setSelected(newAssets[0])
-    setStage('gallery')
+    setAssets(collectedAssets)
+    if (collectedAssets.length === 0) {
+      setError('لم يتم إنشاء أي صور — يرجى التحقق من رصيدك والمحاولة مرة أخرى.')
+      setStage('configure')
+    } else {
+      setSelected(collectedAssets[0])
+      setStage('gallery')
+    }
   }
 
   const handleEdit = async () => {
@@ -212,18 +222,28 @@ export default function ProductLabAR() {
         </div>
       </div>
       <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-      <div style={{ display:'flex', flexDirection:'row-reverse', gap:24, marginTop:36 }}>
-        {[
-          { icon:'🖼', label:'إزالة الخلفية',         sub:'قطع نظيف في ثوانٍ' },
-          { icon:'📸', label:'لقطات الاستوديو',        sub:'6 زوايا احترافية' },
-          { icon:'🌿', label:'مشاهد أسلوب الحياة',    sub:'11 مشهداً مختلفاً' },
-        ].map(f => (
-          <div key={f.label} style={{ textAlign:'center', width:140 }}>
-            <div style={{ fontSize:22, marginBottom:6 }}>{f.icon}</div>
-            <div style={{ fontSize:12, fontWeight:700, color:C.t2, letterSpacing:0 }}>{f.label}</div>
-            <div style={{ fontSize:11, color:C.t4, marginTop:2, letterSpacing:0 }}>{f.sub}</div>
+      <div style={{ display:'flex', flexDirection:'row-reverse', gap:36, marginTop:44 }}>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </div>
-        ))}
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2, letterSpacing:0 }}>إزالة الخلفية</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3, letterSpacing:0 }}>قطع نظيف في ثوانٍ</div>
+        </div>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2, letterSpacing:0 }}>لقطات الاستوديو</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3, letterSpacing:0 }}>6 زوايا احترافية</div>
+        </div>
+        <div style={{ textAlign:'center', width:120 }}>
+          <div style={{ color:C.cyan, display:'flex', justifyContent:'center', marginBottom:12 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div style={{ fontSize:12, fontWeight:600, color:C.t2, letterSpacing:0 }}>مشاهد أسلوب الحياة</div>
+          <div style={{ fontSize:11, color:C.t4, marginTop:3, letterSpacing:0 }}>11 مشهداً مختلفاً</div>
+        </div>
       </div>
     </div>
   )
@@ -254,60 +274,30 @@ export default function ProductLabAR() {
 
   // ── CONFIGURE ────────────────────────────────────────────────────────
   if (stage === 'configure') return (
-    <div dir="rtl" style={{ minHeight:'100vh', background:C.bg, fontFamily:AR, display:'flex', flexDirection:'column', letterSpacing:0 }}>
-      <div style={{ display:'flex', flexDirection:'row-reverse', alignItems:'center', justifyContent:'space-between', padding:'0 28px', height:56, borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
-        <div style={{ display:'flex', flexDirection:'row-reverse', alignItems:'center', gap:12 }}>
-          <button onClick={() => setStage('upload')} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border}`, color:C.t3, cursor:'pointer', fontSize:12, letterSpacing:0 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform:'rotate(180deg)' }}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    <div dir="rtl" style={{ height:'100vh', background:C.bg, fontFamily:AR, display:'flex', overflow:'hidden', letterSpacing:0 }}>
+      {/* Right panel — 220px fixed (first child = right in RTL) */}
+      <div style={{ width:220, flexShrink:0, borderLeft:`1px solid ${C.border}`, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* Mini header row */}
+        <div style={{ padding:'16px 16px 0', flexShrink:0 }}>
+          <button onClick={resetToUpload} style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:C.t3, background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:AR, letterSpacing:0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform:'rotate(180deg)' }}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             رفع جديد
           </button>
-          <span style={{ fontSize:14, fontWeight:700, color:C.t1, letterSpacing:0 }}>{productName}</span>
-          <span style={{ fontSize:11, padding:'3px 8px', borderRadius:99, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontWeight:700, letterSpacing:0 }}>{productType}</span>
         </div>
-        <button onClick={handleShoot} disabled={selectedShots.length === 0 && selectedScenes.length === 0}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 20px', borderRadius:10, background:C.cyan, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', border:'none', opacity:(selectedShots.length === 0 && selectedScenes.length === 0) ? 0.4 : 1, letterSpacing:0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform:'rotate(180deg)' }}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          ابدأ التصوير — {creditCost} رصيد
-        </button>
-      </div>
-
-      <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 220px', overflow:'hidden' }}>
-        <div style={{ overflowY:'auto', padding:24 }}>
-          {(outputType === 'studio' || outputType === 'both') && (
-            <div style={{ marginBottom:32 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4, letterSpacing:0 }}>لقطات الاستوديو <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_studio} رصيد/لقطة</span></div>
-              <div style={{ fontSize:12, color:C.t4, marginBottom:16, letterSpacing:0 }}>تصوير احترافي بخلفية بيضاء من 6 زوايا</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:10 }}>
-                {SHOT_STYLES.map(s => (
-                  <button key={s.id} onClick={() => toggleShot(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedShots.includes(s.id) ? C.cyan : C.border}`, background: selectedShots.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'right' }}>
-                    <div style={{ fontSize:12, fontWeight:700, color: selectedShots.includes(s.id) ? C.cyan : C.t2, letterSpacing:0 }}>{s.label}</div>
-                    <div style={{ fontSize:11, color:C.t4, marginTop:2, letterSpacing:0 }}>{s.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {(outputType === 'lifestyle' || outputType === 'both') && (
-            <div>
-              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4, letterSpacing:0 }}>مشاهد أسلوب الحياة <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_lifestyle} رصيد/مشهد</span></div>
-              <div style={{ fontSize:12, color:C.t4, marginBottom:16, letterSpacing:0 }}>منتجك في بيئات تحريرية واقعية</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
-                {LIFESTYLE_SCENES.map(s => (
-                  <button key={s.id} onClick={() => toggleScene(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedScenes.includes(s.id) ? C.cyan : C.border}`, background: selectedScenes.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'right' }}>
-                    <div style={{ fontSize:12, fontWeight:700, color: selectedScenes.includes(s.id) ? C.cyan : C.t2, letterSpacing:0 }}>{s.label}</div>
-                    <div style={{ fontSize:11, color:C.t4, marginTop:2, letterSpacing:0 }}>{s.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Product name + type badge */}
+        <div style={{ padding:'10px 16px 0', flexShrink:0 }}>
+          <div style={{ fontSize:14, fontWeight:600, color:C.t1, letterSpacing:0 }}>{productName}</div>
+          <span style={{ display:'inline-block', marginTop:4, fontSize:10, padding:'2px 7px', borderRadius:99, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontWeight:700, letterSpacing:0 }}>{productType}</span>
         </div>
-
-        <div style={{ borderRight:`1px solid ${C.border}`, padding:20, display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
+        {/* Scrollable content */}
+        <div style={{ flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:14 }}>
           {cleanedUrl && (
             <div style={{ borderRadius:12, overflow:'hidden', background:C.surface, border:`1px solid ${C.border}`, aspectRatio:'1' }}>
               <img src={cleanedUrl} alt="المنتج" style={{ width:'100%', height:'100%', objectFit:'contain', padding:12 }}/>
             </div>
+          )}
+          {error && (
+            <div style={{ padding:'8px 10px', borderRadius:8, background:'rgba(239,68,68,0.10)', border:'1px solid rgba(239,68,68,0.25)', color:'#EF4444', fontSize:11, letterSpacing:0 }}>{error}</div>
           )}
           <div>
             <div style={{ fontSize:11, color:C.t4, marginBottom:8, fontWeight:700, letterSpacing:0 }}>نوع الإخراج</div>
@@ -318,6 +308,45 @@ export default function ProductLabAR() {
             ))}
           </div>
         </div>
+        {/* Shoot button — pinned to bottom */}
+        <div style={{ padding:'12px 16px', background:'linear-gradient(to bottom, transparent 0%, #0C0C0C 40%)', flexShrink:0 }}>
+          <button onClick={handleShoot} disabled={selectedShots.length === 0 && selectedScenes.length === 0}
+            style={{ width:'100%', padding:'10px 0', borderRadius:10, background:C.cyan, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', border:'none', opacity:(selectedShots.length === 0 && selectedScenes.length === 0) ? 0.4 : 1, letterSpacing:0 }}>
+            ابدأ التصوير — {creditCost} رصيد
+          </button>
+        </div>
+      </div>
+
+      {/* Left — shot/scene selectors (flex:1) */}
+      <div style={{ flex:1, overflowY:'auto', padding:24 }}>
+        {(outputType === 'studio' || outputType === 'both') && (
+          <div style={{ marginBottom:32 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4, letterSpacing:0 }}>لقطات الاستوديو <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_studio} رصيد/لقطة</span></div>
+            <div style={{ fontSize:12, color:C.t4, marginBottom:16, letterSpacing:0 }}>تصوير احترافي بخلفية بيضاء من 6 زوايا</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:10 }}>
+              {SHOT_STYLES.map(s => (
+                <button key={s.id} onClick={() => toggleShot(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedShots.includes(s.id) ? C.cyan : C.border}`, background: selectedShots.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'right' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color: selectedShots.includes(s.id) ? C.cyan : C.t2, letterSpacing:0 }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:C.t4, marginTop:2, letterSpacing:0 }}>{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {(outputType === 'lifestyle' || outputType === 'both') && (
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4, letterSpacing:0 }}>مشاهد أسلوب الحياة <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_lifestyle} رصيد/مشهد</span></div>
+            <div style={{ fontSize:12, color:C.t4, marginBottom:16, letterSpacing:0 }}>منتجك في بيئات تحريرية واقعية</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
+              {LIFESTYLE_SCENES.map(s => (
+                <button key={s.id} onClick={() => toggleScene(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedScenes.includes(s.id) ? C.cyan : C.border}`, background: selectedScenes.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'right' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color: selectedScenes.includes(s.id) ? C.cyan : C.t2, letterSpacing:0 }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:C.t4, marginTop:2, letterSpacing:0 }}>{s.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

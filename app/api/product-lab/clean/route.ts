@@ -29,49 +29,70 @@ export async function POST(request: NextRequest) {
     )
     if (!ok) return creditErr!
 
+    let cleanedUrl = image_url // fallback to original
+
     try {
-      // Step 1: Remove background with BiRefNet
       const bgResult = await fal.subscribe('fal-ai/birefnet', {
         input: {
           image_url,
           model: 'General Use (Light)',
-          operating_resolution: '1024x1024',
           output_format: 'png',
         },
         logs: false,
         onQueueUpdate: () => {},
       })
+      const bgUrl = (bgResult as any).data?.image?.url
+        || (bgResult as any).image?.url
+        || (bgResult as any).data?.image_url
+      if (bgUrl) cleanedUrl = bgUrl
+      else console.error('[clean] birefnet returned no URL, using original')
+    } catch (bgErr) {
+      console.error('[clean] birefnet failed:', bgErr)
+      // Continue with original image — don't fail the whole route
+    }
 
-      const cleanedUrl = (bgResult as any).data?.image?.url
-      if (!cleanedUrl) throw new Error('No image returned from background removal')
+    // Upscale (optional — skip if fal fails)
+    let finalUrl = cleanedUrl
+    try {
+      const upResult = await fal.subscribe('fal-ai/aura-sr', {
+        input: {
+          image_url: cleanedUrl,
+          upscaling_factor: 2,
+          overlapping_tiles: true,
+        } as any,
+        logs: false,
+        onQueueUpdate: () => {},
+      })
+      const upUrl = (upResult as any).data?.image?.url
+        || (upResult as any).image?.url
+      if (upUrl) finalUrl = upUrl
+    } catch (upErr) {
+      console.error('[clean] upscale failed, using cleaned:', upErr)
+    }
 
-      const permanentUrl = await persistFile(cleanedUrl, workspace_id, 'image', undefined)
-      const finalUrl = permanentUrl || cleanedUrl
+    // Persist to storage
+    const permanentUrl = await persistFile(finalUrl, workspace_id, 'image', undefined)
+      .catch(() => finalUrl) // if storage fails, use direct URL
 
-      if (product_id) {
-        await supabase.from('products').update({ cleaned_url: finalUrl }).eq('id', product_id)
+    // Update product record if product_id provided
+    if (product_id) {
+      try {
+        await supabase.from('products').update({ cleaned_url: permanentUrl }).eq('id', product_id)
+      } catch (err) { console.error('[clean] product update failed:', err) }
+
+      try {
         await supabase.from('product_assets').insert({
           product_id,
           workspace_id,
           asset_type: 'cleaned',
-          url: finalUrl,
+          url: permanentUrl,
           credits_used: CREDIT_COSTS.product_clean,
           metadata: {},
         })
-      }
-
-      return NextResponse.json({ cleaned_url: finalUrl })
-    } catch (err) {
-      console.error('[product-lab/clean] generation failed:', err)
-      await supabase.rpc('deduct_credits', {
-        p_workspace_id: workspace_id,
-        p_amount:       -CREDIT_COSTS.product_clean,
-        p_action:       'product_clean_refund',
-        p_user_id:      user.id,
-        p_description:  'Refund: product clean failed',
-      })
-      return NextResponse.json({ error: 'Product clean failed' }, { status: 500 })
+      } catch (err) { console.error('[clean] asset insert failed:', err) }
     }
+
+    return NextResponse.json({ cleaned_url: permanentUrl })
 
   } catch (err) {
     console.error('[product-lab/clean]', err)
