@@ -34,10 +34,10 @@ function ScoreRing({ score, color, label, size = 80 }: { score: number; color: s
             style={{ transition: 'stroke-dasharray 1.4s cubic-bezier(0.34,1.56,0.64,1)' }}/>
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, fontFamily: "'Geist Mono', monospace" }}>{score}</div>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.04em', fontFamily: "'Geist Mono', monospace" }}>{score}</div>
         </div>
       </div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textAlign: 'center', letterSpacing: 0, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textAlign: 'center', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
     </div>
   )
 }
@@ -47,7 +47,7 @@ function InfoBlock({ label, value, tags }: { label: string; value?: string; tags
   if (!value && (!tags || !tags.length)) return null
   return (
     <div style={{ padding: '18px 20px', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px' }}>
-      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>{label}</div>
       {value && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.75 }}>{value}</div>}
       {tags && tags.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: value ? '10px' : '0' }}>
@@ -255,7 +255,7 @@ export default function BrandBrainAr() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--topbar-h))', flexDirection: 'column', gap: '14px', background: '#0C0C0C' }}>
       <div className="nexa-spinner" style={{ width: 22, height: 22 }}/>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: 0 }}>لحظة...</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.04em' }}>لحظة...</div>
     </div>
   )
 
@@ -273,13 +273,13 @@ export default function BrandBrainAr() {
         {/* شارة الحالة */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 999, background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(0,0,0,0.16)', marginBottom: 32, backdropFilter: 'blur(8px)' }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(0,0,0,0.45)' }}/>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)', letterSpacing: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)', letterSpacing: '0.02em' }}>
             Brand Brain · لم تتدرّب بعد
           </span>
         </div>
 
         {/* العنوان الرئيسي */}
-        <h1 style={{ fontSize: 'clamp(32px,5vw,52px)', fontWeight: 800, letterSpacing: 0, color: '#0C0C0C', lineHeight: 1.1, marginBottom: 16 }}>
+        <h1 style={{ fontSize: 'clamp(32px,5vw,52px)', fontWeight: 800, letterSpacing: '-0.04em', color: '#0C0C0C', lineHeight: 1.1, marginBottom: 16 }}>
           Brand Brain تنتظرك.<br/>أمدّها بما تحتاج.
         </h1>
 
@@ -299,7 +299,7 @@ export default function BrandBrainAr() {
               <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.55)', marginBottom: 12 }}>
                 {item.icon}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0C0C0C', marginBottom: 6, letterSpacing: 0 }}>{item.title}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0C0C0C', marginBottom: 6, letterSpacing: '-0.02em' }}>{item.title}</div>
               <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.50)', lineHeight: 1.65 }}>{item.desc}</div>
             </div>
           ))}
@@ -309,7 +309,7 @@ export default function BrandBrainAr() {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
           <button
             onClick={() => fileRef.current?.click()}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', background: '#0C0C0C', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer', transition: 'all 0.18s', letterSpacing: 0, boxShadow: '0 4px 24px rgba(0,0,0,0.28)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', background: '#0C0C0C', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, color: '#FFFFFF', cursor: 'pointer', transition: 'all 0.18s', letterSpacing: '-0.01em', boxShadow: '0 4px 24px rgba(0,0,0,0.28)' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1a1a1a'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#0C0C0C'; (e.currentTarget as HTMLElement).style.transform = 'none' }}>
             <span style={{ display: 'flex' }}>{Ic.upload}</span>
@@ -333,7 +333,7 @@ export default function BrandBrainAr() {
         {/* معاينة الملفات المرفوعة */}
         {assets.length > 0 && (
           <div style={{ marginTop: 32 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(0,0,0,0.40)', letterSpacing: 0, textTransform: 'uppercase' as const, marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(0,0,0,0.40)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>
               {assets.length} {assets.length === 1 ? 'ملف مرفوع' : 'ملفات مرفوعة'}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' as const }}>
@@ -366,7 +366,7 @@ export default function BrandBrainAr() {
         <div style={{ backgroundImage: 'url(/cyan-header.png)', backgroundSize: 'cover', backgroundPosition: 'center top', padding: '40px 0 28px' }}>
           <div style={{ padding: '0 36px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
             <div>
-              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: 0, color: '#0A0A0A', lineHeight: 1, marginBottom: '8px' }}>Brand Brain</h1>
+              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', color: '#0A0A0A', lineHeight: 1, marginBottom: '8px' }}>Brand Brain</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(0,150,0,0.70)' }}/>
                 <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.60)', fontWeight: 500 }}>
@@ -417,7 +417,7 @@ export default function BrandBrainAr() {
             <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '28px 32px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
                 <div>
-                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
                     صحة البراند
                   </div>
                   <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)' }}>
@@ -425,8 +425,8 @@ export default function BrandBrainAr() {
                   </div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '42px', fontWeight: 700, letterSpacing: 0, color: '#00AAFF', lineHeight: 1, fontFamily: "'Geist Mono', monospace" }}>{overallScore}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '4px', letterSpacing: 0, textTransform: 'uppercase' }}>الإجمالي</div>
+                  <div style={{ fontSize: '42px', fontWeight: 700, letterSpacing: '-0.05em', color: '#00AAFF', lineHeight: 1, fontFamily: "'Geist Mono', monospace" }}>{overallScore}</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>الإجمالي</div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '20px' }}>
@@ -439,17 +439,17 @@ export default function BrandBrainAr() {
             {/* ملخص البراند */}
             {profile?.brand_summary && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px', marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>
                   ملخص البراند
                 </div>
-                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.78, letterSpacing: 0 }}>{profile.brand_summary}</div>
+                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.78, letterSpacing: '-0.01em' }}>{profile.brand_summary}</div>
               </div>
             )}
 
             {/* عمودان: الصوت + الجمهور */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
                   بصمة الصوت
                 </div>
                 {[
@@ -464,7 +464,7 @@ export default function BrandBrainAr() {
                 ))}
               </div>
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
                   ذكاء الجمهور
                 </div>
                 {[
@@ -506,7 +506,7 @@ export default function BrandBrainAr() {
             {learnings.length > 0 && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
                     آخر ما تعلّمته Nexa
                   </div>
                   <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
@@ -522,7 +522,7 @@ export default function BrandBrainAr() {
                       <div style={{ width: '3px', borderRadius: '100px', background: '#00AAFF', flexShrink: 0, alignSelf: 'stretch', minHeight: '16px' }}/>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 7px', borderRadius: '4px', background: 'rgba(0,170,255,0.10)', border: '1px solid rgba(0,170,255,0.20)', color: '#00AAFF', textTransform: 'uppercase', letterSpacing: 0 }}>
+                          <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 7px', borderRadius: '4px', background: 'rgba(0,170,255,0.10)', border: '1px solid rgba(0,170,255,0.20)', color: '#00AAFF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {l.insight_type || 'insight'}
                           </span>
                           {l.source_name && <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.20)' }}>{l.source_name}</span>}
@@ -541,7 +541,7 @@ export default function BrandBrainAr() {
         {tab === 'الصوت' && (
           <div className="b-in">
             <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '24px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '20px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '20px' }}>
                 خصائص الصوت
               </div>
               {voiceTraits.map(tr => <TraitBar key={tr.label} label={tr.label} value={tr.value}/>)}
@@ -574,10 +574,10 @@ export default function BrandBrainAr() {
           <div className="b-in">
             {(aud.primary || aud.demographics) && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '24px', marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>
                   مع مين تتكلم
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.88)', lineHeight: 1.6, letterSpacing: 0 }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.88)', lineHeight: 1.6, letterSpacing: '-0.02em' }}>
                   {aud.primary || aud.demographics}
                 </div>
               </div>
@@ -594,7 +594,7 @@ export default function BrandBrainAr() {
 
             {aud.engagement_triggers && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
                   إيش يجعلهم يتفاعلون
                 </div>
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.75 }}>{aud.engagement_triggers}</div>
@@ -608,7 +608,7 @@ export default function BrandBrainAr() {
           <div className="b-in">
             {(visual.colors || visual.color_palette) && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '24px', marginBottom: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '16px' }}>
                   لوحة الألوان
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -637,7 +637,7 @@ export default function BrandBrainAr() {
 
             {assets.filter((a: any) => a.type === 'logo' || a.type === 'product_photo').length > 0 && (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
                   مراجع بصرية
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
@@ -666,7 +666,7 @@ export default function BrandBrainAr() {
               <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.35)', margin: '0 auto 16px' }}>
                 {uploading ? <div className="nexa-spinner" style={{ width: 14, height: 14 }}/> : Ic.upload}
               </div>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.72)', marginBottom: '6px', letterSpacing: 0 }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.72)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {uploading ? 'Nexa ترفع...' : dragOver ? 'ارمِه هنا' : 'أسقط ملفات براندك هنا'}
               </div>
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.30)', lineHeight: 1.65 }}>
@@ -678,7 +678,7 @@ export default function BrandBrainAr() {
 
             {/* تصنيف نوع الملف */}
             <div style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
                 ترفعه كـ
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '8px' }}>
@@ -695,7 +695,7 @@ export default function BrandBrainAr() {
             {assets.length > 0 && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
                     {assets.length} {assets.length === 1 ? 'ملف مرفوع' : 'ملفات مرفوعة'}
                   </div>
                   {assets.length >= 2 && !profile && (

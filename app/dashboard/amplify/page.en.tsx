@@ -432,10 +432,7 @@ function AmplifyInner() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ workspace_id:workspaceId, name:'__preview__', generate_copy:true, content_id:selectedContent?.id||null, creative_snapshot:{ adCopy }, mode:'simple', daily_budget:0 }),
       })
-      const d = await res.json()
-      if (d.creative?.headline) setHeadline(d.creative.headline)
-      if (d.creative?.adCopy)   setAdCopy(d.creative.adCopy.slice(0, META_SPECS.primary_text.max))
-      if (d.creative?.description) setDescription(d.creative.description)
+      if (res.ok) { const d = await res.json(); if (d.creative?.headline) setHeadline(d.creative.headline); if (d.creative?.adCopy) setAdCopy(d.creative.adCopy.slice(0, META_SPECS.primary_text.max)); if (d.creative?.description) setDescription(d.creative.description) }
     } catch {}
     setGeneratingCopy(false)
   }
@@ -520,8 +517,7 @@ function AmplifyInner() {
           objective:        adMode==='simple' ? 'OUTCOME_TRAFFIC' : selectedObjective,
         }),
       })
-      const d = await res.json()
-      if (d.min !== undefined) setReachEstimate({ min: d.min, max: d.max, estimated: d.estimated })
+      if (res.ok) { const d = await res.json(); if (d.min !== undefined) setReachEstimate({ min: d.min, max: d.max, estimated: d.estimated }) }
     } catch {}
     setReachLoading(false)
   }
@@ -531,8 +527,7 @@ function AmplifyInner() {
     setMonitorLoading(true)
     try {
       const res = await fetch('/api/amplify/monitor?workspace_id='+workspaceId)
-      const d = await res.json()
-      setMonitorData(d.insights || [])
+      if (res.ok) { const d = await res.json(); setMonitorData(d.insights || []) }
     } catch {}
     setMonitorLoading(false); setMonitorLoaded(true)
   }

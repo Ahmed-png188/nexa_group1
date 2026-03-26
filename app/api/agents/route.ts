@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, agent_type } = await request.json()
+    const { workspace_id, agent_type, comments: bodyComments } = await request.json()
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -148,8 +148,7 @@ Return ONLY JSON:
 
     } else if (agent_type === 'engagement') {
       // Engagement Agent — drafts replies to comments
-      let comments: any[] = []
-try { const body = await request.json(); comments = body.comments ?? [] } catch {}
+      const comments: any[] = bodyComments ?? []
 
       const prompt = `You are the Engagement Agent for ${brand.brandName}. Draft authentic, brand-aligned replies to these comments/DMs.
 

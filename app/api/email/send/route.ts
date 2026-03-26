@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
     })
 
     const sendData = await sendRes.json()
-    console.log('[Email Send] Gmail response status:', sendRes.status, 'id:', sendData.id, 'error:', sendData.error?.message)
 
     if (sendData.error || !sendData.id) {
       const gmailErr = sendData.error?.message || 'Unknown Gmail error'

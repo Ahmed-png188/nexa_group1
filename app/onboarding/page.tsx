@@ -16,15 +16,23 @@ interface BrandAnalysis {
   voice_score?: number; first_post_hook: string; first_post_body: string
 }
 
-const SEGMENTS = [
+const SEGMENTS_EN = [
   { id:'creator'    as Segment, label:'Creator',    sub:'Content, audience, influence', icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
   { id:'freelancer' as Segment, label:'Freelancer', sub:'Services, clients, rates',     icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
   { id:'business'   as Segment, label:'Business',   sub:'Products, revenue, growth',    icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
   { id:'agency'     as Segment, label:'Agency',     sub:'Team, clients, scale',         icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
 ]
+const SEGMENTS_AR = [
+  { id:'creator'    as Segment, label:'كريتور',     sub:'محتوى، جمهور، تأثير',          icon:SEGMENTS_EN[0].icon },
+  { id:'freelancer' as Segment, label:'فريلانسر',   sub:'خدمات، عملاء، أسعار',          icon:SEGMENTS_EN[1].icon },
+  { id:'business'   as Segment, label:'بيزنس',      sub:'منتجات، إيراد، نمو',           icon:SEGMENTS_EN[2].icon },
+  { id:'agency'     as Segment, label:'وكالة',      sub:'فريق، عملاء، تمدّد',           icon:SEGMENTS_EN[3].icon },
+]
 
-function AnalyzingSteps() {
-  const steps = ['Reading your content...','Extracting your voice...','Building your audience profile...','Calibrating your tone...','Mapping your content angles...','Brand Brain is ready.']
+function AnalyzingSteps({ isArabic = false }: { isArabic?: boolean }) {
+  const steps = isArabic
+    ? ['يقرأ محتواك...', 'يستخرج صوتك...', 'يبني ملف جمهورك...', 'يضبط نبرتك...', 'يرسم زوايا المحتوى...', '.Brand Brain جاهز']
+    : ['Reading your content...','Extracting your voice...','Building your audience profile...','Calibrating your tone...','Mapping your content angles...','Brand Brain is ready.']
   const [visible, setVisible] = useState<number[]>([])
   useEffect(() => { steps.forEach((_,i) => setTimeout(() => setVisible(p=>[...p,i]), i*800+200)) }, [])
   return (
@@ -60,9 +68,23 @@ export default function OnboardingPage() {
   const [usernameSlug,setUsernameSlug]   = useState('')
   const [slugAvailable,setSlugAvailable] = useState<boolean|null>(null)
   const [slugClaimed,setSlugClaimed]     = useState(false)
+  const [lang,setLang]                   = useState<'en'|'ar'>('en')
   const fileRef = useRef<HTMLInputElement>(null)
   const router  = useRouter()
   const supabase = createClient()
+
+  const isArabic = lang === 'ar'
+  const AR = "'Tajawal', system-ui, sans-serif"
+  const EN = "'Geist', -apple-system, sans-serif"
+  const font = isArabic ? AR : EN
+  const SEGMENTS = isArabic ? SEGMENTS_AR : SEGMENTS_EN
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexa_lang')
+      if (stored === 'ar' || stored === 'en') setLang(stored)
+    } catch {}
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({data:{user}}) => {
@@ -147,7 +169,7 @@ export default function OnboardingPage() {
             <div style={{width:44,height:44,borderRadius:12,background:'var(--cyan-dim)',border:'1px solid var(--cyan-border)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 32px',color:'var(--cyan)'}}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9.5 2a2.5 2.5 0 0 1 5 0"/><path d="M9.5 22a2.5 2.5 0 0 0 5 0"/><path d="M14.5 2C17 2 19 4 19 6.5c0 2-1.5 3.5-3.5 4C17 11 19 12.5 19 15c0 2.5-2 4.5-4.5 4.5"/><path d="M9.5 2C7 2 5 4 5 6.5c0 2 1.5 3.5 3.5 4C7 11 5 12.5 5 15c0 2.5 2 4.5 4.5 4.5"/></svg>
             </div>
-            <AnalyzingSteps/>
+            <AnalyzingSteps isArabic={isArabic}/>
           </div>
         </div>
       )}
@@ -157,8 +179,8 @@ export default function OnboardingPage() {
         <div style={{position:'fixed',inset:0,background:'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px',zIndex:100,overflowY:'auto'}}>
           <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:500,height:400,borderRadius:'50%',background:'radial-gradient(ellipse,var(--cyan-dim) 0%,transparent 70%)',pointerEvents:'none'}}/>
           <div style={{position:'relative',zIndex:1,textAlign:'center',maxWidth:500,animation:'ob-up 0.5s ease both'}}>
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase' as const,color:'var(--text-3)',marginBottom:8}}>Brand Brain · Active</div>
-            <div style={{fontSize:80,fontWeight:700,color:'var(--text-1)',letterSpacing:'-0.05em',lineHeight:1,marginBottom:4,fontFamily:'var(--sans)'}}>
+            <div style={{fontSize:10,fontWeight:600,letterSpacing:isArabic?0:'0.1em',textTransform:'uppercase' as const,color:'var(--text-3)',marginBottom:8}}>Brand Brain · Active</div>
+            <div style={{fontSize:80,fontWeight:700,color:'var(--text-1)',letterSpacing:isArabic?0:'-0.05em',lineHeight:1,marginBottom:4,fontFamily:'var(--sans)'}}>
               {analysis.voice_score||analysis.voice_match_score||94}
             </div>
             <div style={{fontSize:14,color:'var(--text-3)',marginBottom:32}}>% voice match</div>
@@ -169,7 +191,7 @@ export default function OnboardingPage() {
             )}
             {(analysis.content_angles||analysis.top_angles||[]).slice(0,3).length>0&&(
               <div style={{marginBottom:32}}>
-                <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.08em',textTransform:'uppercase' as const,color:'var(--text-3)',marginBottom:12}}>Your top content angles</div>
+                <div style={{fontSize:10,fontWeight:600,letterSpacing:isArabic?0:'0.08em',textTransform:'uppercase' as const,color:'var(--text-3)',marginBottom:12}}>Your top content angles</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {(analysis.content_angles||analysis.top_angles||[]).slice(0,3).map((a,i)=>(
                     <div key={i} className="card-accent" style={{padding:'10px 14px',display:'flex',alignItems:'flex-start',gap:10,textAlign:'left'}}>
@@ -196,7 +218,7 @@ export default function OnboardingPage() {
           {/* Logo */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:9,marginBottom:28}}>
             <img src="/favicon.png" alt="Nexa" style={{width:26,height:26,borderRadius:6}}/>
-            <span style={{fontFamily:'var(--sans)',fontWeight:700,fontSize:15,color:'var(--text-1)',letterSpacing:'-0.02em'}}>Nexa</span>
+            <span style={{fontFamily:'var(--sans)',fontWeight:700,fontSize:15,color:'var(--text-1)',letterSpacing:isArabic?0:'-0.02em'}}>Nexa</span>
           </div>
 
           {/* Progress */}
@@ -212,18 +234,20 @@ export default function OnboardingPage() {
           {step==='segment'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>What best describes you?</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>What best describes you?</h1>
               <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24}}>Nexa tailors everything to your business type.</p>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:24}}>
                 {SEGMENTS.map(s=>{const sel=segment===s.id;return(
                   <button key={s.id} onClick={()=>setSegment(s.id)} style={{padding:'18px 16px',borderRadius:'var(--r)',background:sel?'var(--cyan-dim)':'rgba(255,255,255,0.03)',border:`1px solid ${sel?'var(--cyan-border)':'var(--border)'}`,cursor:'pointer',textAlign:'left',transition:'all 0.15s',outline:'none'}}>
                     <div style={{color:sel?'var(--cyan)':'var(--text-3)',display:'flex',marginBottom:10}}>{s.icon}</div>
-                    <div style={{fontSize:14,fontWeight:600,color:sel?'var(--text-1)':'var(--text-2)',marginBottom:3,letterSpacing:'-0.01em'}}>{s.label}</div>
+                    <div style={{fontSize:14,fontWeight:600,color:sel?'var(--text-1)':'var(--text-2)',marginBottom:3,letterSpacing:isArabic?0:'-0.01em'}}>{s.label}</div>
                     <div style={{fontSize:11,color:sel?'var(--cyan)':'var(--text-3)',lineHeight:1.4}}>{s.sub}</div>
                   </button>
                 )})}
               </div>
-              <button onClick={()=>{if(segment)setStep('username')}} className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13,opacity:segment?1:0.4}}>Continue →</button>
+              <button onClick={()=>{if(segment)setStep('username')}} className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13,opacity:segment?1:0.4,fontFamily:font}}>
+                {isArabic ? 'تابع ←' : 'Continue →'}
+              </button>
             </div>
           )}
 
@@ -231,7 +255,7 @@ export default function OnboardingPage() {
           {step==='username'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Claim your lead page</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Claim your lead page</h1>
               <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24}}>Your public page captures leads from your content 24/7.</p>
               <div style={{marginBottom:20}}>
                 <div style={{fontSize:11,color:'var(--text-3)',marginBottom:8}}>Your page will be at:</div>
@@ -262,12 +286,12 @@ export default function OnboardingPage() {
           {step==='workspace'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>What business are you building?</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>What business are you building?</h1>
               <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24}}>Takes 2 minutes. This powers everything Nexa creates.</p>
               <form onSubmit={handleCreateWorkspace} style={{display:'flex',flexDirection:'column',gap:14}}>
-                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7}}>Brand name <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></label><input className="ob-inp" type="text" placeholder="e.g. Ahmed Adil Brand" value={brandName} onChange={e=>setBrandName(e.target.value)} required/></div>
-                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7}}>Workspace name <span style={{color:'var(--text-4)',fontWeight:400}}>can match brand</span></label><input className="ob-inp" type="text" placeholder="e.g. My Workspace" value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} required/></div>
-                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7}}>Website <span style={{color:'var(--text-4)',fontWeight:400}}>optional</span></label><input className="ob-inp" type="text" placeholder="https://yourbrand.com" value={brandWebsite} onChange={e=>setBrandWebsite(e.target.value)}/></div>
+                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7,fontFamily:font}}>{isArabic ? <>اسم البراند <span style={{color:'var(--cyan)',fontWeight:500}}>مطلوب</span></> : <>Brand name <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></>}</label><input className="ob-inp" type="text" placeholder={isArabic ? 'مثال: براند أحمد عادل' : 'e.g. Ahmed Adil Brand'} value={brandName} onChange={e=>setBrandName(e.target.value)} required style={{direction:isArabic?'rtl':'ltr',fontFamily:font}}/></div>
+                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7,fontFamily:font}}>{isArabic ? <>اسم مساحة العمل <span style={{color:'var(--text-4)',fontWeight:400}}>ممكن يطابق البراند</span></> : <>Workspace name <span style={{color:'var(--text-4)',fontWeight:400}}>can match brand</span></>}</label><input className="ob-inp" type="text" placeholder={isArabic ? 'مثال: مساحتي' : 'e.g. My Workspace'} value={workspaceName} onChange={e=>setWorkspaceName(e.target.value)} required style={{direction:isArabic?'rtl':'ltr',fontFamily:font}}/></div>
+                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7,fontFamily:font}}>{isArabic ? <>الموقع <span style={{color:'var(--text-4)',fontWeight:400}}>اختياري</span></> : <>Website <span style={{color:'var(--text-4)',fontWeight:400}}>optional</span></>}</label><input className="ob-inp" type="text" placeholder="https://yourbrand.com" value={brandWebsite} onChange={e=>setBrandWebsite(e.target.value)} style={{direction:'ltr',fontFamily:font}}/></div>
                 {error&&<div className="error-state" style={{fontSize:12}}>{error}</div>}
                 <button type="submit" className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13}}>Continue →</button>
               </form>
@@ -278,11 +302,11 @@ export default function OnboardingPage() {
           {step==='voice'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Define your market position</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Define your market position</h1>
               <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24}}>The minimum Nexa needs to write in your voice and win clients.</p>
               <form onSubmit={handleVoiceContinue} style={{display:'flex',flexDirection:'column',gap:16}}>
-                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7}}>How do you want to show up? <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></label><textarea className="ob-inp ob-ta" placeholder="e.g. Direct, no-fluff, confident. Short sentences, never corporate language." value={brandVoice} onChange={e=>setBrandVoice(e.target.value)} required rows={4}/></div>
-                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7}}>Who is your ideal client? <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></label><textarea className="ob-inp ob-ta" placeholder="e.g. B2B founders, 28–45, building real companies. They want tactics that actually close deals." value={brandAudience} onChange={e=>setBrandAudience(e.target.value)} required rows={3}/></div>
+                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7,fontFamily:font}}>{isArabic ? <>كيف تريد أن تظهر؟ <span style={{color:'var(--cyan)',fontWeight:500}}>مطلوب</span></> : <>How do you want to show up? <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></>}</label><textarea className="ob-inp ob-ta" placeholder={isArabic ? 'مثال: مباشر، واثق، بلا حشو. جمل قصيرة، بعيد عن اللغة الرسمية الجافة.' : 'e.g. Direct, no-fluff, confident. Short sentences, never corporate language.'} value={brandVoice} onChange={e=>setBrandVoice(e.target.value)} required rows={4} style={{direction:isArabic?'rtl':'ltr',fontFamily:font}}/></div>
+                <div><label style={{display:'block',fontSize:11,fontWeight:600,color:'var(--text-3)',marginBottom:7,fontFamily:font}}>{isArabic ? <>مين عميلك المثالي؟ <span style={{color:'var(--cyan)',fontWeight:500}}>مطلوب</span></> : <>Who is your ideal client? <span style={{color:'var(--cyan)',fontWeight:500}}>required</span></>}</label><textarea className="ob-inp ob-ta" placeholder={isArabic ? 'مثال: رواد أعمال خليجيون، ٢٥-٤٠ سنة، يبنون مشاريع حقيقية ويريدون نتائج ملموسة.' : 'e.g. B2B founders, 28–45, building real companies. They want tactics that actually close deals.'} value={brandAudience} onChange={e=>setBrandAudience(e.target.value)} required rows={3} style={{direction:isArabic?'rtl':'ltr',fontFamily:font}}/></div>
                 <button type="submit" className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13,opacity:(brandVoice.trim().length>10&&brandAudience.trim().length>10)?1:0.45}}>Continue →</button>
               </form>
             </div>
@@ -292,11 +316,11 @@ export default function OnboardingPage() {
           {step==='upload'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Upload brand assets</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>Upload brand assets</h1>
               <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:22}}>Logo, sample posts, brand doc. Optional — add more later.</p>
               <div onDrop={e=>{e.preventDefault();setIsDragging(false);addFiles(e.dataTransfer.files)}} onDragOver={e=>{e.preventDefault();setIsDragging(true)}} onDragLeave={()=>setIsDragging(false)} onClick={()=>fileRef.current?.click()}
                 style={{padding:files.length>0?'12px 16px':'28px 20px',border:`1px dashed ${isDragging?'var(--cyan)':files.length>0?'var(--cyan-border)':'var(--border)'}`,borderRadius:'var(--r)',textAlign:'center',cursor:'pointer',transition:'all 0.15s',background:isDragging?'var(--cyan-dim)':'transparent',marginBottom:10}}>
-                {files.length===0?(<><div style={{fontSize:13,color:'var(--text-2)',fontWeight:500,marginBottom:4}}>Click or drag files here</div><div style={{fontSize:11,color:'var(--text-3)'}}>PNG, JPG, PDF, DOCX</div></>):(<div style={{fontSize:12,color:'var(--text-3)'}}>+ Add more files</div>)}
+                {files.length===0?(<><div style={{fontSize:13,color:'var(--text-2)',fontWeight:500,marginBottom:4}}>{isArabic?'اضغط أو اسحب ملفاتك هنا':'Click or drag files here'}</div><div style={{fontSize:11,color:'var(--text-3)'}}>{isArabic?'PNG، JPG، PDF، DOCX':'PNG, JPG, PDF, DOCX'}</div></>):(<div style={{fontSize:12,color:'var(--text-3)'}}>{isArabic?'+ أضف المزيد':'+ Add more files'}</div>)}
                 <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.docx,.txt" onChange={e=>addFiles(e.target.files)} onClick={e=>{(e.target as HTMLInputElement).value=''}} style={{display:'none'}}/>
               </div>
               {files.length>0&&(
@@ -324,7 +348,7 @@ export default function OnboardingPage() {
               <div style={{width:52,height:52,borderRadius:'50%',background:'var(--success-dim)',border:'1px solid var(--success-border)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px'}}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
               </div>
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em',color:'var(--text-1)',marginBottom:8}}>All set — building your workspace</h1>
+              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',marginBottom:8}}>All set — building your workspace</h1>
               <p style={{fontSize:13,color:'var(--text-3)',lineHeight:1.65}}>Taking you to your dashboard…</p>
             </div>
           )}

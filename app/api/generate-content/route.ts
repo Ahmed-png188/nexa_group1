@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
@@ -6,6 +8,7 @@ import {
   buildBrandSystemPrompt,
   contentPrompts,
 } from '@/lib/prompts'
+import { rateLimit, LIMITS } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -16,6 +19,15 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Rate limit: 20 AI generations per minute per user
+    const rl = await rateLimit({ key: user.id, ...LIMITS.aiGenerate })
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please slow down.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)) } }
+      )
+    }
+
     const body = await request.json()
     const {
       type = 'post',
@@ -25,6 +37,7 @@ export async function POST(request: NextRequest) {
       tone = 'bold',
       lang = 'en',
       additionalContext = '',
+      workspace_id: workspaceIdFromBody,
     } = body
 
     const topic = topicRaw || promptRaw
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
         userPrompt = contentPrompts.email(topic, additionalContext, lang)
         break
       case 'blog':
-        userPrompt = contentPrompts.blog(topic, brand?.workspace.brand_audience ?? '', lang)
+        userPrompt = contentPrompts.blog(topic, brand?.brandAudience ?? '', lang)
         break
       case 'ad':
         userPrompt = contentPrompts.ad(brand?.brandName ?? '', topic, platform, lang)
@@ -59,7 +72,7 @@ export async function POST(request: NextRequest) {
         userPrompt = contentPrompts.bio(
           brand?.brandName ?? '',
           topic,
-          brand?.workspace.brand_audience ?? '',
+          brand?.brandAudience ?? '',
           lang
         )
         break
@@ -89,10 +102,11 @@ export async function POST(request: NextRequest) {
     const content = (response.content[0] as any).text
 
     // Save to DB as draft
+    const wsId = workspaceIdFromBody ?? brand?.workspaceId
     const { data: saved, error: saveError } = await supabase
       .from('content')
       .insert({
-        workspace_id: body.workspace_id ?? null,
+        workspace_id: wsId,
         created_by: user.id,
         type: type === 'caption' ? 'post' : type,
         platform,

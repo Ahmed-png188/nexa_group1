@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
@@ -19,13 +21,14 @@ export async function POST(request: NextRequest) {
       audience,
       timeline = '3 months',
       lang = 'en',
+      workspace_id: workspaceIdFromBody,
     } = body
 
     if (!goal) return NextResponse.json({ error: 'Goal is required' }, { status: 400 })
 
     const brand = await getBrandContext(user.id)
     const brandContext = brand
-      ? `${brand.brandName} — ${brand.workspace.brand_voice ?? ''} — ${brand.workspace.brand_audience ?? ''}`
+      ? `${brand.brandName} — ${brand.brandVoice ?? ''} — ${brand.brandAudience ?? ''}`
       : ''
 
     const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang)
@@ -49,10 +52,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Save strategy to DB
+    const wsId = workspaceIdFromBody ?? brand?.workspaceId
     const { data: saved } = await supabase
       .from('strategy_plans')
       .insert({
-        workspace_id: body.workspace_id ?? null,
+        workspace_id: wsId,
         title: strategy.title ?? (lang === 'ar' ? 'استراتيجية جديدة' : 'New Strategy'),
         status: 'active',
         content_pillars: strategy.pillars,

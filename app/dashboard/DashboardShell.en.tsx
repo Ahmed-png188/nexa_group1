@@ -59,7 +59,7 @@ const NAV_EN = [
   { id:'insights',     href:'/dashboard/insights',     icon:'insights',     label:'Insights',     desc:"What's working"           },
   { id:'lead-page',    href:'/dashboard/lead-page',    icon:'leadpage',     label:'Lead page',    desc:'Your capture page'        },
   { id:'agency',       href:'/dashboard/agency',       icon:'agency',       label:'Agency',       desc:'Client workspaces'        },
-  { id:'product-lab',  href:'/dashboard/product-lab',  icon:'lab',          label:'Product Lab',  desc:'Product photography'      },
+  { id:'product-lab',  href:'/dashboard/product-lab',  icon:'lab',          label:'Product Lab',  desc:'AI product photography'   },
 ]
 const SEARCH_EN = [
   {label:'Home',         href:'/dashboard',              desc:'Morning brief'},

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,12 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.redirect(`${appUrl}/dashboard/schedule?error=invalid_state`)
   }
+
+  // Verify the current user is authorized for the workspace in state
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.redirect(`${appUrl}/auth/login`)
+  const deny = await guardWorkspace(supabase, state.workspace_id, user.id)
+  if (deny) return NextResponse.redirect(`${appUrl}/dashboard/schedule?error=unauthorized`)
 
   const appId = process.env.INSTAGRAM_APP_ID!
   const appSecret = process.env.INSTAGRAM_APP_SECRET!

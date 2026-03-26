@@ -28,8 +28,6 @@ export async function GET() {
     const data = await res.json()
     const allVoices = data.voices || []
 
-    console.log('[/api/voices] Total from ElevenLabs:', allVoices.length)
-    console.log('[/api/voices] Categories:', [...new Set(allVoices.map((v: any) => v.category))])
 
     // Include premade voices — exclude user-cloned ones (category = 'cloned')
     // ElevenLabs premade category can be 'premade', 'professional', or missing

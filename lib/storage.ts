@@ -50,7 +50,6 @@ export async function persistFile(
     return urlData.publicUrl
 
   } catch (err) {
-    console.error('Failed to persist file:', err)
     // Return original URL as fallback (only meaningful when source is a string)
     return typeof source === 'string' ? source : ''
   }

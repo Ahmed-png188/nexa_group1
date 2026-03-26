@@ -1,3 +1,4 @@
+import { rateLimit, LIMITS } from '@/lib/rate-limit'
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -38,6 +39,15 @@ export async function POST(request: NextRequest) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Rate limit: per user
+    const _rl = await rateLimit({ key: user.id, ...LIMITS.voiceGen })
+    if (_rl.limited) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((_rl.resetAt.getTime() - Date.now()) / 1000)) } }
+      )
+    }
 
     const { workspace_id, text: rawText, voice_id = 'rachel', stability = 0.5, similarity_boost = 0.75 } = await request.json()
     const text = sanitize(rawText, 3000)

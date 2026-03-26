@@ -1,0 +1,418 @@
+'use client'
+export const dynamic = 'force-dynamic'
+import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+
+type Step    = 'segment' | 'username' | 'workspace' | 'voice' | 'upload' | 'analyzing' | 'reveal' | 'done'
+type Segment = 'creator' | 'freelancer' | 'business' | 'agency'
+
+interface BrandAnalysis {
+  brand_voice: string; brand_audience: string; brand_tone: string
+  content_pillars: string[]; top_angles: string[]; content_angles?: string[]
+  voice_match_score: number; audience_fit_score: number; visual_style_score: number
+  voice_score?: number; first_post_hook: string; first_post_body: string
+}
+
+const SEGMENTS = [
+  { id:'creator'    as Segment, label:'كريتور',   sub:'محتوى، جمهور، تأثير',     icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+  { id:'freelancer' as Segment, label:'فريلانسر', sub:'خدمات، عملاء، أسعار',     icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+  { id:'business'   as Segment, label:'بيزنس',    sub:'منتجات، إيراد، نمو',      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+  { id:'agency'     as Segment, label:'وكالة',    sub:'فريق، عملاء، تمدّد',      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+]
+
+// ─── خطوات التحليل المتحركة ──────────────────────────────────
+function AnalyzingSteps() {
+  const steps = [
+    'يقرأ محتواك...',
+    'يستخرج صوتك...',
+    'يبني ملف جمهورك...',
+    'يضبط نبرتك...',
+    'يرسم زوايا المحتوى...',
+    '.Brand Brain جاهز',
+  ]
+  const [visible, setVisible] = useState<number[]>([])
+  useEffect(() => { steps.forEach((_, i) => setTimeout(() => setVisible(p => [...p, i]), i * 800 + 200)) }, [])
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      {steps.map((s, i) => {
+        const v = visible.includes(i), last = i === steps.length - 1, done = last && v
+        return (
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:10, opacity:v?1:0, transform:v?'translateY(0)':'translateY(6px)', transition:'all 0.4s ease' }}>
+            <div style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, background:done?'var(--success-dim)':'var(--cyan-dim)', border:`1px solid ${done?'var(--success-border)':'var(--cyan-border)'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {done
+                ? <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : v ? <div style={{ width:5, height:5, borderRadius:'50%', background:'var(--cyan)' }}/>
+                    : null}
+            </div>
+            <span style={{ fontFamily:'var(--sans)', fontSize:13, color:done?'var(--success)':'var(--text-2)', fontWeight:done?600:400 }}>{s}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+export default function OnboardingPageAr() {
+  const [step,           setStep]           = useState<Step>('segment')
+  const [segment,        setSegment]        = useState<Segment|null>(null)
+  const [workspaceName,  setWorkspaceName]  = useState('')
+  const [brandName,      setBrandName]      = useState('')
+  const [brandWebsite,   setBrandWebsite]   = useState('')
+  const [brandVoice,     setBrandVoice]     = useState('')
+  const [brandAudience,  setBrandAudience]  = useState('')
+  const [files,          setFiles]          = useState<File[]>([])
+  const [isDragging,     setIsDragging]     = useState(false)
+  const [analysis,       setAnalysis]       = useState<BrandAnalysis|null>(null)
+  const [workspaceId,    setWorkspaceId]    = useState<string|null>(null)
+  const [analyzeError,   setAnalyzeError]   = useState<string|null>(null)
+  const [error,          setError]          = useState<string|null>(null)
+  const [usernameSlug,   setUsernameSlug]   = useState('')
+  const [slugAvailable,  setSlugAvailable]  = useState<boolean|null>(null)
+  const [slugClaimed,    setSlugClaimed]    = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const router  = useRouter()
+  const supabase = createClient()
+
+  const F = "'Tajawal', system-ui, sans-serif"
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data:{ user } }) => {
+      if (!user) return
+      supabase.from('workspace_members').select('workspace_id').eq('user_id', user.id).limit(1).single()
+        .then(({ data }) => { if (data?.workspace_id) router.replace('/dashboard') })
+    })
+  }, [])
+
+  useEffect(() => {
+    if (step === 'done') {
+      if (workspaceId) fetch('/api/generate-strategy', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:workspaceId }) }).catch(() => {})
+      setTimeout(() => router.push('/dashboard'), 1600)
+    }
+  }, [step])
+
+  async function checkSlug() {
+    if (!usernameSlug || usernameSlug.length < 2) return
+    const { data } = await supabase.from('workspaces').select('id').eq('slug', usernameSlug).single()
+    setSlugAvailable(!data)
+  }
+
+  async function handleCreateWorkspace(e: React.FormEvent) {
+    e.preventDefault(); setError(null)
+    const res  = await fetch('/api/create-workspace', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspaceName, brandName, brandWebsite }) })
+    const data = await res.json()
+    if (!res.ok) { setError('صار خطأ. جرّب مرة ثانية.'); return }
+    const wsId = data.workspace.id; setWorkspaceId(wsId)
+    if (segment)                           await supabase.from('workspaces').update({ segment }).eq('id', wsId)
+    if (usernameSlug && slugAvailable)     await supabase.from('workspaces').update({ slug:usernameSlug }).eq('id', wsId)
+    setStep('voice')
+  }
+
+  async function handleVoiceContinue(e: React.FormEvent) {
+    e.preventDefault()
+    if (!workspaceId) return
+    await supabase.from('workspaces').update({ brand_voice:brandVoice.trim(), brand_audience:brandAudience.trim() }).eq('id', workspaceId)
+    setStep('upload')
+  }
+
+  function addFiles(fl: FileList|null) {
+    if (!fl) return
+    const n = Array.from(fl)
+    setFiles(p => { const e = new Set(p.map(f => f.name + f.size)); return [...p, ...n.filter(f => !e.has(f.name + f.size))] })
+  }
+
+  async function handleAnalyze() {
+    if (!workspaceId) return
+    setAnalyzeError(null); setStep('analyzing')
+    const fp: { name:string; type:string; base64:string }[] = []
+    for (const f of files) {
+      try {
+        const b64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(f) })
+        fp.push({ name:f.name, type:f.type, base64:b64 })
+      } catch {}
+    }
+    try {
+      const res = await fetch('/api/analyze-brand', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:workspaceId, website_url:brandWebsite, brand_name:brandName||workspaceName, brand_voice:brandVoice, brand_audience:brandAudience, files:fp }) })
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed') }
+      const data = await res.json(); setAnalysis(data.analysis)
+      await new Promise(r => setTimeout(r, 600)); setStep('reveal')
+    } catch {
+      setAnalyzeError('فشل التحليل. تحقق من اتصالك وحاول مجدداً.'); setStep('upload')
+    }
+  }
+
+  const VSTEPS: Step[] = ['segment', 'username', 'workspace', 'voice', 'upload']
+  const vIdx   = VSTEPS.indexOf(step)
+  const topLine = <div style={{ position:'absolute', top:0, left:0, right:0, height:1, background:'linear-gradient(90deg,transparent,var(--cyan-border),transparent)' }}/>
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html:`
+        @keyframes ob-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        .ob-card { animation:ob-up 0.4s cubic-bezier(0.22,1,0.36,1) both }
+        .ob-inp { width:100%; padding:10px 14px; font-size:13px; font-family:var(--sans); background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:var(--r); color:var(--text-1); outline:none; transition:border-color 0.15s,box-shadow 0.15s; box-sizing:border-box; direction:rtl; text-align:right; }
+        .ob-inp:focus { border-color:var(--border-focus); box-shadow:0 0 0 3px rgba(255,255,255,0.04); }
+        .ob-inp::placeholder { color:var(--text-4); }
+        .ob-ta { resize:vertical; line-height:1.65; min-height:80px; }
+      `}}/>
+
+      {/* ── شاشة التحليل ── */}
+      {step === 'analyzing' && (
+        <div style={{ position:'fixed', inset:0, background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:100 }}>
+          <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:500, height:400, borderRadius:'50%', background:'radial-gradient(ellipse,var(--cyan-dim) 0%,transparent 70%)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:400, padding:'0 24px' }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:'var(--cyan-dim)', border:'1px solid var(--cyan-border)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 32px', color:'var(--cyan)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9.5 2a2.5 2.5 0 0 1 5 0"/><path d="M9.5 22a2.5 2.5 0 0 0 5 0"/><path d="M14.5 2C17 2 19 4 19 6.5c0 2-1.5 3.5-3.5 4C17 11 19 12.5 19 15c0 2.5-2 4.5-4.5 4.5"/><path d="M9.5 2C7 2 5 4 5 6.5c0 2 1.5 3.5 3.5 4C7 11 5 12.5 5 15c0 2.5 2 4.5 4.5 4.5"/></svg>
+            </div>
+            <AnalyzingSteps/>
+          </div>
+        </div>
+      )}
+
+      {/* ── شاشة الكشف عن النتائج ── */}
+      {step === 'reveal' && analysis && (
+        <div dir="rtl" style={{ position:'fixed', inset:0, background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px 24px', zIndex:100, overflowY:'auto' }}>
+          <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:500, height:400, borderRadius:'50%', background:'radial-gradient(ellipse,var(--cyan-dim) 0%,transparent 70%)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:500, animation:'ob-up 0.5s ease both' }}>
+            <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:8 }}>Brand Brain · نشط</div>
+            <div style={{ fontSize:80, fontWeight:700, color:'var(--text-1)', letterSpacing:'-0.05em', lineHeight:1, marginBottom:4, fontFamily:'var(--sans)' }}>
+              {analysis.voice_score || analysis.voice_match_score || 94}
+            </div>
+            <div style={{ fontSize:14, color:'var(--text-3)', marginBottom:32 }}>% توافق الصوت</div>
+
+            {analysis.brand_voice && (
+              <div className="card" style={{ marginBottom:20, fontStyle:'italic', fontSize:14, color:'var(--text-2)', lineHeight:1.75, textAlign:'right' as const }}>
+                &ldquo;{analysis.brand_voice}&rdquo;
+              </div>
+            )}
+
+            {(analysis.content_angles || analysis.top_angles || []).slice(0, 3).length > 0 && (
+              <div style={{ marginBottom:32 }}>
+                <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:12 }}>أقوى زوايا كونتنتك</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {(analysis.content_angles || analysis.top_angles || []).slice(0, 3).map((a, i) => (
+                    <div key={i} className="card-accent" style={{ padding:'10px 14px', display:'flex', alignItems:'flex-start', gap:10, textAlign:'right' as const }}>
+                      <div style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.55, flex:1 }}>{a}</div>
+                      <div style={{ fontFamily:'var(--mono)', fontSize:10, color:'var(--cyan)', flexShrink:0, marginTop:1 }}>0{i + 1}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button onClick={async () => {
+              setStep('done')
+              try { await fetch('/api/generate-strategy', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ workspace_id:workspaceId }) }) } catch {}
+            }} className="btn-primary" style={{ width:'100%', padding:'12px', fontSize:14 }}>
+              لنبني استراتيجيتك ←
+            </button>
+            <div style={{ marginTop:10, fontSize:12, color:'var(--text-3)' }}>خطة الـ 30 يوم تتولّد في الخلفية</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── الهيكل الرئيسي ── */}
+      <div dir="rtl" style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'fixed', top:0, left:'50%', transform:'translateX(-50%)', width:800, height:500, background:'radial-gradient(ellipse 60% 40% at 50% 0%,var(--cyan-dim) 0%,transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{ width:'100%', maxWidth:480, position:'relative', zIndex:1 }}>
+
+          {/* الشعار */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:9, marginBottom:28 }}>
+            <img src="/favicon.png" alt="Nexa" style={{ width:26, height:26, borderRadius:6 }}/>
+            <span style={{ fontFamily:F, fontWeight:700, fontSize:15, color:'var(--text-1)', letterSpacing:'-0.02em' }}>Nexa</span>
+          </div>
+
+          {/* شريط التقدم */}
+          {!['analyzing', 'reveal', 'done'].includes(step) && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5, marginBottom:24 }}>
+              {VSTEPS.map((s, i) => (
+                <div key={s} style={{ height:3, borderRadius:2, width:step === s ? 28 : 8, background:vIdx > i ? 'var(--cyan)' : step === s ? 'var(--cyan)' : 'var(--border)', transition:'all 0.35s ease', opacity:vIdx > i ? 0.5 : 1 }}/>
+              ))}
+            </div>
+          )}
+
+          {/* ── الخطوة: نوع البيزنس ── */}
+          {step === 'segment' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+              {topLine}
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', textAlign:'center', marginBottom:6, fontFamily:F }}>إيش أفضل وصف لك؟</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', lineHeight:1.6, marginBottom:24, fontFamily:F }}>Nexa تُخصّص كل شيء لنوع بيزنسك.</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:24 }}>
+                {SEGMENTS.map(s => {
+                  const sel = segment === s.id
+                  return (
+                    <button key={s.id} onClick={() => setSegment(s.id)} style={{ padding:'18px 16px', borderRadius:'var(--r)', background:sel?'var(--cyan-dim)':'rgba(255,255,255,0.03)', border:`1px solid ${sel?'var(--cyan-border)':'var(--border)'}`, cursor:'pointer', textAlign:'right', transition:'all 0.15s', outline:'none' }}>
+                      <div style={{ color:sel?'var(--cyan)':'var(--text-3)', display:'flex', marginBottom:10 }}>{s.icon}</div>
+                      <div style={{ fontSize:14, fontWeight:600, color:sel?'var(--text-1)':'var(--text-2)', marginBottom:3, letterSpacing:'-0.01em', fontFamily:F }}>{s.label}</div>
+                      <div style={{ fontSize:11, color:sel?'var(--cyan)':'var(--text-3)', lineHeight:1.4, fontFamily:F }}>{s.sub}</div>
+                    </button>
+                  )
+                })}
+              </div>
+              <button onClick={() => { if (segment) setStep('username') }} className="btn-primary" style={{ width:'100%', padding:'11px', fontSize:13, opacity:segment?1:0.4, fontFamily:F }}>
+                تابع ←
+              </button>
+            </div>
+          )}
+
+          {/* ── الخطوة: احجز اسم الصفحة ── */}
+          {step === 'username' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+              {topLine}
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', textAlign:'center', marginBottom:6, fontFamily:F }}>احجز صفحة العملاء</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', lineHeight:1.6, marginBottom:24, fontFamily:F }}>صفحتك العامة تجمع العملاء من كونتنتك على مدار الساعة.</p>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:8, fontFamily:F }}>صفحتك ستكون على:</div>
+                <div style={{ display:'flex', alignItems:'center', background:'rgba(255,255,255,0.04)', border:`1px solid ${slugAvailable===false?'var(--error-border)':slugAvailable===true?'var(--success-border)':'var(--border)'}`, borderRadius:'var(--r)', overflow:'hidden' }}>
+                  <input value={usernameSlug}
+                    onChange={e => { setUsernameSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30)); setSlugAvailable(null) }}
+                    onBlur={checkSlug} placeholder="اسمك"
+                    style={{ flex:1, padding:'10px 12px', fontSize:13, background:'transparent', border:'none', color:'var(--text-1)', outline:'none', fontFamily:"'Geist', monospace", direction:'ltr' }}/>
+                  <div style={{ padding:'10px 12px', fontSize:13, color:'var(--text-3)', fontFamily:'var(--mono)', borderRight:'1px solid var(--border-subtle)', whiteSpace:'nowrap' as const, flexShrink:0 }}>nexaa.cc/</div>
+                  {slugAvailable === true  && <div style={{ padding:'0 12px', color:'var(--success)', fontSize:12, fontWeight:700 }}>✓</div>}
+                  {slugAvailable === false && <div style={{ padding:'0 12px', color:'var(--error)',   fontSize:12, fontWeight:700 }}>✗</div>}
+                </div>
+                {slugAvailable === false && <div style={{ fontSize:11, color:'var(--error)',   marginTop:6, fontFamily:F }}>هذا الاسم محجوز. جرّب اسماً آخر.</div>}
+                {slugAvailable === true  && <div style={{ fontSize:11, color:'var(--success)', marginTop:6, fontFamily:F }}>nexaa.cc/{usernameSlug} متاح!</div>}
+              </div>
+              {slugClaimed && (
+                <div className="card-success" style={{ textAlign:'center', marginBottom:16 }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:'var(--success)', marginBottom:4, fontFamily:F }}>nexaa.cc/{usernameSlug} محجوز لك!</div>
+                  <div style={{ fontSize:12, color:'var(--text-2)', fontFamily:F }}>محجوز. تابع لإعداد مساحة عملك.</div>
+                </div>
+              )}
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => setStep('workspace')} className="btn-secondary" style={{ flex:1, padding:'10px 14px', fontSize:13, fontFamily:F }}>
+                  {slugClaimed ? 'تابع ←' : 'تخطّ الآن'}
+                </button>
+                {!slugClaimed && (
+                  <button onClick={() => { if (slugAvailable && usernameSlug.length >= 2) setSlugClaimed(true); else setStep('workspace') }}
+                    disabled={usernameSlug.length >= 2 && slugAvailable === false}
+                    className="btn-primary" style={{ flex:2, padding:'10px 14px', fontSize:13, opacity:usernameSlug.length < 2 ? 0.5 : 1, fontFamily:F }}>
+                    {usernameSlug.length >= 2 ? 'احجزه ←' : 'تابع ←'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── الخطوة: معلومات البراند ── */}
+          {step === 'workspace' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+              {topLine}
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', textAlign:'center', marginBottom:6, fontFamily:F }}>ايش البيزنس اللي تبنيه؟</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', lineHeight:1.6, marginBottom:24, fontFamily:F }}>دقيقتين فقط. هذا يحرّك كل ما تصنعه Nexa.</p>
+              <form onSubmit={handleCreateWorkspace} style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div>
+                  <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-3)', marginBottom:7, fontFamily:F }}>
+                    اسم البراند <span style={{ color:'var(--cyan)', fontWeight:500 }}>مطلوب</span>
+                  </label>
+                  <input className="ob-inp" type="text" placeholder="مثال: براند أحمد عادل" value={brandName} onChange={e => setBrandName(e.target.value)} required style={{ fontFamily:F }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-3)', marginBottom:7, fontFamily:F }}>
+                    اسم مساحة العمل <span style={{ color:'var(--text-4)', fontWeight:400 }}>ممكن يطابق البراند</span>
+                  </label>
+                  <input className="ob-inp" type="text" placeholder="مثال: مساحتي" value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} required style={{ fontFamily:F }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-3)', marginBottom:7, fontFamily:F }}>
+                    الموقع <span style={{ color:'var(--text-4)', fontWeight:400 }}>اختياري</span>
+                  </label>
+                  <input className="ob-inp" type="text" placeholder="https://yourbrand.com" value={brandWebsite} onChange={e => setBrandWebsite(e.target.value)} style={{ direction:'ltr', fontFamily:"'Geist', monospace" }}/>
+                </div>
+                {error && <div className="error-state" style={{ fontSize:12, fontFamily:F }}>{error}</div>}
+                <button type="submit" className="btn-primary" style={{ width:'100%', padding:'11px', fontSize:13, fontFamily:F }}>تابع ←</button>
+              </form>
+            </div>
+          )}
+
+          {/* ── الخطوة: الصوت والجمهور ── */}
+          {step === 'voice' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+              {topLine}
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', textAlign:'center', marginBottom:6, fontFamily:F }}>حدّد موقعك في السوق</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', lineHeight:1.6, marginBottom:24, fontFamily:F }}>الحد الأدنى الذي تحتاجه Nexa لتكتب بصوتك وتكسب عملاء.</p>
+              <form onSubmit={handleVoiceContinue} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+                <div>
+                  <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-3)', marginBottom:7, fontFamily:F }}>
+                    كيف تريد أن تظهر؟ <span style={{ color:'var(--cyan)', fontWeight:500 }}>مطلوب</span>
+                  </label>
+                  <textarea className="ob-inp ob-ta" placeholder="مثال: مباشر، واثق، بلا حشو. جمل قصيرة، بعيد عن اللغة الرسمية الجافة." value={brandVoice} onChange={e => setBrandVoice(e.target.value)} required rows={4} style={{ fontFamily:F }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-3)', marginBottom:7, fontFamily:F }}>
+                    مين عميلك المثالي؟ <span style={{ color:'var(--cyan)', fontWeight:500 }}>مطلوب</span>
+                  </label>
+                  <textarea className="ob-inp ob-ta" placeholder="مثال: رواد أعمال خليجيون، ٢٥-٤٠ سنة، يبنون مشاريع حقيقية ويريدون نتائج ملموسة." value={brandAudience} onChange={e => setBrandAudience(e.target.value)} required rows={3} style={{ fontFamily:F }}/>
+                </div>
+                <button type="submit" className="btn-primary" style={{ width:'100%', padding:'11px', fontSize:13, opacity:(brandVoice.trim().length > 10 && brandAudience.trim().length > 10) ? 1 : 0.45, fontFamily:F }}>
+                  تابع ←
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ── الخطوة: رفع ملفات البراند ── */}
+          {step === 'upload' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', position:'relative', overflow:'hidden' }}>
+              {topLine}
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', textAlign:'center', marginBottom:6, fontFamily:F }}>ارفع ملفات براندك</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', textAlign:'center', lineHeight:1.6, marginBottom:22, fontFamily:F }}>شعار، منشورات نموذجية، وثيقة براند. اختياري — تقدر تضيف أكثر لاحقاً.</p>
+              <div
+                onDrop={e => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files) }}
+                onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onClick={() => fileRef.current?.click()}
+                style={{ padding:files.length > 0 ? '12px 16px' : '28px 20px', border:`1px dashed ${isDragging ? 'var(--cyan)' : files.length > 0 ? 'var(--cyan-border)' : 'var(--border)'}`, borderRadius:'var(--r)', textAlign:'center', cursor:'pointer', transition:'all 0.15s', background:isDragging ? 'var(--cyan-dim)' : 'transparent', marginBottom:10 }}>
+                {files.length === 0 ? (
+                  <>
+                    <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500, marginBottom:4, fontFamily:F }}>اضغط هنا أو اسحب الملفات</div>
+                    <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:F }}>PNG, JPG, PDF, DOCX</div>
+                  </>
+                ) : (
+                  <div style={{ fontSize:12, color:'var(--text-3)', fontFamily:F }}>+ أضف ملفات أخرى</div>
+                )}
+                <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.docx,.txt" onChange={e => addFiles(e.target.files)} onClick={e => { (e.target as HTMLInputElement).value = '' }} style={{ display:'none' }}/>
+              </div>
+
+              {files.length > 0 && (
+                <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:14 }}>
+                  {files.map((f, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 12px', background:'var(--cyan-dim)', border:'1px solid var(--cyan-border)', borderRadius:'var(--r-sm)' }}>
+                      <span style={{ flex:1, fontSize:12, color:'var(--text-2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const, fontFamily:F }}>{f.name}</span>
+                      <button onClick={e => { e.stopPropagation(); setFiles(p => p.filter((_, j) => j !== i)) }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-3)', padding:2, display:'flex' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {analyzeError && <div className="error-state" style={{ marginBottom:14, fontSize:12, fontFamily:F }}>{analyzeError}</div>}
+
+              <button onClick={handleAnalyze} className="btn-primary" style={{ width:'100%', padding:'11px', fontSize:13, fontFamily:F }}>
+                {files.length > 0
+                  ? `حلّل البراند + ${files.length} ${files.length === 1 ? 'ملف' : 'ملفات'} ←`
+                  : 'حلّل براندي ←'}
+              </button>
+            </div>
+          )}
+
+          {/* ── الخطوة: تمّ ── */}
+          {step === 'done' && (
+            <div className="ob-card card" style={{ padding:'32px 28px', textAlign:'center' }}>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'var(--success-dim)', border:'1px solid var(--success-border)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h1 style={{ fontSize:22, fontWeight:700, color:'var(--text-1)', marginBottom:8, fontFamily:F }}>كل شيء جاهز — نبني مساحتك</h1>
+              <p style={{ fontSize:13, color:'var(--text-3)', lineHeight:1.65, fontFamily:F }}>نأخذك للداشبورد...</p>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
+  )
+}

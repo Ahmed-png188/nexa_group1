@@ -18,6 +18,14 @@ export async function POST(request: NextRequest) {
   )
 
   const { workspaceName, brandName, brandWebsite } = await request.json()
+
+  if (!workspaceName || typeof workspaceName !== 'string' || workspaceName.trim().length < 2 || workspaceName.trim().length > 80) {
+    return NextResponse.json({ error: 'Workspace name must be between 2 and 80 characters' }, { status: 400 })
+  }
+  if (brandName && (typeof brandName !== 'string' || brandName.trim().length > 80)) {
+    return NextResponse.json({ error: 'Brand name must be 80 characters or fewer' }, { status: 400 })
+  }
+
   const slug = (brandName || workspaceName).toLowerCase()
     .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now()
 

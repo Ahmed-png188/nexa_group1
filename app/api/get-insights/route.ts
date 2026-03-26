@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
-      const dayContent = content?.filter(c => c.created_at.startsWith(dateStr)) ?? []
+      const dayContent = content?.filter(c => c.created_at?.startsWith(dateStr)) ?? []
       chartData.push({
         date: dateStr,
         label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

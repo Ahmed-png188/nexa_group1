@@ -110,7 +110,7 @@ export default function PrivacyPage() {
       <div className="priv-grid" style={{maxWidth:1000,margin:'0 auto',padding:'80px 40px 120px',display:'grid',gridTemplateColumns:'200px 1fr',gap:60,alignItems:'start'}}>
 
         <div className="fade-in priv-sidebar" style={{position:'sticky',top:80}}>
-          <div style={{fontSize:10,fontFamily:isAr?AR:MONO,color:T4,letterSpacing:isAr?0:'0.10em',textTransform:'uppercase',marginBottom:16}}>
+          <div style={{fontSize:10,fontFamily:MONO,color:T4,letterSpacing:'0.10em',textTransform:'uppercase',marginBottom:16}}>
             {isAr?'المحتويات':'Contents'}
           </div>
           {sections.map((s,i)=>(
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
         </div>
 
         <div className="fade-in">
-          <div style={{fontSize:11,fontFamily:isAr?AR:MONO,color:T4,letterSpacing:isAr?0:'0.12em',textTransform:'uppercase',marginBottom:16}}>
+          <div style={{fontSize:11,fontFamily:MONO,color:T4,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:16}}>
             {isAr?'قانوني':'Legal'}
           </div>
           <h1 style={{fontFamily:H,fontWeight:800,fontSize:'clamp(40px,6vw,72px)',letterSpacing:isAr?0:'-0.05em',color:T1,lineHeight:isAr?1.2:0.90,marginBottom:16}}>
@@ -139,7 +139,7 @@ export default function PrivacyPage() {
 
           {/* TL;DR card */}
           <div style={{padding:'20px 24px',background:'rgba(0,170,255,0.05)',border:`1px solid rgba(0,170,255,0.18)`,borderRadius:12,marginBottom:56}}>
-            <div style={{fontSize:10,fontFamily:isAr?AR:MONO,color:CYAN,letterSpacing:isAr?0:'0.10em',textTransform:'uppercase',marginBottom:12,opacity:0.8}}>
+            <div style={{fontSize:10,fontFamily:MONO,color:CYAN,letterSpacing:'0.10em',textTransform:'uppercase',marginBottom:12,opacity:0.8}}>
               {isAr?'الخلاصة — النسخة المختصرة':'TL;DR — The short version'}
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>

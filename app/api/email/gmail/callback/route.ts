@@ -13,10 +13,11 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
   const workspaceId = request.nextUrl.searchParams.get('state')
 
-  console.log('[Gmail Connect] Step 1 - code:', !!code, 'workspaceId:', workspaceId)
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nexaa.cc'
 
   if (!code || !workspaceId) {
-    return NextResponse.redirect('https://nexaa.cc/dashboard/automate?error=missing_params')
+    return NextResponse.redirect(`${appUrl}/dashboard/automate?error=missing_params`)
   }
 
   try {
@@ -28,16 +29,15 @@ export async function GET(request: NextRequest) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: 'https://nexaa.cc/api/email/gmail/callback',
+        redirect_uri: `${appUrl}/api/email/gmail/callback`,
         grant_type: 'authorization_code',
       }),
     })
     const tokens = await tokenRes.json()
 
-    console.log('[Gmail Connect] Step 2 - tokens:', !!tokens.access_token, 'error:', tokens.error)
 
     if (!tokens.access_token) {
-      return NextResponse.redirect('https://nexaa.cc/dashboard/automate?error=token_failed')
+      return NextResponse.redirect(`${appUrl}/dashboard/automate?error=token_failed`)
     }
 
     // Get user info
@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
     })
     const userInfo = await userRes.json()
 
-    console.log('[Gmail Connect] Step 3 - userInfo fetched, saving to workspace:', workspaceId)
 
     // Delete existing record first to avoid constraint conflicts
     await supabase
@@ -71,18 +70,17 @@ export async function GET(request: NextRequest) {
         is_active: true,
       })
 
-    console.log('[Gmail Connect] Insert error:', insertError?.message, insertError?.code)
 
     if (insertError) {
       return NextResponse.redirect(
-        'https://nexaa.cc/dashboard/automate?error=save_failed&reason=' +
+        `${appUrl}/dashboard/automate?error=save_failed&reason=` +
         encodeURIComponent(insertError.message || 'unknown')
       )
     }
 
-    return NextResponse.redirect('https://nexaa.cc/dashboard/automate?gmail_connected=true')
+    return NextResponse.redirect(`${appUrl}/dashboard/automate?gmail_connected=true`)
   } catch (err) {
     console.error('[Gmail Connect] Error:', err instanceof Error ? err.message : 'Unknown')
-    return NextResponse.redirect('https://nexaa.cc/dashboard/automate?error=failed')
+    return NextResponse.redirect(`${appUrl}/dashboard/automate?error=failed`)
   }
 }

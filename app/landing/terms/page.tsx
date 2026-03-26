@@ -97,7 +97,7 @@ export default function TermsPage() {
 
         {/* TOC sidebar */}
         <div className="fade-in terms-sidebar" style={{position:'sticky',top:80}}>
-          <div style={{fontSize:10,fontFamily:isAr?AR:MONO,color:T4,letterSpacing:isAr?0:'0.10em',textTransform:'uppercase',marginBottom:16}}>
+          <div style={{fontSize:10,fontFamily:MONO,color:T4,letterSpacing:'0.10em',textTransform:'uppercase',marginBottom:16}}>
             {isAr?'المحتويات':'Contents'}
           </div>
           {sections.map((s,i)=>(
@@ -115,7 +115,7 @@ export default function TermsPage() {
 
         {/* Content */}
         <div className="fade-in">
-          <div style={{fontSize:11,fontFamily:isAr?AR:MONO,color:T4,letterSpacing:isAr?0:'0.12em',textTransform:'uppercase',marginBottom:16}}>
+          <div style={{fontSize:11,fontFamily:MONO,color:T4,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:16}}>
             {isAr?'قانوني':'Legal'}
           </div>
           <h1 style={{fontFamily:H,fontWeight:800,fontSize:'clamp(40px,6vw,72px)',letterSpacing:isAr?0:'-0.05em',color:T1,lineHeight:isAr?1.2:0.90,marginBottom:16}}>

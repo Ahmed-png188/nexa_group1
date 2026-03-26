@@ -4,8 +4,22 @@ import { createClient } from '@/lib/supabase/server'
  * Fetches the brand intelligence profile for a workspace
  * and returns ready-to-inject context strings for each generation type
  */
-export async function getBrandContext(workspaceId: string) {
+export async function getBrandContext(userIdOrWorkspaceId: string) {
   const supabase = createClient()
+
+  // Accept either a user_id (UUID) or workspace_id — look up workspace if needed
+  let workspaceId = userIdOrWorkspaceId
+  
+  // Try treating as user_id first — if workspace lookup succeeds, use that workspace_id
+  try {
+    const { data: member } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', userIdOrWorkspaceId)
+      .limit(1)
+      .single()
+    if (member?.workspace_id) workspaceId = member.workspace_id
+  } catch { /* not a user_id, treat as workspace_id directly */ }
 
   // Get workspace basic brand info
   const { data: workspace } = await supabase
@@ -80,6 +94,10 @@ Delivery style: ${profile.generation_instructions?.voice_prompt_prefix || 'clear
     videoContext: videoContext.trim(),
     voiceContext: voiceContext.trim(),
     brandName,
+    workspaceId,
+    brandVoice: workspace.brand_voice || '',
+    brandTone: workspace.brand_tone || '',
+    brandAudience: workspace.brand_audience || '',
   }
 }
 

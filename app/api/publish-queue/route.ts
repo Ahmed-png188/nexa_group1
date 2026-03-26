@@ -74,8 +74,10 @@ export async function GET(request: NextRequest) {
           platformPostId = result.post_id
           platformUrl = result.url
         } else {
-          // Platform not yet integrated — mark as published manually
-          published = true
+          // Platform not yet integrated — mark as failed so it doesn't silently disappear
+          await supabase.from('content').update({ status: 'failed' }).eq('id', post.id)
+          results.push({ id: post.id, status: 'failed', reason: `Platform '${post.platform}' not supported` })
+          continue
         }
 
         if (published) {

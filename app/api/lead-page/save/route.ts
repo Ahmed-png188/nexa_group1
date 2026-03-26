@@ -23,6 +23,21 @@ export async function POST(request: NextRequest) {
     const planError = await checkPlanAccess(workspace_id, 'lead_page')
     if (planError) return planError
 
+    // Whitelist only lead_page_* fields to prevent injection of sensitive columns
+    const ALLOWED_FIELDS = [
+      'lead_page_title', 'lead_page_subtitle', 'lead_page_cta',
+      'lead_page_bg_color', 'lead_page_accent', 'lead_page_enabled',
+      'lead_page_form_fields', 'lead_page_logo_url', 'lead_page_cover_url',
+      'lead_page_thank_you', 'lead_page_meta_title', 'lead_page_meta_desc',
+      'lead_page_slug',
+    ]
+    const safeFields = Object.fromEntries(
+      Object.entries(fields).filter(([k]) => ALLOWED_FIELDS.includes(k))
+    )
+    if (Object.keys(safeFields).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
     // Use service role to bypass RLS for new columns
     const service = serviceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { error } = await service
       .from('workspaces')
-      .update(fields)
+      .update(safeFields)
       .eq('id', workspace_id)
 
     if (error) {

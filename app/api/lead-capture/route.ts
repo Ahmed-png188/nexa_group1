@@ -1,15 +1,43 @@
 export const dynamic = 'force-dynamic'
-
+import { createNotification } from '@/lib/notifications'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getSenderFrom } from '@/lib/sender'
-
+import { rateLimit, getIP, LIMITS } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
-    const { workspace_id, form_values, fields, source } = await request.json()
-    if (!workspace_id) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
+    // ── Rate limiting — 5 submissions per 10 minutes per IP ──
+    const ip = getIP(request)
+    const rl = await rateLimit({ key: ip, ...LIMITS.leadCapture })
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: 'Too many submissions. Please wait a few minutes and try again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)),
+            'X-RateLimit-Limit':     String(LIMITS.leadCapture.max),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset':     String(Math.ceil(rl.resetAt.getTime() / 1000)),
+          },
+        }
+      )
+    }
+
+    // ── Also validate workspace_id early (before any DB work) ──
+    const body = await request.json()
+    const { workspace_id, form_values, fields, source } = body
+    if (!workspace_id || typeof workspace_id !== 'string') {
+      return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
+    }
+
+    // Basic UUID format check — prevents SQL injection / enumeration attempts
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_RE.test(workspace_id)) {
+      return NextResponse.json({ error: 'Invalid workspace_id' }, { status: 400 })
+    }
 
     const service = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +67,7 @@ export async function POST(request: NextRequest) {
     const name  = nameField  ? (form_values?.[nameField.id]  || '').trim() : ''
     const phone = phoneField ? (form_values?.[phoneField.id] || '').trim() : ''
 
-    if (!email || !email.includes('@')) {
+    if (!email || !email.includes('@') || email.length > 320) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
     }
 
@@ -68,14 +96,12 @@ export async function POST(request: NextRequest) {
     }, { onConflict: 'workspace_id,email' }).select('id').single()
 
     if (contactErr) {
-      console.error('[lead-capture] Contact error:', contactErr.message)
       return NextResponse.json({ error: 'Failed to save contact' }, { status: 500 })
     }
 
     // ── Auto-enroll in sequence ──
     if (ws.lead_page_auto_enroll && ws.lead_page_sequence_id && contact?.id) {
       try {
-        // Try sequence_contacts first, fall back to sequence_enrollments
         const { error: e1 } = await service.from('sequence_contacts').upsert({
           workspace_id,
           sequence_id:   ws.lead_page_sequence_id,
@@ -95,7 +121,7 @@ export async function POST(request: NextRequest) {
             next_send_at: new Date().toISOString(),
           }, { onConflict: 'sequence_id,contact_id' })
         }
-      } catch (e) { console.error('[lead-capture] Enroll error:', e) }
+      } catch {}
     }
 
     // ── Send lead magnet email if enabled ──
@@ -107,7 +133,7 @@ export async function POST(request: NextRequest) {
         const subject = ws.lead_magnet_email_subject || 'Here is your free resource!'
         const rawBody = ws.lead_magnet_email_body ||
           `Hi ${name || 'there'},\n\nHere is the link you requested:\n${ws.lead_magnet_url}\n\nEnjoy!\n\n— ${ws.brand_name || ws.name}`
-        const body = rawBody
+        const emailBody = rawBody
           .replace(/\{\{name\}\}/g, name || 'there')
           .replace(/\{\{url\}\}/g, ws.lead_magnet_url)
           .replace(/\{\{brand\}\}/g, ws.brand_name || ws.name)
@@ -118,19 +144,25 @@ export async function POST(request: NextRequest) {
           reply_to: replyTo || undefined,
           subject,
           html: `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;color:#0C0C0C">
-            <pre style="font-family:inherit;white-space:pre-wrap;line-height:1.7;font-size:15px">${body}</pre>
+            <pre style="font-family:inherit;white-space:pre-wrap;line-height:1.7;font-size:15px">${emailBody}</pre>
             <hr style="border:none;border-top:1px solid #eee;margin:32px 0"/>
             <p style="font-size:12px;color:#999;margin:0">
               You received this because you submitted a form at <a href="https://nexaa.cc/${ws.slug||''}" style="color:#00AAFF">nexaa.cc/${ws.slug||''}</a>
             </p>
           </div>`,
-          text: body,
+          text: emailBody,
         })
-      } catch (e) { console.error('[lead-capture] Magnet email error:', e) }
+      } catch {}
     }
 
     // ── Activity log ──
     try {
+      await createNotification({
+        workspace_id,
+        type: 'lead_captured',
+        message: `New lead captured: ${name || email} submitted your lead page.`,
+        link: '/dashboard/automate?view=contacts',
+      })
       await service.from('activity').insert({
         workspace_id,
         type:  'lead_captured',
@@ -138,9 +170,12 @@ export async function POST(request: NextRequest) {
       })
     } catch {}
 
-    return NextResponse.json({ success: true, contact_id: contact?.id, magnet_url: magnetUrl })
+    return NextResponse.json({
+      success: true,
+      contact_id: contact?.id,
+      magnet_url: magnetUrl,
+    })
   } catch (err: unknown) {
-    console.error('[lead-capture]', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Failed to capture lead' }, { status: 500 })
   }
 }

@@ -378,7 +378,7 @@ export default function IntegrationsAr() {
             <h1 style={{
               fontSize: '36px',
               fontWeight: 700,
-              letterSpacing: 0,
+              letterSpacing: '-0.02em',
               color: '#0A0A0A',
               lineHeight: 1,
               marginBottom: '10px',
@@ -530,10 +530,10 @@ export default function IntegrationsAr() {
                         <IntegrationLogo id={integration.id} name={integration.name} color={integration.color}/>
                       </div>
                       <div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', letterSpacing: 0, marginBottom: '3px', fontFamily: F }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.01em', marginBottom: '3px', fontFamily: F }}>
                           {integration.name}
                         </div>
-                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', fontFamily: F, letterSpacing: 0 }}>
+                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', fontFamily: F, letterSpacing: '0.04em' }}>
                           {integration.badge}
                         </div>
                       </div>
@@ -547,7 +547,7 @@ export default function IntegrationsAr() {
                       fontWeight: 600,
                       fontFamily: F,
                       flexShrink: 0,
-                      letterSpacing: 0,
+                      letterSpacing: '0.02em',
                       background:  isConnected ? 'rgba(34,197,94,0.10)'  : isLive ? 'rgba(0,170,255,0.10)'  : 'rgba(255,255,255,0.05)',
                       border:      isConnected ? '1px solid rgba(34,197,94,0.20)' : isLive ? '1px solid rgba(0,170,255,0.20)' : '1px solid rgba(255,255,255,0.08)',
                       color:       isConnected ? '#22C55E'                : isLive ? '#00AAFF'                : 'rgba(255,255,255,0.32)',
@@ -659,7 +659,7 @@ export default function IntegrationsAr() {
           gap: '20px',
         }}>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', marginBottom: '5px', fontFamily: F, letterSpacing: 0 }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', marginBottom: '5px', fontFamily: F, letterSpacing: '-0.01em' }}>
               تحتاج اتصال معين؟
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', fontFamily: F, lineHeight: 1.6 }}>

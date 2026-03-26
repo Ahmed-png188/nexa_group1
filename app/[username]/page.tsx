@@ -37,8 +37,6 @@ export default async function LeadPage({
     .eq('slug', username)
     .maybeSingle()
 
-  if (error) console.error('[LeadPage] error:', error.message)
-
   if (!ws) {
     return (
       <div style={{

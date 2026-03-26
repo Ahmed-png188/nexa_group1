@@ -31,6 +31,15 @@ export async function POST(request: NextRequest) {
   const supabase = createClient()
 
   try {
+    // Idempotency check — skip already-processed events
+    const { data: existing } = await supabase
+      .from('credit_transactions')
+      .select('id')
+      .filter('metadata->>stripe_event_id', 'eq', event.id)
+      .limit(1)
+      .maybeSingle()
+    if (existing) return NextResponse.json({ received: true, duplicate: true })
+
     switch (event.type) {
 
       case 'checkout.session.completed': {
@@ -40,19 +49,16 @@ export async function POST(request: NextRequest) {
         if (!workspace_id) break
 
         if (type === 'top_up' && credits) {
-          // Add credits to balance — fetch then update
+          // Add credits atomically via RPC
           const creditAmount = parseInt(credits)
-          const { data: current } = await supabase
-            .from('credits').select('balance').eq('workspace_id', workspace_id).single()
-          await supabase.from('credits')
-            .update({ balance: (current?.balance ?? 0) + creditAmount })
-            .eq('workspace_id', workspace_id)
+          await supabase.rpc('add_credits', { p_workspace_id: workspace_id, p_amount: creditAmount })
 
           await supabase.from('credit_transactions').insert({
             workspace_id,
             amount: creditAmount,
             action: 'top_up',
             description: `Credit top-up — ${creditAmount} credits`,
+            metadata: { stripe_event_id: event.id },
           })
 
           await supabase.from('activity').insert({
@@ -62,14 +68,10 @@ export async function POST(request: NextRequest) {
           })
 
         } else if (plan) {
-          // Plan purchase — add monthly credits
+          // Plan purchase — add monthly credits atomically
           const planCredits = PLAN_CREDITS[plan] ?? 500
 
-          const { data: current } = await supabase
-            .from('credits').select('balance').eq('workspace_id', workspace_id).single()
-          await supabase.from('credits')
-            .update({ balance: (current?.balance ?? 0) + planCredits })
-            .eq('workspace_id', workspace_id)
+          await supabase.rpc('add_credits', { p_workspace_id: workspace_id, p_amount: planCredits })
 
           await supabase.from('workspaces').update({
             plan,
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
             amount: planCredits,
             action: 'monthly_grant',
             description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} plan — monthly credits`,
+            metadata: { stripe_event_id: event.id },
           })
 
           await supabase.from('activity').insert({
@@ -156,17 +159,14 @@ export async function POST(request: NextRequest) {
 
         if (workspace && invoice.billing_reason === 'subscription_cycle') {
           const planCredits = PLAN_CREDITS[workspace.plan ?? 'spark']
-          const { data: current } = await supabase
-            .from('credits').select('balance').eq('workspace_id', workspace.id).single()
-          await supabase.from('credits')
-            .update({ balance: (current?.balance ?? 0) + planCredits })
-            .eq('workspace_id', workspace.id)
+          await supabase.rpc('add_credits', { p_workspace_id: workspace.id, p_amount: planCredits })
 
           await supabase.from('credit_transactions').insert({
             workspace_id: workspace.id,
             amount: planCredits,
             action: 'monthly_grant',
             description: `Monthly renewal — ${planCredits} credits`,
+            metadata: { stripe_event_id: event.id },
           })
 
           // Send renewal email

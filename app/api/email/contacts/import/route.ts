@@ -37,8 +37,13 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    if (contacts.length > 10000) {
+      return NextResponse.json({ error: 'Too many contacts (max 10,000 per import)' }, { status: 400 })
+    }
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const toInsert = contacts
-      .filter((c: any) => c.email && c.email.includes('@'))
+      .filter((c: any) => c.email && EMAIL_RE.test(String(c.email).trim()))
       .map((c: any) => ({
         workspace_id: member.workspace_id,
         email: c.email.toLowerCase().trim(),

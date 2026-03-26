@@ -71,14 +71,12 @@ export const CREDIT_COSTS = {
   voice_30s:  5,
   voice_60s:  10,
   voice_3min: 39,
-  // Product Lab
-  product_bg_remove:   2,
-  product_shot:        5,
-  product_lifestyle:   5,
-  // Packaging
-  packaging_generate: 15,
-  packaging_preview:   5,
-  packaging_pdf:       0,
+  // Product Lab — AI Photography
+  product_clean:      2,
+  product_studio:     5,
+  product_lifestyle:  8,
+  product_upscale:    3,
+  product_edit:       4,
 } as const
 
 // ── Video credit costs ────────────────────────────────────────

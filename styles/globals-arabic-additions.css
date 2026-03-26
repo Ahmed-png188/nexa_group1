@@ -1,0 +1,174 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXA — ARABIC EDITION
+   Font: Tajawal — https://fonts.google.com/share?selection.family=Tajawal:wght@200;300;400;500;700;800;900
+   Style: Gulf Arabic — خليجي أصيل، دافئ، واثق — reference: tabby.ai/ar-AE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Override CSS variables in Arabic mode ─────────────────────────────── */
+html[data-lang="ar"],
+html[lang="ar"] {
+  --sans:    'Tajawal', system-ui, sans-serif;
+  --display: 'Tajawal', system-ui, sans-serif;
+  --serif:   'Tajawal', system-ui, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ── 2. Force Tajawal on EVERYTHING when Arabic ──────────────────────────── */
+html[data-lang="ar"] *,
+html[lang="ar"] * {
+  font-family: 'Tajawal', system-ui, sans-serif;
+  letter-spacing: 0 !important;
+}
+
+/* ── 3. Exceptions — keep monospace for numbers/code ─────────────────────── */
+html[data-lang="ar"] code,
+html[data-lang="ar"] pre,
+html[data-lang="ar"] .nexa-mono,
+html[data-lang="ar"] [data-mono],
+html[data-lang="ar"] [style*="Geist Mono"] {
+  font-family: 'Geist Mono', monospace !important;
+  direction: ltr;
+  unicode-bidi: embed;
+  display: inline-block;
+}
+
+/* ── 4. Body base ─────────────────────────────────────────────────────────── */
+html[data-lang="ar"] body {
+  font-family: 'Tajawal', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.8;
+  direction: rtl;
+}
+
+/* ── 5. Headings — Tajawal needs slightly heavier weight to match Geist ───── */
+html[data-lang="ar"] h1 { font-weight: 800; line-height: 1.25; letter-spacing: 0 !important; }
+html[data-lang="ar"] h2 { font-weight: 700; line-height: 1.35; letter-spacing: 0 !important; }
+html[data-lang="ar"] h3 { font-weight: 600; line-height: 1.45; letter-spacing: 0 !important; }
+html[data-lang="ar"] h4 { font-weight: 600; line-height: 1.55; letter-spacing: 0 !important; }
+
+/* ── 6. Remove letter-spacing everywhere in Arabic (breaks Arabic shaping) ── */
+html[data-lang="ar"] span,
+html[data-lang="ar"] div,
+html[data-lang="ar"] p,
+html[data-lang="ar"] button,
+html[data-lang="ar"] a,
+html[data-lang="ar"] label,
+html[data-lang="ar"] input,
+html[data-lang="ar"] textarea {
+  letter-spacing: 0 !important;
+}
+
+/* ── 7. Inputs & textareas ────────────────────────────────────────────────── */
+html[data-lang="ar"] input,
+html[data-lang="ar"] textarea,
+html[data-lang="ar"] select {
+  font-family: 'Tajawal', system-ui, sans-serif !important;
+  direction: rtl;
+  text-align: right;
+  font-size: 14px;
+}
+
+html[data-lang="ar"] input::placeholder,
+html[data-lang="ar"] textarea::placeholder {
+  font-family: 'Tajawal', system-ui, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ── 8. RTL layout — flex row reversal ───────────────────────────────────── */
+html[data-lang="ar"] [dir="rtl"] {
+  direction: rtl;
+}
+
+/* ── 9. Text alignment ────────────────────────────────────────────────────── */
+html[data-lang="ar"] .text-left  { text-align: right !important; }
+html[data-lang="ar"] .text-right { text-align: left  !important; }
+
+/* ── 10. Tailwind margin/padding RTL flips ────────────────────────────────── */
+html[data-lang="ar"] .ml-auto { margin-left: unset !important; margin-right: auto !important; }
+html[data-lang="ar"] .mr-auto { margin-right: unset !important; margin-left: auto !important; }
+
+/* ── 11. Chat messages ────────────────────────────────────────────────────── */
+html[data-lang="ar"] .nexa-msg-ai {
+  font-family: 'Tajawal', system-ui, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.9 !important;
+  direction: rtl;
+  text-align: right;
+}
+
+html[data-lang="ar"] .nexa-msg-ai p    { margin: 0 0 10px; }
+html[data-lang="ar"] .nexa-msg-ai ul,
+html[data-lang="ar"] .nexa-msg-ai ol   { margin: 4px 16px 10px 0; padding-right: 16px; padding-left: 0; }
+html[data-lang="ar"] .nexa-msg-ai strong { font-weight: 700; }
+
+/* ── 12. Topbar search ────────────────────────────────────────────────────── */
+html[data-lang="ar"] .topbar-search {
+  direction: rtl;
+  text-align: right;
+  padding-right: 34px !important;
+  padding-left: 13px !important;
+}
+
+/* ── 13. Dropdowns — flip to left in RTL ─────────────────────────────────── */
+html[data-lang="ar"] [data-dd] > div:not([data-dd]) {
+  right: auto;
+  left: 0;
+}
+
+/* ── 14. Progress bars ────────────────────────────────────────────────────── */
+html[data-lang="ar"] .progress-bar { direction: rtl; }
+
+/* ── 15. Scrollbar ────────────────────────────────────────────────────────── */
+html[data-lang="ar"] ::-webkit-scrollbar       { width: 4px; }
+html[data-lang="ar"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+/* ── 16. Nexa spinner stays neutral ─────────────────────────────────────── */
+html[data-lang="ar"] .nexa-spinner { direction: ltr; }
+
+/* ── 17. Tajawal weight utilities ────────────────────────────────────────── */
+.ar-thin      { font-family: 'Tajawal', sans-serif !important; font-weight: 200; }
+.ar-light     { font-family: 'Tajawal', sans-serif !important; font-weight: 300; }
+.ar-regular   { font-family: 'Tajawal', sans-serif !important; font-weight: 400; }
+.ar-medium    { font-family: 'Tajawal', sans-serif !important; font-weight: 500; }
+.ar-bold      { font-family: 'Tajawal', sans-serif !important; font-weight: 700; }
+.ar-extrabold { font-family: 'Tajawal', sans-serif !important; font-weight: 800; }
+.ar-black     { font-family: 'Tajawal', sans-serif !important; font-weight: 900; }
+
+/* ── 18. Fix uppercase letter-spacing (breaks Arabic) ────────────────────── */
+html[data-lang="ar"] [style*="letter-spacing"],
+html[data-lang="ar"] [style*="textTransform: 'uppercase'"],
+html[data-lang="ar"] [style*="text-transform: uppercase"] {
+  letter-spacing: 0 !important;
+}
+
+/* ── 19. Stat numbers stay LTR ───────────────────────────────────────────── */
+html[data-lang="ar"] .stat-value,
+html[data-lang="ar"] .nexa-stat {
+  font-family: 'Geist Mono', monospace !important;
+  direction: ltr;
+  unicode-bidi: embed;
+  display: inline-block;
+}
+
+/* ── 20. Fix icon arrow directions ───────────────────────────────────────── */
+html[data-lang="ar"] .icon-rtl-flip { transform: scaleX(-1); }
+
+/* ── 21. Toast/notification position ─────────────────────────────────────── */
+html[data-lang="ar"] .toast-container {
+  right: auto !important;
+  left: 16px !important;
+}
+
+/* ── 22. Sidebar nav tooltip — show on right side in RTL ─────────────────── */
+html[data-lang="ar"] .nav-tooltip {
+  left: auto !important;
+  right: calc(100% + 12px) !important;
+}
+
+/* ── 23. Fix flex gap direction for RTL ──────────────────────────────────── */
+html[data-lang="ar"] [style*="letterSpacing:'0.08em'"] { letter-spacing: 0 !important; }
+html[data-lang="ar"] [style*="letterSpacing:'0.10em'"] { letter-spacing: 0 !important; }
+html[data-lang="ar"] [style*="letterSpacing:'0.06em'"] { letter-spacing: 0 !important; }
+html[data-lang="ar"] [style*="letterSpacing:'0.04em'"] { letter-spacing: 0 !important; }

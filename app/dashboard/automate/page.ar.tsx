@@ -131,7 +131,7 @@ function UpgradeGate({ feature, requiredPlan }: { feature:string; requiredPlan:s
 // ── تسمية الحقول ──────────────────────────────────────────────
 function Label({ children }: { children: any }) {
   return (
-    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '8px', fontFamily: F }}>
+    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '8px', fontFamily: F }}>
       {children}
     </div>
   )
@@ -356,7 +356,7 @@ export default function AutomatePageAr() {
 
         {/* اسم المُرسِل */}
         <div style={{ padding: '16px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.55)', marginBottom: '8px', fontFamily: F }}>
+          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.55)', marginBottom: '8px', fontFamily: F }}>
             يُرسَل باسم
           </div>
           <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
@@ -428,7 +428,7 @@ export default function AutomatePageAr() {
 
         {/* نموذج العملاء */}
         <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 'auto' }}>
-          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.55)', marginBottom: '8px', fontFamily: F }}>نموذج العملاء</div>
+          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.55)', marginBottom: '8px', fontFamily: F }}>نموذج العملاء</div>
           <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
             {currentLinkSeqId ? (
               <div>
@@ -486,7 +486,7 @@ export default function AutomatePageAr() {
                 {/* قائمة التسلسلات */}
                 <div style={{ width: 260, borderLeft: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#141414' }}>
                   <div style={{ padding: '16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '12px', fontFamily: F }}>التسلسلات</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '12px', fontFamily: F }}>التسلسلات</div>
                     <button
                       onClick={() => { setShowAiModal(true); setAiGoal(''); setSeqGenError(null) }}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '10px', background: 'rgba(0,170,255,0.08)', border: '1px solid rgba(0,170,255,0.22)', borderRadius: '8px', fontSize: '12px', fontFamily: F, fontWeight: 700, color: '#00AAFF', cursor: 'pointer', transition: 'all 0.15s' }}
@@ -533,7 +533,7 @@ export default function AutomatePageAr() {
                       <div style={{ width: 52, height: 52, borderRadius: '14px', background: 'rgba(0,170,255,0.06)', border: '1px solid rgba(0,170,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,170,255,0.50)' }}>
                         {Ic.bolt}
                       </div>
-                      <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: F, letterSpacing: 0 }}>
+                      <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: F, letterSpacing: '-0.01em' }}>
                         الذكاء يكتب تسلسلاتك
                       </div>
                       <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.22)', fontFamily: F, maxWidth: '260px', textAlign: 'center' as const, lineHeight: 1.8 }}>
@@ -552,7 +552,7 @@ export default function AutomatePageAr() {
                       {/* رأس التسلسل */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
                         <div>
-                          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: '5px', fontFamily: F }}>
+                          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '5px', fontFamily: F }}>
                             {selectedSeq.name}
                           </h2>
                           <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
@@ -710,7 +710,7 @@ export default function AutomatePageAr() {
           <div className="ns a-in" style={{ flex: 1, overflowY: 'auto', padding: '28px 36px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#FFFFFF', letterSpacing: 0, marginBottom: '4px', fontFamily: F }}>جهات الاتصال</h2>
+                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '4px', fontFamily: F }}>جهات الاتصال</h2>
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{contacts.length} جهة اتصال</div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -744,7 +744,7 @@ export default function AutomatePageAr() {
             ) : (
               <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', overflow: 'hidden' }}>
                 {/* رأس الجدول */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr 1fr 0.8fr', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr 1fr 0.8fr', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>
                   <div>الاسم</div><div>البريد الإلكتروني</div><div>الشركة</div><div>المصدر</div><div>الحالة</div>
                 </div>
                 {contacts.map((c: Contact) => (
@@ -774,7 +774,7 @@ export default function AutomatePageAr() {
 
               {/* الرأس */}
               <div style={{ marginBottom: '28px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: '5px', fontFamily: F }}>اكتب بريداً مباشراً</h2>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '5px', fontFamily: F }}>اكتب بريداً مباشراً</h2>
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
                   يُرسَل من <span style={{ color: 'rgba(0,170,255,0.60)', fontFamily: MONO }}>{senderEmail}</span> · عبر Resend
                 </div>
@@ -968,7 +968,7 @@ export default function AutomatePageAr() {
                 {Ic.bolt}
               </div>
               <div>
-                <div style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, fontFamily: F }}>أنشئ تسلسلاً بالذكاء</div>
+                <div style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', fontFamily: F }}>أنشئ تسلسلاً بالذكاء</div>
                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
                   يُرسَل من <span style={{ color: 'rgba(0,170,255,0.60)', fontFamily: MONO }}>{senderEmail}</span>
                 </div>
@@ -1076,7 +1076,7 @@ export default function AutomatePageAr() {
           style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) setShowLinkModal(false) }}>
           <div dir="rtl" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.12)', borderTop: '2px solid #00AAFF', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '420px' }}>
-            <div style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: '6px', fontFamily: F }}>ربط النموذج بتسلسل</div>
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '6px', fontFamily: F }}>ربط النموذج بتسلسل</div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F, marginBottom: '20px', lineHeight: 1.7 }}>
               عندما يملأ أحدهم نموذج صفحة العملاء، يُسجَّل تلقائياً في التسلسل المختار. البريد يُرسَل من{' '}
               <span style={{ color: 'rgba(0,170,255,0.60)', fontFamily: MONO }}>{senderEmail}</span>.

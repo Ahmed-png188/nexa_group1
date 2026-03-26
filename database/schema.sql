@@ -590,3 +590,20 @@ create index idx_agency_activity_workspace on public.agency_activity(agency_work
 -- Additional indexes for new tables
 create index idx_agent_runs_created on public.agent_runs(created_at desc);
 create index idx_brand_learnings_created on public.brand_learnings(created_at desc);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MIGRATION: Add lead_page_lang and avatar_url columns
+-- Run in Supabase SQL Editor if upgrading from an existing schema
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Lead page language preference (null = auto-detect from visitor browser)
+alter table public.workspaces
+  add column if not exists lead_page_lang text check (lead_page_lang in ('en','ar'));
+
+-- Profile avatar URL (for user photo in settings)
+alter table public.profiles
+  add column if not exists avatar_url text;
+
+-- Bio field for profile
+alter table public.profiles
+  add column if not exists bio text;

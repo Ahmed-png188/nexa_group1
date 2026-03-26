@@ -88,10 +88,12 @@ const DEFAULT_FIELDS: FormField[] = [
 // ── المعاينة المباشرة ─────────────────────────────────────────
 function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: string }) {
   const t       = THEMES[cfg.theme] || THEMES.dark
-  const fam     = FONTS[cfg.font]?.family || FONTS.tajawal.family
+  const isPreviewAr = cfg.formLang !== 'en' // default AR for AR editor, unless explicitly EN
+  const fam     = isPreviewAr ? (FONTS[cfg.font]?.family || FONTS.tajawal.family) : "'Geist', -apple-system, sans-serif"
   const a       = cfg.accent || '#00AAFF'
   const isLight = ['light','warm'].includes(cfg.theme)
   const initial = brandName[0]?.toUpperCase() || 'N'
+  const dir     = isPreviewAr ? 'rtl' : 'ltr'
 
   const btnBg     = cfg.buttonStyle==='filled' ? a : cfg.buttonStyle==='soft' ? `${a}20` : 'transparent'
   const btnColor  = cfg.buttonStyle==='filled' ? (isLight?'#fff':'#000') : a
@@ -102,7 +104,8 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
     background: isLight?'rgba(0,0,0,0.05)':'rgba(255,255,255,0.07)',
     border: `1px solid ${t.border}`, borderRadius:8,
     color: t.text3, fontSize:12, fontFamily:fam, boxSizing:'border-box',
-    textAlign:'right' as const, direction:'rtl',
+    textAlign: isPreviewAr ? 'right' : 'left' as const,
+    direction: dir,
   }
 
   function renderField(field: FormField) {
@@ -112,16 +115,15 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
     if (field.type==='select')
       return (
         <div style={{ ...inpBase, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ opacity:0.5, fontSize:10 }}>▾</span>
-          <span>{field.placeholder || 'اختر…'}</span>
+          {isPreviewAr ? <><span style={{ opacity:0.5, fontSize:10 }}>▾</span><span>{field.placeholder || 'اختر…'}</span></> : <><span>{field.placeholder || 'Select…'}</span><span style={{ opacity:0.5, fontSize:10 }}>▾</span></>}
         </div>
       )
 
     if (field.type==='radio' || field.type==='multiselect')
       return (
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {(field.options||['خيار ١','خيار ٢']).slice(0,3).map((o,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color:t.text2, direction:'rtl' }}>
+          {(field.options||['Option 1','Option 2']).slice(0,3).map((o,i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color:t.text2, direction:dir, flexDirection:isPreviewAr?'row-reverse':'row' }}>
               <div style={{ width:15, height:15, borderRadius:field.type==='radio'?'50%':4, border:`1.5px solid ${t.border}`, flexShrink:0, background:'transparent' }}/>
               {o}
             </div>
@@ -131,7 +133,7 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
 
     if (field.type==='checkbox')
       return (
-        <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color:t.text2, direction:'rtl' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color:t.text2, direction:dir, flexDirection:isPreviewAr?'row-reverse':'row' }}>
           <div style={{ width:15, height:15, borderRadius:4, border:`1.5px solid ${t.border}`, flexShrink:0 }}/>
           <span>{field.label}</span>
         </div>
@@ -141,13 +143,13 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
   }
 
   return (
-    <div style={{
+    <div dir={dir} style={{
       width:'100%', height:'100%',
       background:t.bg, fontFamily:fam,
       overflowY:'auto', overflowX:'hidden',
       padding:'32px 24px 40px',
       display:'flex', flexDirection:'column', alignItems:'center',
-      position:'relative', direction:'rtl',
+      position:'relative',
     }}>
       {/* توهج الخلفية */}
       <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'140%', height:200, background:`radial-gradient(ellipse,${a}20 0%,transparent 65%)`, pointerEvents:'none', zIndex:0 }}/>
@@ -160,7 +162,7 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
             ? <img src={cfg.logoUrl} alt={brandName} style={{ width:56, height:56, borderRadius:16, objectFit:'cover', display:cfg.layout==='left'?'block':'inline-block', marginBottom:14, border:`1.5px solid ${t.border}`, boxShadow:`0 4px 16px ${a}20` }}/>
             : <div style={{ width:56, height:56, borderRadius:16, background:`${a}20`, border:`1.5px solid ${a}40`, display:'flex', alignItems:'center', justifyContent:'center', margin:cfg.layout==='left'?'0 0 14px':'0 auto 14px', fontSize:22, fontWeight:700, color:a, boxShadow:`0 4px 20px ${a}25` }}>{initial}</div>
           }
-          <div style={{ fontSize:18, fontWeight:700, color:t.text1, letterSpacing:0, marginBottom:6, lineHeight:1.3, fontFamily:fam }}>
+          <div style={{ fontSize:18, fontWeight:700, color:t.text1, letterSpacing:'-0.02em', marginBottom:6, lineHeight:1.3, fontFamily:fam }}>
             {cfg.headline || `تواصل مع ${brandName}`}
           </div>
           <div style={{ fontSize:12, color:t.text2, lineHeight:1.7, fontFamily:fam }}>
@@ -186,8 +188,8 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
             {cfg.fields.map(field => (
               <div key={field.id}>
                 {field.type !== 'checkbox' && (
-                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:0, color:t.text3, marginBottom:5, lineHeight:1, textAlign:'right' as const }}>
-                    {field.label}{field.required && <span style={{ color:a, marginRight:2 }}>*</span>}
+                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:isPreviewAr?0:'0.07em', color:t.text3, marginBottom:5, lineHeight:1, textAlign:isPreviewAr?'right':'left' as const }}>
+                    {field.label}{field.required && <span style={{ color:a, [isPreviewAr?'marginRight':'marginLeft']:2 }}>*</span>}
                   </div>
                 )}
                 {renderField(field)}
@@ -208,7 +210,7 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
               background:btnBg, color:btnColor,
               border:btnBorder, borderRadius:10,
               fontFamily:fam, fontSize:13, fontWeight:700,
-              cursor:'pointer', letterSpacing:0,
+              cursor:'pointer', letterSpacing:'-0.01em',
               boxShadow:cfg.buttonStyle==='filled'?`0 4px 16px ${a}45`:'none',
               marginTop:2,
             }}>
@@ -231,7 +233,7 @@ function LivePreview({ cfg, brandName }: { cfg: LeadPageConfig; brandName: strin
 function Section({ title, children }: { title:string; children:React.ReactNode }) {
   return (
     <div style={{ marginBottom:24 }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:0, textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:12, paddingBottom:8, borderBottom:'1px solid var(--border-subtle)' }}>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' as const, color:'var(--text-3)', marginBottom:12, paddingBottom:8, borderBottom:'1px solid var(--border-subtle)' }}>
         {title}
       </div>
       {children}
@@ -389,7 +391,7 @@ function Submissions({ wsId, sequences, toast_ }: { wsId:string; sequences:any[]
       {/* شريط الأدوات */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
-          <div style={{ fontSize:16, fontWeight:600, color:'var(--text-1)', letterSpacing:0, fontFamily:F }}>الاستجابات</div>
+          <div style={{ fontSize:16, fontWeight:600, color:'var(--text-1)', letterSpacing:'-0.02em', fontFamily:F }}>الاستجابات</div>
           <div style={{ fontSize:12, color:'var(--text-3)', marginTop:2, fontFamily:F }}>
             {subs.length > 0 ? `${subs.length} عميل محتمل` : 'لا توجد استجابات بعد'}
           </div>
@@ -666,7 +668,7 @@ export default function LeadPageEditorAr() {
   if (loading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - var(--topbar-h))', flexDirection:'column', gap:14 }}>
       <div className="nexa-spinner" style={{ width:22, height:22 }}/>
-      <div style={{ fontSize:11, color:'var(--text-3)', letterSpacing:0, textTransform:'uppercase' as const, fontFamily:F }}>جارٍ التحميل</div>
+      <div style={{ fontSize:11, color:'var(--text-3)', letterSpacing:'0.06em', textTransform:'uppercase' as const, fontFamily:F }}>جارٍ التحميل</div>
     </div>
   )
 
@@ -1016,7 +1018,7 @@ export default function LeadPageEditorAr() {
           <div style={{ background:'#0a0a0a', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'28px 24px', position:'relative', overflow:'hidden', gap:16 }}>
 
             {/* علامة المعاينة */}
-            <div style={{ position:'absolute', top:16, left:'50%', transform:'translateX(-50%)', fontSize:10, fontWeight:700, letterSpacing:0, textTransform:'uppercase' as const, color:'rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:999, padding:'4px 12px', whiteSpace:'nowrap' as const, fontFamily:F }}>
+            <div style={{ position:'absolute', top:16, left:'50%', transform:'translateX(-50%)', fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:999, padding:'4px 12px', whiteSpace:'nowrap' as const, fontFamily:F }}>
               معاينة مباشرة
             </div>
 

@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { createNotification } from '@/lib/notifications'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
 
-    const gateError = await checkPlanAccess(workspace_id, 'amplify')
+    const gateError = await checkPlanAccess(workspace_id!, 'amplify')
     if (gateError) return gateError
 
     // ── 1. Get Brand Brain context ────────────────────────────────────────
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const raw = (aiRes.content[0] as any).text
+        const raw = aiRes.content[0]?.type === 'text' ? aiRes.content[0].text : ''
         const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         const parsed = JSON.parse(cleaned)
         finalCreative = {
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
             primaryText:  finalCreative.adCopy      || '',
             description:  finalCreative.description || '',
             callToAction: finalCreative.cta         || 'Learn More',
-            linkUrl:      `https://nexaa.cc/${brand?.workspace?.slug || ''}`,
+            linkUrl:      `https://nexaa.cc/${(brand?.workspace as any)?.slug || ''}`,
             imageHash,
           })
 
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
                 primaryText:  (vt.primary_text || finalCreative.adCopy).slice(0, 125),
                 description:  finalCreative.description || '',
                 callToAction: finalCreative.cta || 'Learn More',
-                linkUrl:      `https://nexaa.cc/${brand?.workspace?.slug || ''}`,
+                linkUrl:      `https://nexaa.cc/${(brand?.workspace as any)?.slug || ''}`,
                 imageHash,
               })
               await createMetaAd({
@@ -341,6 +342,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbErr) throw dbErr
+
+    await createNotification({
+      workspace_id,
+      type: 'ad_live',
+      message: `Campaign "${name}" submitted to Meta at $${daily_budget}/day — it's now in review and will go live once approved.`,
+      link: '/dashboard/amplify',
+    })
 
     await supabase.from('activity').insert({
       workspace_id, user_id: user.id,

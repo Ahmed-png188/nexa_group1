@@ -110,7 +110,7 @@ export default function NexaTourAr({ onClose }: { onClose: () => void }) {
           <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${current.color},transparent)`, borderRadius:'var(--r-lg) var(--r-lg) 0 0' }}/>
           {dotBar}
           <div style={{ width:7, height:7, borderRadius:'50%', background:current.color, boxShadow:`0 0 10px ${current.color}`, marginBottom:10 }}/>
-          <h3 style={{ fontFamily:'var(--sans)', fontSize:14, fontWeight:700, letterSpacing:0, color:'var(--text-1)', marginBottom:8, lineHeight:1.3 }}>{current.title}</h3>
+          <h3 style={{ fontFamily:'var(--sans)', fontSize:14, fontWeight:700, letterSpacing:'-0.02em', color:'var(--text-1)', marginBottom:8, lineHeight:1.3 }}>{current.title}</h3>
           <p style={{ fontSize:12, color:'var(--text-2)', lineHeight:1.75, marginBottom:0 }}>{current.body}</p>
           {controls('sm')}
           <div style={{ textAlign:'center', marginTop:12, fontSize:10, color:'var(--text-4)' }}>{step + 1} / {STEPS.length}</div>
@@ -122,7 +122,7 @@ export default function NexaTourAr({ onClose }: { onClose: () => void }) {
             <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${current.color},transparent)` }}/>
             {dotBar}
             <div style={{ width:10, height:10, borderRadius:'50%', background:current.color, boxShadow:`0 0 16px ${current.color}`, marginBottom:14 }}/>
-            <h2 style={{ fontFamily:'var(--sans)', fontSize:20, fontWeight:700, letterSpacing:0, color:'var(--text-1)', marginBottom:10, lineHeight:1.2 }}>{current.title}</h2>
+            <h2 style={{ fontFamily:'var(--sans)', fontSize:20, fontWeight:700, letterSpacing:'-0.03em', color:'var(--text-1)', marginBottom:10, lineHeight:1.2 }}>{current.title}</h2>
             <p style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.8, marginBottom:0 }}>{current.body}</p>
             {controls('lg')}
             <div style={{ textAlign:'center', marginTop:16, fontSize:11, color:'var(--text-4)' }}>{step + 1} من {STEPS.length}</div>

@@ -1,1364 +1,520 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
-import { usePackagingDownload } from './usePackagingDownload'
-import type { PackagingViewer3DHandle } from './PackagingViewer3D'
-
-const PackagingViewer3D = dynamic(() => import('./PackagingViewer3D'), { ssr: false })
 
 const C = {
-  bg:      '#0C0C0C',
-  surface: '#141414',
-  over:    '#1A1A1A',
-  border:  'rgba(255,255,255,0.10)',
-  borderS: 'rgba(255,255,255,0.06)',
-  cyan:    '#00AAFF',
-  cyanD:   'rgba(0,170,255,0.12)',
-  cyanB:   'rgba(0,170,255,0.22)',
-  t1:      '#FFFFFF',
-  t2:      'rgba(255,255,255,0.65)',
-  t3:      'rgba(255,255,255,0.35)',
-  t4:      'rgba(255,255,255,0.20)',
-  green:   '#22C55E',
-  greenD:  'rgba(34,197,94,0.12)',
-  amber:   '#F59E0B',
-  amberD:  'rgba(245,158,11,0.10)',
-  red:     '#EF4444',
-  redD:    'rgba(239,68,68,0.10)',
+  bg:'#0C0C0C', surface:'#141414', over:'#1A1A1A',
+  border:'rgba(255,255,255,0.10)', borderS:'rgba(255,255,255,0.06)',
+  cyan:'#00AAFF', cyanD:'rgba(0,170,255,0.12)', cyanB:'rgba(0,170,255,0.22)',
+  t1:'#FFFFFF', t2:'rgba(255,255,255,0.65)', t3:'rgba(255,255,255,0.35)', t4:'rgba(255,255,255,0.18)',
+  green:'#22C55E', greenD:'rgba(34,197,94,0.12)',
+  amber:'#F59E0B', amberD:'rgba(245,158,11,0.10)',
 }
-const F = "'Geist', -apple-system, sans-serif"
+const EN = "'Geist', -apple-system, sans-serif"
+const MONO = "'Geist Mono', monospace"
 
-type ProductType = 'fragrance'|'apparel'|'flower'|'accessory'|'food'|'electronics'|'general'
-type SceneStyle  = 'minimal'|'luxury'|'outdoor'|'home'|'fashion'|'abstract'
-type OutputMode  = 'shots'|'lifestyle'|'both'
+type Stage = 'upload' | 'analyzing' | 'configure' | 'shooting' | 'gallery'
+type OutputType = 'studio' | 'lifestyle' | 'both'
+type ShotStyle = 'hero' | 'angle_34' | 'top_down' | 'detail' | 'side_profile' | 'floating'
+interface Asset { id: string; url: string; type: 'studio' | 'lifestyle' | 'edit'; style?: string; scene?: string; label?: string }
 
-const SCENE_STYLES: { id: SceneStyle; label: string; desc: string }[] = [
-  { id: 'minimal',  label: 'Minimal',  desc: 'Clean, white surfaces' },
-  { id: 'luxury',   label: 'Luxury',   desc: 'Premium materials' },
-  { id: 'outdoor',  label: 'Outdoor',  desc: 'Natural daylight' },
-  { id: 'home',     label: 'Home',     desc: 'Warm ambience' },
-  { id: 'fashion',  label: 'Fashion',  desc: 'Editorial styling' },
-  { id: 'abstract', label: 'Abstract', desc: 'Artistic composition' },
+const SHOT_STYLES: { id: ShotStyle; label: string; desc: string }[] = [
+  { id: 'hero',         label: 'Hero',        desc: 'Front-facing hero' },
+  { id: 'angle_34',     label: '3/4 Angle',   desc: 'Three-quarter view' },
+  { id: 'top_down',     label: 'Top Down',    desc: 'Overhead flat lay' },
+  { id: 'detail',       label: 'Detail',      desc: 'Macro close-up' },
+  { id: 'side_profile', label: 'Side',        desc: 'Profile shot' },
+  { id: 'floating',     label: 'Floating',    desc: 'Levitating product' },
 ]
 
-const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  fragrance:   'Fragrance',
-  apparel:     'Apparel',
-  flower:      'Flowers',
-  accessory:   'Accessory',
-  food:        'Food',
-  electronics: 'Electronics',
-  general:     'General',
-}
+const LIFESTYLE_SCENES: { id: string; label: string; desc: string }[] = [
+  { id: 'marble_minimal', label: 'Marble Minimal', desc: 'Polished white marble' },
+  { id: 'golden_hour',    label: 'Golden Hour',    desc: 'Warm sunset light' },
+  { id: 'dark_luxury',    label: 'Dark Luxury',    desc: 'Slate & gold accents' },
+  { id: 'garden_fresh',   label: 'Garden Fresh',   desc: 'Botanicals & flowers' },
+  { id: 'home_cozy',      label: 'Home & Cozy',    desc: 'Warm home interior' },
+  { id: 'tech_dark',      label: 'Tech Dark',      desc: 'Carbon fiber + RGB' },
+  { id: 'beach_summer',   label: 'Beach Summer',   desc: 'Sandy summer light' },
+  { id: 'cafe_morning',   label: 'Café Morning',   desc: 'Morning café table' },
+  { id: 'urban_concrete', label: 'Urban Concrete', desc: 'Raw urban texture' },
+  { id: 'fashion_studio', label: 'Fashion Studio', desc: 'Editorial spotlight' },
+  { id: 'pastel_dream',   label: 'Pastel Dream',   desc: 'Dreamy soft palette' },
+]
 
-function UploadIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="17 8 12 3 7 8"/>
-      <line x1="12" y1="3" x2="12" y2="15"/>
-    </svg>
-  )
-}
+export default function ProductLabEN() {
+  const [stage, setStage]           = useState<Stage>('upload')
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [productId, setProductId]   = useState<string | null>(null)
+  const [originalUrl, setOriginalUrl] = useState<string>('')
+  const [cleanedUrl, setCleanedUrl]   = useState<string>('')
+  const [productType, setProductType] = useState<string>('general')
+  const [productName, setProductName] = useState<string>('My product')
+  const [outputType, setOutputType]   = useState<OutputType>('studio')
+  const [selectedShots, setSelectedShots]   = useState<ShotStyle[]>(['hero', 'angle_34', 'top_down', 'detail'])
+  const [selectedScenes, setSelectedScenes] = useState<string[]>(['marble_minimal', 'golden_hour'])
+  const [analysisStep, setAnalysisStep]     = useState(0)
+  const [shootingStep, setShootingStep]     = useState(0)
+  const [shootingTotal, setShootingTotal]   = useState(0)
+  const [assets, setAssets]         = useState<Asset[]>([])
+  const [selected, setSelected]     = useState<Asset | null>(null)
+  const [editPrompt, setEditPrompt] = useState('')
+  const [editing, setEditing]       = useState(false)
+  const [dragOver, setDragOver]     = useState(false)
+  const [error, setError]           = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-function ImageIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
-      <polyline points="21 15 16 10 5 21"/>
-    </svg>
-  )
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
-    </svg>
-  )
-}
-
-function DownloadIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-  )
-}
-
-function SendIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13"/>
-      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-    </svg>
-  )
-}
-
-function RefreshIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="23 4 23 10 17 10"/>
-      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-    </svg>
-  )
-}
-
-function LoadingDots() {
-  return (
-    <span style={{ display:'inline-flex', gap:3, alignItems:'center' }}>
-      {[0,1,2].map(i => (
-        <span key={i} style={{
-          width:4, height:4, borderRadius:'50%',
-          background: C.cyan,
-          animation: `dot-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-        }}/>
-      ))}
-      <style>{`@keyframes dot-pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}`}</style>
-    </span>
-  )
-}
-
-export default function ProductLabEn() {
-  const supabase = createClient()
-  const router   = useRouter()
-
-  // Upload state
-  const [uploadedUrl, setUploadedUrl]     = useState<string|null>(null)
-  const [uploadedFile, setUploadedFile]   = useState<File|null>(null)
-  const [uploading, setUploading]         = useState(false)
-  const [dragOver, setDragOver]           = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Detection state
-  const [detecting, setDetecting]         = useState(false)
-  const [productType, setProductType]     = useState<ProductType>('general')
-  const [detectedType, setDetectedType]   = useState<ProductType|null>(null)
-  const [detectionNotes, setDetectionNotes] = useState('')
-  const [productName, setProductName]     = useState('My Product')
-
-  // Background removal state
-  const [removingBg, setRemovingBg]       = useState(false)
-  const [cleanedUrl, setCleanedUrl]       = useState<string|null>(null)
-  const [productId, setProductId]         = useState<string|null>(null)
-
-  // Generation options
-  const [outputMode, setOutputMode]       = useState<OutputMode>('shots')
-  const [sceneStyle, setSceneStyle]       = useState<SceneStyle>('minimal')
-  const [shotCount, setShotCount]         = useState(4)
-
-  // Generation state
-  const [generating, setGenerating]       = useState(false)
-  const [generatedShots, setGeneratedShots]       = useState<{id:string;url:string}[]>([])
-  const [generatedLifestyle, setGeneratedLifestyle] = useState<{id:string;url:string}[]>([])
-  const [error, setError]                 = useState('')
-
-  // Tab
-  const [tab, setTab]                     = useState<'shots'|'lifestyle'|'packaging'>('shots')
-
-  // Workspace
-  const [workspaceId, setWorkspaceId]     = useState<string|null>(null)
-
-  // Packaging state
-  const [pkgType,       setPkgType]       = useState<string>('label')
-  const [pkgSizeId,     setPkgSizeId]     = useState<string>('label_rect_md')
-  const [pkgCustomW,    setPkgCustomW]    = useState<number>(100)
-  const [pkgCustomH,    setPkgCustomH]    = useState<number>(70)
-  const [pkgGenerating, setPkgGenerating] = useState(false)
-  const [pkgDesign,     setPkgDesign]     = useState<any>(null)
-  const [pkgDesignId,   setPkgDesignId]   = useState<string|null>(null)
-  const [pkgExporting,  setPkgExporting]  = useState(false)
-  const [pkgEditField,  setPkgEditField]  = useState<string|null>(null)
-  const [pkgHistory,    setPkgHistory]    = useState<any[]>([])
-  const [pkgSpecOpen,   setPkgSpecOpen]   = useState(false)
-  const [pkgError,      setPkgError]      = useState('')
-  const [pkgAutoRotate, setPkgAutoRotate] = useState(true)
-  const [pkgDlOpen,     setPkgDlOpen]     = useState(false)
-  const viewerRef = useRef<PackagingViewer3DHandle>(null)
-  const { downloadPNG, downloadHiRes } = usePackagingDownload(viewerRef, pkgDesign, pkgType)
-
-  // Load workspace on mount
   useEffect(() => {
-    supabase.from('workspace_members')
-      .select('workspace_id').limit(1).single()
-      .then(({ data }) => { if (data) setWorkspaceId(data.workspace_id) })
+    const sb = createClient()
+    sb.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      sb.from('workspace_members').select('workspace_id').eq('user_id', user.id).limit(1).single()
+        .then(({ data }) => { if (data) setWorkspaceId(data.workspace_id) })
+    })
   }, [])
 
-  async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) { setError('Please upload an image file'); return }
-    setUploading(true); setError('')
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not signed in')
-      const ext = file.name.split('.').pop() || 'jpg'
-      const path = `${user.id}/${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('media').upload(path, file, { upsert: true })
-      if (upErr) throw upErr
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path)
-      setUploadedUrl(urlData.publicUrl)
-      setUploadedFile(file)
-      // Auto-detect
-      if (workspaceId) {
-        setDetecting(true)
-        const res = await fetch('/api/product-lab/detect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_url: urlData.publicUrl, workspace_id: workspaceId }),
-        })
-        const d = await res.json()
-        setDetectedType(d.type || 'general')
-        setProductType(d.type || 'general')
-        setProductName(d.suggested_name || 'My Product')
-        setDetectionNotes(d.notes || '')
-        setDetecting(false)
-      }
-    } catch (e: any) {
-      setError(e.message || 'Upload failed')
-    } finally {
-      setUploading(false)
-    }
+  const uploadToStorage = async (file: File): Promise<string> => {
+    const sb = createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user || !workspaceId) throw new Error('Not authenticated')
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `${workspaceId}/product-originals/${Date.now()}.${ext}`
+    const { error: upErr } = await sb.storage.from('brand-assets').upload(path, file, { upsert: true })
+    if (upErr) throw upErr
+    const { data: urlData } = sb.storage.from('brand-assets').getPublicUrl(path)
+    return urlData.publicUrl
   }
+
+  const handleFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) { setError('Please upload an image file.'); return }
+    setError(null)
+    setStage('analyzing')
+    setAnalysisStep(0)
+
+    try {
+      // Upload original
+      const url = await uploadToStorage(file)
+      setOriginalUrl(url)
+      setAnalysisStep(1)
+
+      // Detect product type
+      const detectRes = await fetch('/api/product-lab/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: url, workspace_id: workspaceId }),
+      })
+      const detected = await detectRes.json()
+      setProductType(detected.type || 'general')
+      setProductName(detected.suggested_name || 'My product')
+      setAnalysisStep(2)
+
+      // Remove background
+      const cleanRes = await fetch('/api/product-lab/clean', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: url, workspace_id: workspaceId, product_id: productId }),
+      })
+      const cleaned = await cleanRes.json()
+      if (cleaned.cleaned_url) {
+        setCleanedUrl(cleaned.cleaned_url)
+      } else {
+        setCleanedUrl(url)
+      }
+      setAnalysisStep(3)
+
+      // Create product record
+      if (workspaceId) {
+        const sb = createClient()
+        const { data: prod } = await sb.from('products').insert({
+          workspace_id: workspaceId,
+          name: detected.suggested_name || 'My product',
+          product_type: detected.type || 'general',
+          original_url: url,
+          cleaned_url: cleaned.cleaned_url || url,
+        }).select('id').single()
+        if (prod) setProductId(prod.id)
+      }
+
+      setStage('configure')
+    } catch (err: any) {
+      setError(err?.message || 'Processing failed. Please try again.')
+      setStage('upload')
+    }
+  }, [workspaceId, productId])
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false)
-    const f = e.dataTransfer.files[0]
-    if (f) handleFile(f)
-  }, [workspaceId])
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }, [handleFile])
 
-  async function handleRemoveBg() {
-    if (!uploadedUrl || !workspaceId) return
-    setRemovingBg(true); setError('')
-    try {
-      // Create product record first
-      const { data: prod } = await supabase.from('products').insert({
-        workspace_id: workspaceId,
-        name: productName,
-        type: productType,
-        original_photos: [uploadedUrl],
-      }).select('id').single()
-      if (prod) setProductId(prod.id)
+  const handleShoot = async () => {
+    if (!cleanedUrl || !workspaceId) return
+    setStage('shooting')
+    setShootingStep(0)
+    const newAssets: Asset[] = []
 
-      const res = await fetch('/api/product-lab/remove-background', {
+    const needStudio = outputType !== 'lifestyle'
+    const needLife   = outputType !== 'studio'
+    const total = (needStudio ? selectedShots.length : 0) + (needLife ? selectedScenes.length : 0)
+    setShootingTotal(total)
+
+    if (needStudio) {
+      const res = await fetch('/api/product-lab/studio-shots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspace_id: workspaceId,
-          product_id: prod?.id || null,
-          image_url: uploadedUrl,
+          product_id: productId,
+          image_url: cleanedUrl,
+          product_type: productType,
+          shots: selectedShots,
         }),
       })
-      const d = await res.json()
-      if (!res.ok) throw new Error(d.error || 'Background removal failed')
-      setCleanedUrl(d.url)
-    } catch (e: any) {
-      setError(e.message || 'Background removal failed')
-    } finally {
-      setRemovingBg(false)
+      const data = await res.json()
+      if (data.shots) {
+        data.shots.forEach((s: any) => {
+          newAssets.push({ id: s.id, url: s.url, type: 'studio', style: s.style, label: s.label })
+          setShootingStep(p => p + 1)
+        })
+      }
     }
+
+    if (needLife) {
+      const res = await fetch('/api/product-lab/lifestyle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          product_id: productId,
+          image_url: cleanedUrl,
+          product_type: productType,
+          scenes: selectedScenes,
+        }),
+      })
+      const data = await res.json()
+      if (data.scenes) {
+        data.scenes.forEach((s: any) => {
+          newAssets.push({ id: s.id, url: s.url, type: 'lifestyle', scene: s.scene, label: s.label })
+          setShootingStep(p => p + 1)
+        })
+      }
+    }
+
+    setAssets(newAssets)
+    if (newAssets.length > 0) setSelected(newAssets[0])
+    setStage('gallery')
   }
 
-  async function handleGenerate() {
-    const imageUrl = cleanedUrl || uploadedUrl
-    if (!imageUrl || !workspaceId) return
-    setGenerating(true); setError('')
-
-    // Ensure product exists
-    let pid = productId
-    if (!pid) {
-      const { data: prod } = await supabase.from('products').insert({
-        workspace_id: workspaceId,
-        name: productName,
-        type: productType,
-        original_photos: [uploadedUrl || ''],
-        cleaned_image_url: cleanedUrl || null,
-      }).select('id').single()
-      pid = prod?.id || null
-      if (pid) setProductId(pid)
-    }
-
+  const handleEdit = async () => {
+    if (!selected || !editPrompt.trim() || !workspaceId) return
+    setEditing(true)
     try {
-      if (outputMode === 'shots' || outputMode === 'both') {
-        const res = await fetch('/api/product-lab/generate-shots', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            workspace_id: workspaceId,
-            product_id: pid,
-            cleaned_image_url: imageUrl,
-            product_type: productType,
-            count: shotCount,
-          }),
-        })
-        const d = await res.json()
-        if (!res.ok) throw new Error(d.error || 'Shot generation failed')
-        setGeneratedShots(d.shots || [])
-        setTab('shots')
+      const res = await fetch('/api/product-lab/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          product_id: productId,
+          image_url: selected.url,
+          edit_prompt: editPrompt,
+        }),
+      })
+      const data = await res.json()
+      if (data.edited_url) {
+        const edited: Asset = { id: data.asset_id || `edit-${Date.now()}`, url: data.edited_url, type: 'edit', label: 'Edited' }
+        setAssets(p => [edited, ...p])
+        setSelected(edited)
+        setEditPrompt('')
       }
-
-      if (outputMode === 'lifestyle' || outputMode === 'both') {
-        const res = await fetch('/api/product-lab/generate-lifestyle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            workspace_id: workspaceId,
-            product_id: pid,
-            cleaned_image_url: imageUrl,
-            product_type: productType,
-            scene_style: sceneStyle,
-            count: outputMode === 'both' ? 2 : shotCount,
-          }),
-        })
-        const d = await res.json()
-        if (!res.ok) throw new Error(d.error || 'Lifestyle generation failed')
-        setGeneratedLifestyle(d.shots || [])
-        if (outputMode === 'lifestyle') setTab('lifestyle')
-      }
-    } catch (e: any) {
-      setError(e.message || 'Generation failed')
-    } finally {
-      setGenerating(false)
-    }
+    } catch { /* silent */ }
+    setEditing(false)
   }
 
-  function downloadImage(url: string) {
-    const a = document.createElement('a')
-    a.href = url; a.download = 'product-image.png'; a.click()
+  const downloadAsset = (asset: Asset) => {
+    const a = document.createElement('a'); a.href = asset.url
+    a.download = `product-${asset.type}-${Date.now()}.png`; a.click()
   }
 
-  async function sendToStudio(url: string) {
-    // Store URL in localStorage for Studio to pick up
-    localStorage.setItem('studio_import_url', url)
-    window.location.href = '/dashboard/studio'
-  }
+  const toggleShot = (id: ShotStyle) =>
+    setSelectedShots(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
+
+  const toggleScene = (id: string) =>
+    setSelectedScenes(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
 
   const creditCost = (() => {
-    if (outputMode === 'shots') return 5 * shotCount
-    if (outputMode === 'lifestyle') return 5 * (shotCount === 1 ? 1 : Math.min(shotCount, 4))
-    return 5 * shotCount + 5 * 2 // both: shots + 2 lifestyle
+    if (outputType === 'studio')    return CREDIT_COSTS.product_clean + selectedShots.length  * CREDIT_COSTS.product_studio
+    if (outputType === 'lifestyle') return CREDIT_COSTS.product_clean + selectedScenes.length * CREDIT_COSTS.product_lifestyle
+    return CREDIT_COSTS.product_clean + selectedShots.length * CREDIT_COSTS.product_studio + selectedScenes.length * CREDIT_COSTS.product_lifestyle
   })()
 
-  async function generatePackaging(isRegen = false) {
-    if (!workspaceId || pkgGenerating) return
-    setPkgGenerating(true); setPkgError('')
-    try {
-      const isCustom = pkgSizeId === 'label_custom'
-      const res = await fetch('/api/product-lab/packaging-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          product_id: productId || undefined,
-          packaging_type: pkgType,
-          size_id: pkgSizeId,
-          custom_dims: isCustom ? { width_mm: pkgCustomW, height_mm: pkgCustomH, depth_mm: 0, bleed_mm: 2 } : undefined,
-          lang: 'en',
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setPkgError(data.error || 'Generation failed'); return }
-      setPkgDesign({ ...data.design, logo_url: data.logo_url, dims: data.dims })
-      setPkgDesignId(data.id)
-      setPkgHistory(prev => [{ ...data.design, logo_url: data.logo_url, dims: data.dims }, ...prev].slice(0, 5))
-    } catch {
-      setPkgError('Generation failed')
-    } finally {
-      setPkgGenerating(false)
-    }
-  }
-
-  async function exportPDF() {
-    if (!pkgDesignId || !workspaceId || pkgExporting) return
-    setPkgExporting(true); setPkgError('')
-    try {
-      const res = await fetch('/api/product-lab/packaging-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: workspaceId, design_id: pkgDesignId }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setPkgError('PDF export failed'); return }
-      window.open(data.pdf_url, '_blank')
-    } catch {
-      setPkgError('PDF export failed')
-    } finally {
-      setPkgExporting(false)
-    }
-  }
-
-  const hasResults = generatedShots.length > 0 || generatedLifestyle.length > 0
-  const imageToShow = cleanedUrl || uploadedUrl
-
-  return (
-    <div style={{ fontFamily:F, background:C.bg, minHeight:'100vh', color:C.t1, padding:'32px 36px' }}>
-      {/* Header */}
-      <div style={{ marginBottom:28 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-          <div style={{
-            width:36, height:36, borderRadius:10,
-            background: C.cyanD, border:`1px solid ${C.cyanB}`,
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.cyan} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </div>
-          <h1 style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.02em', margin:0 }}>Product Lab</h1>
-        </div>
-        <p style={{ fontSize:13, color:C.t3, margin:0 }}>Upload a product photo and generate professional photography in seconds.</p>
+  // ── UPLOAD ──────────────────────────────────────────────────────────
+  if (stage === 'upload') return (
+    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:40 }}>
+      <div style={{ textAlign:'center', marginBottom:40 }}>
+        <div style={{ fontSize:13, fontWeight:600, letterSpacing:'0.10em', color:C.cyan, textTransform:'uppercase', marginBottom:12 }}>Product Lab</div>
+        <div style={{ fontSize:34, fontWeight:700, color:C.t1, letterSpacing:'-0.02em', marginBottom:10 }}>AI Product Photography</div>
+        <div style={{ fontSize:15, color:C.t3, maxWidth:400 }}>Drop your product photo — we remove the background, then shoot it in any scene.</div>
       </div>
 
-      <div style={{ display:'flex', gap:24, alignItems:'flex-start' }}>
-        {/* ── LEFT PANEL ── */}
-        <div style={{ width:340, flexShrink:0, display:'flex', flexDirection:'column', gap:16 }}>
+      {error && (
+        <div style={{ marginBottom:20, padding:'10px 18px', borderRadius:10, background:'rgba(239,68,68,0.10)', border:'1px solid rgba(239,68,68,0.25)', color:'#EF4444', fontSize:13 }}>
+          {error}
+        </div>
+      )}
 
-          {/* Upload Zone */}
-          <div
-            onDragOver={e=>{ e.preventDefault(); setDragOver(true) }}
-            onDragLeave={()=>setDragOver(false)}
-            onDrop={onDrop}
-            onClick={()=>!uploadedUrl && fileInputRef.current?.click()}
-            style={{
-              background: dragOver ? C.cyanD : C.surface,
-              border: `2px dashed ${dragOver ? C.cyan : uploadedUrl ? C.border : 'rgba(255,255,255,0.14)'}`,
-              borderRadius:14,
-              overflow:'hidden',
-              cursor: uploadedUrl ? 'default' : 'pointer',
-              transition:'all 0.2s',
-              minHeight: uploadedUrl ? 'auto' : 180,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              flexDirection:'column', gap:12,
-              position:'relative',
-            }}
-          >
-            {imageToShow ? (
-              <>
-                <img
-                  src={imageToShow}
-                  alt="Product"
-                  style={{ width:'100%', aspectRatio:'1', objectFit:'contain', display:'block', background:'#fff', borderRadius:12 }}
-                />
-                {cleanedUrl && (
-                  <div style={{
-                    position:'absolute', top:10, left:10,
-                    background: C.greenD, border:`1px solid ${C.green}`,
-                    borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:600, color:C.green,
-                    display:'flex', alignItems:'center', gap:4,
-                  }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    Background removed
-                  </div>
-                )}
-                <button
-                  onClick={e=>{ e.stopPropagation(); setUploadedUrl(null); setUploadedFile(null); setCleanedUrl(null); setDetectedType(null); setProductId(null); setGeneratedShots([]); setGeneratedLifestyle([]) }}
-                  style={{
-                    position:'absolute', top:10, right:10,
-                    width:28, height:28, borderRadius:8,
-                    background:'rgba(0,0,0,0.6)', border:`1px solid ${C.border}`,
-                    color:C.t2, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
-                  }}
-                >✕</button>
-              </>
-            ) : (
-              <>
-                {uploading ? (
-                  <>
-                    <LoadingDots/>
-                    <span style={{ fontSize:13, color:C.t3 }}>Uploading…</span>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ color: C.t4 }}><UploadIcon/></div>
-                    <div style={{ textAlign:'center' }}>
-                      <div style={{ fontSize:13, fontWeight:500, color:C.t2 }}>Drop your product image</div>
-                      <div style={{ fontSize:12, color:C.t4, marginTop:3 }}>or click to browse · PNG, JPG, WEBP</div>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }}
-              onChange={e=>{ const f=e.target.files?.[0]; if(f) handleFile(f) }}/>
+      <div
+        onDrop={onDrop} onDragOver={e => { e.preventDefault(); setDragOver(true) }} onDragLeave={() => setDragOver(false)}
+        onClick={() => fileRef.current?.click()}
+        style={{
+          width:'100%', maxWidth:480, aspectRatio:'1.6', borderRadius:20, cursor:'pointer', transition:'all 0.2s',
+          border:`2px dashed ${dragOver ? C.cyan : C.border}`,
+          background: dragOver ? C.cyanD : C.surface,
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16,
+          transform: dragOver ? 'scale(1.01)' : 'scale(1)',
+        }}
+      >
+        <div style={{ width:56, height:56, borderRadius:14, background:dragOver ? C.cyanB : 'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={dragOver ? C.cyan : C.t3} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize:15, fontWeight:600, color: dragOver ? C.cyan : C.t2, textAlign:'center' }}>Drop product photo here</div>
+          <div style={{ fontSize:12, color:C.t4, textAlign:'center', marginTop:4 }}>or click to browse — JPG, PNG, WEBP</div>
+        </div>
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+
+      <div style={{ display:'flex', gap:24, marginTop:36 }}>
+        {[
+          { icon:'🖼', label:'Auto BG Removal', sub:'Clean cutout in seconds' },
+          { icon:'📸', label:'Studio Shots',     sub:'6 pro angles available' },
+          { icon:'🌿', label:'Lifestyle Scenes', sub:'11 scene settings' },
+        ].map(f => (
+          <div key={f.label} style={{ textAlign:'center', width:130 }}>
+            <div style={{ fontSize:22, marginBottom:6 }}>{f.icon}</div>
+            <div style={{ fontSize:12, fontWeight:600, color:C.t2 }}>{f.label}</div>
+            <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{f.sub}</div>
           </div>
+        ))}
+      </div>
+    </div>
+  )
 
-          {/* Detection badge */}
-          {uploadedUrl && (
-            <div style={{
-              background:C.surface, border:`1px solid ${C.border}`,
-              borderRadius:10, padding:'12px 16px',
-              display:'flex', flexDirection:'column', gap:8,
-            }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:C.t4 }}>
-                  Product
-                </div>
-                {detecting && <div style={{ fontSize:11, color:C.cyan, display:'flex', alignItems:'center', gap:4 }}>
-                  <LoadingDots/> Detecting…
-                </div>}
-                {detectedType && !detecting && (
-                  <div style={{
-                    background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                    borderRadius:6, padding:'2px 8px',
-                    fontSize:11, fontWeight:600, color:C.cyan,
-                  }}>
-                    Auto-detected
-                  </div>
-                )}
+  // ── ANALYZING ───────────────────────────────────────────────────────
+  if (stage === 'analyzing') {
+    const steps = ['Uploading photo...', 'Analyzing product...', 'Removing background...', 'Done!']
+    return (
+      <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:32 }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:20, fontWeight:600, color:C.t1, marginBottom:8 }}>Preparing your product</div>
+          <div style={{ fontSize:13, color:C.t3 }}>This takes about 30 seconds</div>
+        </div>
+        <div style={{ width:360, display:'flex', flexDirection:'column', gap:10 }}>
+          {steps.map((step, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:12, background: i < analysisStep ? C.greenD : i === analysisStep ? C.cyanD : 'transparent', border:`1px solid ${i < analysisStep ? 'rgba(34,197,94,0.20)' : i === analysisStep ? 'rgba(0,170,255,0.20)' : C.borderS}`, transition:'all 0.4s' }}>
+              <div style={{ width:22, height:22, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background: i < analysisStep ? C.green : i === analysisStep ? C.cyan : 'transparent', border:`2px solid ${i < analysisStep ? C.green : i === analysisStep ? C.cyan : C.border}`, flexShrink:0, transition:'all 0.4s' }}>
+                {i < analysisStep
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : i === analysisStep
+                  ? <div className="nexa-spinner" style={{ width:10, height:10, borderWidth:2, borderTopColor:'#000' }}/>
+                  : null}
               </div>
-              {/* Product name */}
-              <input
-                value={productName}
-                onChange={e=>setProductName(e.target.value)}
-                placeholder="Product name"
-                style={{
-                  background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`,
-                  borderRadius:8, padding:'8px 12px', fontSize:13, color:C.t1,
-                  fontFamily:F, outline:'none', width:'100%', boxSizing:'border-box',
-                }}
-              />
-              {/* Type selector */}
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {(Object.keys(PRODUCT_TYPE_LABELS) as ProductType[]).map(type => (
-                  <button key={type}
-                    onClick={()=>setProductType(type)}
-                    style={{
-                      padding:'4px 10px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer', border:'1px solid',
-                      background: productType===type ? C.cyanD : 'transparent',
-                      borderColor: productType===type ? C.cyanB : C.border,
-                      color: productType===type ? C.cyan : C.t3,
-                      transition:'all 0.15s',
-                    }}
-                  >{PRODUCT_TYPE_LABELS[type]}</button>
-                ))}
-              </div>
-              {detectionNotes && (
-                <div style={{ fontSize:11, color:C.t3, lineHeight:1.5 }}>{detectionNotes}</div>
-              )}
+              <span style={{ fontSize:13, color: i <= analysisStep ? C.t1 : C.t4, fontWeight: i === analysisStep ? 600 : 400 }}>{step}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── CONFIGURE ───────────────────────────────────────────────────────
+  if (stage === 'configure') return (
+    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 28px', height:56, borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <button onClick={() => setStage('upload')} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border}`, color:C.t3, cursor:'pointer', fontSize:12 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            New upload
+          </button>
+          <span style={{ fontSize:14, fontWeight:600, color:C.t1 }}>{productName}</span>
+          <span style={{ fontSize:11, padding:'3px 8px', borderRadius:99, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{productType}</span>
+        </div>
+        <button
+          onClick={handleShoot}
+          disabled={selectedShots.length === 0 && selectedScenes.length === 0}
+          style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 20px', borderRadius:10, background:C.cyan, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', border:'none', opacity: (selectedShots.length === 0 && selectedScenes.length === 0) ? 0.4 : 1 }}
+        >
+          Shoot — {creditCost} credits
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'220px 1fr', overflow:'hidden' }}>
+        {/* Left — product preview + type */}
+        <div style={{ borderRight:`1px solid ${C.border}`, padding:20, display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
+          {cleanedUrl && (
+            <div style={{ borderRadius:12, overflow:'hidden', background:C.surface, border:`1px solid ${C.border}`, aspectRatio:'1' }}>
+              <img src={cleanedUrl} alt="Product" style={{ width:'100%', height:'100%', objectFit:'contain', padding:12 }}/>
             </div>
           )}
-
-          {/* Background Removal */}
-          {uploadedUrl && !cleanedUrl && (
-            <button
-              onClick={handleRemoveBg}
-              disabled={removingBg}
-              style={{
-                background: removingBg ? 'rgba(255,255,255,0.04)' : C.over,
-                border:`1px solid ${C.border}`, borderRadius:10, padding:'10px 16px',
-                display:'flex', alignItems:'center', gap:8, cursor: removingBg ? 'not-allowed' : 'pointer',
-                color: removingBg ? C.t4 : C.t2, fontSize:13, fontWeight:500,
-                transition:'all 0.15s',
-              }}
-            >
-              {removingBg ? (
-                <><LoadingDots/> Removing background… <span style={{ marginLeft:'auto', fontSize:11, color:C.t4 }}>2 cr</span></>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-                  </svg>
-                  Remove background
-                  <span style={{ marginLeft:'auto', fontSize:11, color:C.t4 }}>2 cr</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Output selection */}
-          {uploadedUrl && (
-            <div style={{
-              background:C.surface, border:`1px solid ${C.border}`,
-              borderRadius:10, padding:'16px',
-              display:'flex', flexDirection:'column', gap:12,
-            }}>
-              <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:C.t4 }}>
-                Output Type
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {([
-                  { id:'shots',     label:'Studio Shots',      desc:'White background · 4 angles', cost:'5 cr each' },
-                  { id:'lifestyle', label:'Lifestyle Scenes',   desc:'Styled environments',          cost:'5 cr each' },
-                  { id:'both',      label:'Both',               desc:'Shots + lifestyle scenes',      cost:'5 cr each' },
-                ] as { id:OutputMode; label:string; desc:string; cost:string }[]).map(o => (
-                  <button key={o.id}
-                    onClick={()=>setOutputMode(o.id)}
-                    style={{
-                      background: outputMode===o.id ? C.cyanD : 'transparent',
-                      border:`1px solid ${outputMode===o.id ? C.cyanB : C.borderS}`,
-                      borderRadius:8, padding:'10px 12px', cursor:'pointer',
-                      display:'flex', alignItems:'center', justifyContent:'space-between',
-                      transition:'all 0.15s',
-                    }}
-                  >
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:2 }}>
-                      <span style={{ fontSize:13, fontWeight:500, color: outputMode===o.id ? C.cyan : C.t1 }}>{o.label}</span>
-                      <span style={{ fontSize:11, color:C.t3 }}>{o.desc}</span>
-                    </div>
-                    <span style={{ fontSize:11, color: outputMode===o.id ? C.cyan : C.t4 }}>{o.cost}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Shot count */}
-              {(outputMode === 'shots' || outputMode === 'both') && (
-                <div>
-                  <div style={{ fontSize:11, color:C.t4, marginBottom:6 }}>Shots ({shotCount})</div>
-                  <div style={{ display:'flex', gap:6 }}>
-                    {[1,2,3,4].map(n => (
-                      <button key={n} onClick={()=>setShotCount(n)}
-                        style={{
-                          flex:1, padding:'6px 0', borderRadius:6, fontSize:12, fontWeight:600,
-                          cursor:'pointer', border:'1px solid',
-                          background: shotCount===n ? C.cyanD : 'transparent',
-                          borderColor: shotCount===n ? C.cyanB : C.border,
-                          color: shotCount===n ? C.cyan : C.t3,
-                        }}>{n}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Scene style (lifestyle/both) */}
-              {(outputMode === 'lifestyle' || outputMode === 'both') && (
-                <div>
-                  <div style={{ fontSize:11, color:C.t4, marginBottom:6 }}>Scene Style</div>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                    {SCENE_STYLES.map(s => (
-                      <button key={s.id} onClick={()=>setSceneStyle(s.id)}
-                        title={s.desc}
-                        style={{
-                          padding:'5px 10px', borderRadius:6, fontSize:11, fontWeight:600,
-                          cursor:'pointer', border:'1px solid',
-                          background: sceneStyle===s.id ? C.cyanD : 'transparent',
-                          borderColor: sceneStyle===s.id ? C.cyanB : C.border,
-                          color: sceneStyle===s.id ? C.cyan : C.t3,
-                          transition:'all 0.15s',
-                        }}>{s.label}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Credit summary + Generate */}
-          {uploadedUrl && (
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              <div style={{
-                background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                borderRadius:8, padding:'8px 12px',
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-              }}>
-                <span style={{ fontSize:12, color:C.t2 }}>Credits required</span>
-                <span style={{ fontSize:13, fontWeight:700, color:C.cyan }}>{creditCost} cr</span>
-              </div>
-
-              {error && (
-                <div style={{
-                  background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)',
-                  borderRadius:8, padding:'8px 12px', fontSize:12, color:'#EF4444',
-                }}>{error}</div>
-              )}
-
-              <button
-                onClick={handleGenerate}
-                disabled={generating || !workspaceId}
-                style={{
-                  background: generating ? 'rgba(255,255,255,0.06)' : C.t1,
-                  color: generating ? C.t3 : '#0C0C0C',
-                  border:'none', borderRadius:10, padding:'12px 20px',
-                  fontSize:14, fontWeight:700, cursor: generating ? 'not-allowed' : 'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                  transition:'all 0.2s', letterSpacing:'-0.01em',
-                }}
-              >
-                {generating ? (
-                  <><LoadingDots/> Generating…</>
-                ) : (
-                  <><SparkleIcon/> Generate</>
-                )}
+          <div>
+            <div style={{ fontSize:11, color:C.t4, marginBottom:8, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' }}>Output type</div>
+            {(['studio','lifestyle','both'] as OutputType[]).map(t => (
+              <button key={t} onClick={() => setOutputType(t)} style={{ display:'block', width:'100%', padding:'8px 12px', borderRadius:8, marginBottom:4, background: outputType === t ? C.cyan : 'transparent', border:`1px solid ${outputType === t ? C.cyan : C.border}`, color: outputType === t ? '#000' : C.t3, fontSize:12, fontWeight: outputType === t ? 700 : 400, cursor:'pointer', textAlign:'left', textTransform:'capitalize' }}>
+                {t === 'studio' ? 'Studio shots' : t === 'lifestyle' ? 'Lifestyle scenes' : 'Both'}
               </button>
-            </div>
-          )}
-
-          {/* Empty state hint */}
-          {!uploadedUrl && !uploading && (
-            <div style={{
-              background:C.surface, border:`1px solid ${C.borderS}`,
-              borderRadius:10, padding:'16px',
-              display:'flex', flexDirection:'column', gap:8,
-            }}>
-              <div style={{ fontSize:11, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:C.t4 }}>
-                How it works
-              </div>
-              {[
-                { icon:'①', text:'Upload your product photo' },
-                { icon:'②', text:'Remove background (optional)' },
-                { icon:'③', text:'Pick output type and style' },
-                { icon:'④', text:'Generate professional shots' },
-              ].map(step => (
-                <div key={step.icon} style={{ display:'flex', gap:10, alignItems:'center' }}>
-                  <span style={{ fontSize:14, color:C.cyan, width:18, flexShrink:0 }}>{step.icon}</span>
-                  <span style={{ fontSize:12, color:C.t2 }}>{step.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
-        {/* ── RIGHT PANEL ── */}
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-            {/* Tabs — always visible */}
-            <div style={{
-              display:'flex', gap:0,
-              borderBottom:`1px solid ${C.borderS}`, marginBottom:20,
-            }}>
-              {[
-                { id:'shots',     label:'Studio Shots', count:generatedShots.length },
-                { id:'lifestyle', label:'Lifestyle',    count:generatedLifestyle.length },
-                { id:'packaging', label:'Packaging',    count: pkgDesign ? 1 : 0 },
-              ].map(t => (
-                <button key={t.id}
-                  onClick={()=>setTab(t.id as any)}
-                  style={{
-                    padding:'10px 16px', background:'transparent', border:'none',
-                    borderBottom:`2px solid ${tab===t.id ? C.cyan : 'transparent'}`,
-                    fontSize:13, fontWeight: tab===t.id ? 600 : 400,
-                    color: tab===t.id ? C.t1 : C.t3,
-                    cursor:'pointer', marginBottom:'-1px',
-                    display:'flex', alignItems:'center', gap:6, fontFamily:F,
-                  }}
-                >
-                  {t.label}
-                  {t.count > 0 && (
-                    <span style={{
-                      background:C.cyanD, color:C.cyan,
-                      borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700,
-                    }}>{t.count}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Loading state (photos) */}
-            {generating && (
-              <div style={{
-                background:C.cyanD, border:`1px solid ${C.cyanB}`,
-                borderRadius:12, padding:'24px',
-                display:'flex', alignItems:'center', gap:12, marginBottom:20,
-              }}>
-                <LoadingDots/>
-                <div>
-                  <div style={{ fontSize:13, fontWeight:500, color:C.t1 }}>Generating your images…</div>
-                  <div style={{ fontSize:12, color:C.t3, marginTop:2 }}>This may take 30–60 seconds</div>
-                </div>
-              </div>
-            )}
-
-            {/* Shots tab */}
-            {tab === 'shots' && (
-              <div>
-                {generatedShots.length > 0 ? (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                    {generatedShots.map(shot => (
-                      <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                    ))}
-                  </div>
-                ) : (
-                  !generating && (
-                    <div style={{
-                      background:C.surface, border:`1px solid ${C.borderS}`,
-                      borderRadius:14, padding:'64px 32px',
-                      display:'flex', flexDirection:'column', alignItems:'center', gap:16, textAlign:'center',
-                    }}>
-                      <div style={{ color:C.t4 }}><ImageIcon/></div>
-                      <div>
-                        <div style={{ fontSize:16, fontWeight:600, color:C.t2, marginBottom:4 }}>Your shots will appear here</div>
-                        <div style={{ fontSize:13, color:C.t4 }}>Upload a product image and click Generate</div>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-
-            {/* Lifestyle tab */}
-            {tab === 'lifestyle' && (
-              <div>
-                {generatedLifestyle.length > 0 ? (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:12 }}>
-                    {generatedLifestyle.map(shot => (
-                      <ImageCard key={shot.id} url={shot.url} onDownload={()=>downloadImage(shot.url)} onSendToStudio={()=>sendToStudio(shot.url)} onRegenerate={handleGenerate} />
-                    ))}
-                  </div>
-                ) : (
-                  !generating && <EmptyTab label="No lifestyle shots yet" sub="Select 'Lifestyle Scenes' and generate" />
-                )}
-              </div>
-            )}
-
-            {/* Packaging tab — launch the standalone studio */}
-            {tab === 'packaging' && (
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, padding:'48px 24px' }}>
-                <div style={{
-                  maxWidth:480, width:'100%', textAlign:'center',
-                  padding:'48px 40px',
-                  background:'rgba(255,255,255,0.02)',
-                  border:`1px solid ${C.border}`,
-                  borderRadius:20,
-                }}>
-                  <div style={{ fontSize:48, marginBottom:24, lineHeight:1 }}>📦</div>
-                  <div style={{ fontSize:22, fontWeight:700, color:C.t1, marginBottom:10, letterSpacing:'-0.02em' }}>
-                    Packaging Studio
-                  </div>
-                  <div style={{ fontSize:14, color:C.t2, lineHeight:1.7, marginBottom:28 }}>
-                    Design professional packaging for your products. Choose from 14+ mockup types, generate brand-aligned designs with AI, or upload your own artwork.
-                  </div>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center', marginBottom:28 }}>
-                    {['3D real-time preview','AI brand design','Visual editor','Print-ready PDF','14+ templates'].map(f => (
-                      <span key={f} style={{
-                        fontSize:11, padding:'4px 10px', borderRadius:99,
-                        background:'rgba(255,255,255,0.06)', border:`1px solid ${C.border}`,
-                        color:C.t3,
-                      }}>{f}</span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => router.push('/dashboard/product-lab/packaging')}
-                    style={{
-                      padding:'14px 32px', borderRadius:12, fontSize:14, fontWeight:700,
-                      background:C.t1, color:'#0C0C0C', border:'none', cursor:'pointer',
-                      transition:'all 0.15s', display:'inline-flex', alignItems:'center', gap:8,
-                    }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.88)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background=C.t1}
-                  >
-                    Open Packaging Studio →
+        {/* Right — shot/scene selectors */}
+        <div style={{ overflowY:'auto', padding:24 }}>
+          {(outputType === 'studio' || outputType === 'both') && (
+            <div style={{ marginBottom:32 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Studio shots <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_studio} credits each</span></div>
+              <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Professional white-background photography from 6 angles</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:10 }}>
+                {SHOT_STYLES.map(s => (
+                  <button key={s.id} onClick={() => toggleShot(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedShots.includes(s.id) ? C.cyan : C.border}`, background: selectedShots.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
+                    <div style={{ fontSize:12, fontWeight:600, color: selectedShots.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
+                    <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
                   </button>
-                </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {(outputType === 'lifestyle' || outputType === 'both') && (
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.t1, marginBottom:4 }}>Lifestyle scenes <span style={{ fontFamily:MONO, fontSize:11, color:C.t4, fontWeight:400 }}>{CREDIT_COSTS.product_lifestyle} credits each</span></div>
+              <div style={{ fontSize:12, color:C.t4, marginBottom:16 }}>Your product in real-world editorial environments</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
+                {LIFESTYLE_SCENES.map(s => (
+                  <button key={s.id} onClick={() => toggleScene(s.id)} style={{ padding:'12px 14px', borderRadius:10, border:`1px solid ${selectedScenes.includes(s.id) ? C.cyan : C.border}`, background: selectedScenes.includes(s.id) ? C.cyanD : C.surface, cursor:'pointer', textAlign:'left' }}>
+                    <div style={{ fontSize:12, fontWeight:600, color: selectedScenes.includes(s.id) ? C.cyan : C.t2 }}>{s.label}</div>
+                    <div style={{ fontSize:11, color:C.t4, marginTop:2 }}>{s.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
-}
 
-function ImageCard({ url, onDownload, onSendToStudio, onRegenerate }: {
-  url: string
-  onDownload: () => void
-  onSendToStudio: () => void
-  onRegenerate: () => void
-}) {
-  const [hover, setHover] = useState(false)
-  const C2 = {
-    surface:'#141414', border:'rgba(255,255,255,0.10)',
-    over:'#1A1A1A', t2:'rgba(255,255,255,0.65)', t4:'rgba(255,255,255,0.20)',
-    cyan:'#00AAFF', cyanD:'rgba(0,170,255,0.12)', cyanB:'rgba(0,170,255,0.22)',
-  }
-  return (
-    <div
-      onMouseEnter={()=>setHover(true)}
-      onMouseLeave={()=>setHover(false)}
-      style={{
-        background: C2.surface, border:`1px solid ${hover ? 'rgba(255,255,255,0.16)' : C2.border}`,
-        borderRadius:12, overflow:'hidden', position:'relative',
-        transition:'border-color 0.15s',
-      }}
-    >
-      <img src={url} alt="Generated" style={{ width:'100%', aspectRatio:'1', objectFit:'cover', display:'block' }}/>
-      {hover && (
-        <div style={{
-          position:'absolute', inset:0, background:'rgba(0,0,0,0.55)',
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, padding:12,
-        }}>
-          {[
-            { icon:<DownloadIcon/>,  label:'Download',       fn: onDownload },
-            { icon:<SendIcon/>,      label:'Send to Studio', fn: onSendToStudio },
-            { icon:<RefreshIcon/>,   label:'Regenerate',     fn: onRegenerate },
-          ].map(btn => (
-            <button key={btn.label} onClick={btn.fn}
-              style={{
-                background:'rgba(255,255,255,0.10)', border:'1px solid rgba(255,255,255,0.16)',
-                borderRadius:8, padding:'7px 14px', width:'100%',
-                display:'flex', alignItems:'center', gap:6, justifyContent:'center',
-                color:'#fff', fontSize:12, fontWeight:500, cursor:'pointer',
-                fontFamily:"'Geist', -apple-system, sans-serif",
-              }}
-            >{btn.icon}{btn.label}</button>
+  // ── SHOOTING ────────────────────────────────────────────────────────
+  if (stage === 'shooting') return (
+    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:32 }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ fontSize:20, fontWeight:700, color:C.t1, marginBottom:8 }}>Shooting your product</div>
+        <div style={{ fontSize:13, color:C.t3 }}>AI is generating each photo — this may take 1–2 minutes</div>
+      </div>
+
+      {shootingTotal > 0 && (
+        <div style={{ width:360 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+            <span style={{ fontSize:12, color:C.t3 }}>Progress</span>
+            <span style={{ fontSize:12, color:C.t1, fontFamily:MONO }}>{shootingStep}/{shootingTotal}</span>
+          </div>
+          <div style={{ height:4, borderRadius:4, background:'rgba(255,255,255,0.08)' }}>
+            <div style={{ height:'100%', borderRadius:4, background:C.cyan, width:`${(shootingStep / shootingTotal) * 100}%`, transition:'width 0.5s ease' }}/>
+          </div>
+        </div>
+      )}
+
+      {/* Live preview grid */}
+      {assets.length > 0 && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 120px)', gap:8 }}>
+          {assets.map(a => (
+            <div key={a.id} style={{ borderRadius:10, overflow:'hidden', border:`1px solid ${C.border}`, aspectRatio:'1' }}>
+              <img src={a.url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            </div>
           ))}
         </div>
       )}
     </div>
   )
-}
 
-function EmptyTab({ label, sub }: { label: string; sub: string }) {
+  // ── GALLERY ─────────────────────────────────────────────────────────
   return (
-    <div style={{
-      background:'#141414', border:'1px solid rgba(255,255,255,0.06)',
-      borderRadius:12, padding:'48px 24px',
-      display:'flex', flexDirection:'column', alignItems:'center', gap:8, textAlign:'center',
-    }}>
-      <div style={{ fontSize:14, fontWeight:500, color:'rgba(255,255,255,0.35)' }}>{label}</div>
-      <div style={{ fontSize:12, color:'rgba(255,255,255,0.20)' }}>{sub}</div>
-    </div>
-  )
-}
-
-// ─── Packaging icons ───────────────────────────────────────────
-const PKG_ICONS: Record<string, JSX.Element> = {
-  bag:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
-  box:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
-  label:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
-  pouch:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><line x1="4" y1="11" x2="20" y2="11"/></svg>,
-  sleeve: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M2 14h20"/></svg>,
-}
-
-const PKG_LOADING_MSGS = [
-  'Mapping texture to geometry…',
-  'Calibrating studio lights…',
-  'Rendering 3D mockup…',
-  'Almost there…',
-]
-
-function Pkg3DLoading() {
-  const [msg, setMsg] = useState(PKG_LOADING_MSGS[0])
-  useEffect(() => {
-    let i = 0
-    const iv = setInterval(() => {
-      i = (i + 1) % PKG_LOADING_MSGS.length
-      setMsg(PKG_LOADING_MSGS[i])
-    }, 1400)
-    return () => clearInterval(iv)
-  }, [])
-  return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-      <LoadingDots/>
-      <div style={{ fontSize:13, color:C.t3 }}>{msg}</div>
-    </div>
-  )
-}
-
-// ─── Full packaging tab ────────────────────────────────────────
-function PackagingTab({
-  pkgType, setPkgType, pkgSizeId, setPkgSizeId,
-  pkgCustomW, setPkgCustomW, pkgCustomH, setPkgCustomH,
-  pkgGenerating, pkgDesign, setPkgDesign, pkgDesignId,
-  pkgExporting, pkgEditField, setPkgEditField,
-  pkgHistory, setPkgHistory, pkgSpecOpen, setPkgSpecOpen,
-  pkgError, pkgAutoRotate, setPkgAutoRotate,
-  pkgDlOpen, setPkgDlOpen, viewerRef,
-  onGenerate, onExportPDF, onDownloadPNG, onDownloadHiRes,
-}: {
-  pkgType: string; setPkgType: (t: string) => void
-  pkgSizeId: string; setPkgSizeId: (s: string) => void
-  pkgCustomW: number; setPkgCustomW: (n: number) => void
-  pkgCustomH: number; setPkgCustomH: (n: number) => void
-  pkgGenerating: boolean
-  pkgDesign: any; setPkgDesign: (d: any) => void
-  pkgDesignId: string | null
-  pkgExporting: boolean
-  pkgEditField: string | null; setPkgEditField: (f: string | null) => void
-  pkgHistory: any[]; setPkgHistory: (h: any[]) => void
-  pkgSpecOpen: boolean; setPkgSpecOpen: (o: boolean) => void
-  pkgError: string
-  pkgAutoRotate: boolean; setPkgAutoRotate: (v: boolean) => void
-  pkgDlOpen: boolean; setPkgDlOpen: (v: boolean) => void
-  viewerRef: React.RefObject<PackagingViewer3DHandle | null>
-  onGenerate: (isRegen?: boolean) => void
-  onExportPDF: () => void
-  onDownloadPNG: () => void
-  onDownloadHiRes: () => void
-}) {
-  const tmpl = getTemplate(pkgType)
-  const selectedSize = tmpl?.sizes.find(s => s.id === pkgSizeId)
-  const dims = selectedSize?.dims
-
-  const editableFields = [
-    { key:'bg_color',           label:'Background',   type:'color' },
-    { key:'text_color',         label:'Text',         type:'color' },
-    { key:'accent_color',       label:'Accent',       type:'color' },
-    { key:'brand_name_display', label:'Brand name',   type:'text'  },
-    { key:'tagline_display',    label:'Tagline',      type:'text'  },
-    { key:'main_copy',          label:'Main copy',    type:'textarea' },
-  ]
-
-  return (
-    <div style={{ display:'flex', gap:24 }}>
-      {/* ── LEFT CONTROLS ── */}
-      <div style={{ width:320, flexShrink:0, display:'flex', flexDirection:'column', gap:14 }}>
-
-        {/* Packaging type */}
-        <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px' }}>
-          <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:10 }}>
-            Packaging Type
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
-            {PACKAGING_TEMPLATES.map(t => (
-              <button key={t.id} onClick={()=>setPkgType(t.id)}
-                style={{
-                  background: pkgType===t.id ? 'rgba(0,170,255,0.08)' : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${pkgType===t.id ? 'rgba(0,170,255,0.22)' : 'rgba(255,255,255,0.07)'}`,
-                  borderRadius:10, padding:'12px 14px', cursor:'pointer',
-                  display:'flex', alignItems:'center', gap:8,
-                  color: pkgType===t.id ? '#00AAFF' : 'rgba(255,255,255,0.50)',
-                  fontSize:12, fontWeight: pkgType===t.id ? 600 : 400,
-                  transition:'all 0.14s', fontFamily:"'Geist', -apple-system, sans-serif",
-                  height:46,
-                }}
-              >
-                {PKG_ICONS[t.id]}
-                {t.name_en}
-              </button>
-            ))}
-          </div>
+    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:EN, display:'flex', flexDirection:'column', overflow:'hidden', height:'100vh' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 24px', height:52, borderBottom:`1px solid ${C.border}`, background:C.surface, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <button onClick={() => { setStage('upload'); setAssets([]); setSelected(null); setOriginalUrl(''); setCleanedUrl('') }}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border}`, color:C.t3, cursor:'pointer', fontSize:12 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            New shoot
+          </button>
+          <span style={{ fontSize:13, fontWeight:600, color:C.t1 }}>{productName}</span>
+          <span style={{ fontSize:11, color:C.t4, fontFamily:MONO }}>{assets.length} photos</span>
         </div>
-
-        {/* Size */}
-        <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px' }}>
-          <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)', marginBottom:8 }}>
-            Size
-          </div>
-          <div style={{ position:'relative' }}>
-            <select
-              value={pkgSizeId}
-              onChange={e => setPkgSizeId(e.target.value)}
-              style={{
-                width:'100%', padding:'10px 14px', borderRadius:9,
-                background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)',
-                color:'#FFFFFF', fontSize:13, fontFamily:"'Geist', -apple-system, sans-serif",
-                outline:'none', cursor:'pointer', appearance:'none',
-              }}
-            >
-              {tmpl?.sizes.map(s => (
-                <option key={s.id} value={s.id} style={{ background:'#1A1A1A' }}>{s.label_en}</option>
-              ))}
-            </select>
-            <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'rgba(255,255,255,0.35)' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </div>
-          </div>
-
-          {pkgSizeId === 'label_custom' && (
-            <div style={{ display:'flex', gap:8, marginTop:8 }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:4 }}>Width (mm)</div>
-                <input type="number" value={pkgCustomW} onChange={e=>setPkgCustomW(Number(e.target.value))}
-                  style={{ width:'100%', padding:'7px 10px', borderRadius:7, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:4 }}>Height (mm)</div>
-                <input type="number" value={pkgCustomH} onChange={e=>setPkgCustomH(Number(e.target.value))}
-                  style={{ width:'100%', padding:'7px 10px', borderRadius:7, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.10)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
-              </div>
-            </div>
-          )}
-
-          {dims && pkgSizeId !== 'label_custom' && (
-            <div style={{ marginTop:8, fontSize:11, color:'rgba(255,255,255,0.25)' }}>
-              {dims.width_mm}×{dims.height_mm}mm{dims.depth_mm ? `×${dims.depth_mm}mm` : ''} · Includes {dims.bleed_mm}mm bleed
-            </div>
-          )}
-        </div>
-
-        {/* Editable fields (when design exists) */}
-        {pkgDesign && (
-          <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', borderRadius:10, padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ fontSize:10, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:'rgba(255,255,255,0.25)' }}>
-              Brand Settings
-            </div>
-            {editableFields.map(f => (
-              <div key={f.key}>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.04em' }}>{f.label}</div>
-                {pkgEditField === f.key ? (
-                  f.type === 'textarea' ? (
-                    <textarea
-                      autoFocus
-                      defaultValue={pkgDesign[f.key] || ''}
-                      onBlur={e => { setPkgDesign({ ...pkgDesign, [f.key]: e.target.value }); setPkgEditField(null) }}
-                      style={{ width:'100%', padding:'6px 10px', borderRadius:7, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(0,170,255,0.30)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', resize:'none', rows:3, boxSizing:'border-box' as const } as React.CSSProperties}
-                      rows={3}
-                    />
-                  ) : f.type === 'color' ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <input type="color" value={pkgDesign[f.key] || '#000000'}
-                        onChange={e => setPkgDesign({ ...pkgDesign, [f.key]: e.target.value })}
-                        onBlur={() => setPkgEditField(null)}
-                        style={{ width:36, height:28, borderRadius:6, border:'none', cursor:'pointer', background:'none' }} />
-                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.60)', fontFamily:"'Geist Mono', monospace" }}>{pkgDesign[f.key]}</span>
-                    </div>
-                  ) : (
-                    <input autoFocus type="text" defaultValue={pkgDesign[f.key] || ''}
-                      onBlur={e => { setPkgDesign({ ...pkgDesign, [f.key]: e.target.value }); setPkgEditField(null) }}
-                      onKeyDown={e => { if (e.key === 'Enter') { setPkgDesign({ ...pkgDesign, [f.key]: (e.target as HTMLInputElement).value }); setPkgEditField(null) } }}
-                      style={{ width:'100%', padding:'6px 10px', borderRadius:7, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(0,170,255,0.30)', color:'#fff', fontSize:12, fontFamily:"'Geist', sans-serif", outline:'none', boxSizing:'border-box' as const }} />
-                  )
-                ) : (
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-                      {f.type === 'color' && (
-                        <div style={{ width:20, height:20, borderRadius:4, background: pkgDesign[f.key] || '#000', border:'1px solid rgba(255,255,255,0.15)', flexShrink:0 }}/>
-                      )}
-                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:180 }}>
-                        {pkgDesign[f.key] || '—'}
-                      </span>
-                    </div>
-                    <button onClick={()=>setPkgEditField(f.key)}
-                      style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.25)', padding:3, display:'flex', alignItems:'center', flexShrink:0 }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Error */}
-        {pkgError && (
-          <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#EF4444' }}>
-            {pkgError}
-          </div>
-        )}
-
-        {/* Credit info + action buttons */}
-        {!pkgDesign ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ background:'rgba(0,170,255,0.08)', border:'1px solid rgba(0,170,255,0.18)', borderRadius:8, padding:'8px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span style={{ fontSize:12, color:'rgba(255,255,255,0.65)' }}>Credits required</span>
-              <span style={{ fontSize:13, fontWeight:700, color:'#00AAFF' }}>{CREDIT_COSTS.packaging_generate} cr</span>
-            </div>
-            <button onClick={()=>onGenerate(false)} disabled={pkgGenerating}
-              style={{
-                background: pkgGenerating ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
-                color: pkgGenerating ? 'rgba(255,255,255,0.35)' : '#0C0C0C',
-                border:'none', borderRadius:10, padding:'12px 20px',
-                fontSize:14, fontWeight:700, cursor: pkgGenerating ? 'not-allowed' : 'pointer',
-                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                fontFamily:"'Geist', -apple-system, sans-serif",
-              }}
-            >
-              {pkgGenerating ? <><LoadingDots/> Generating…</> : <>✦ Generate packaging →</>}
-            </button>
-          </div>
-        ) : (
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={()=>onGenerate(true)} disabled={pkgGenerating}
-              style={{
-                flex:1, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)',
-                borderRadius:10, padding:'10px 14px', fontSize:12, fontWeight:600, cursor:'pointer',
-                color: pkgGenerating ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.70)',
-                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-                fontFamily:"'Geist', -apple-system, sans-serif",
-              }}
-            >
-              {pkgGenerating ? <LoadingDots/> : '↺'} Regenerate
-              <span style={{ fontSize:10, color:'rgba(255,255,255,0.30)' }}>5 cr</span>
-            </button>
-            <button onClick={onExportPDF} disabled={pkgExporting}
-              style={{
-                flex:1, background:'rgba(0,170,255,0.10)', border:'1px solid rgba(0,170,255,0.22)',
-                borderRadius:10, padding:'10px 14px', fontSize:12, fontWeight:700, cursor:'pointer',
-                color: pkgExporting ? 'rgba(0,170,255,0.40)' : '#00AAFF',
-                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-                fontFamily:"'Geist', -apple-system, sans-serif",
-              }}
-            >
-              {pkgExporting ? <LoadingDots/> : '↓'} Export PDF →
-            </button>
-          </div>
-        )}
+        <button onClick={() => setStage('configure')} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          More shots
+        </button>
       </div>
 
-      {/* ── RIGHT PANEL: 3D VIEWER ── */}
-      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:12 }}>
-
-        {/* Viewer container */}
-        <div style={{
-          background:'#0C0C0C', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14,
-          overflow:'hidden', position:'relative',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          minHeight:360,
-        }}>
-          {!pkgDesign && !pkgGenerating ? (
-            <div style={{ padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center' }}>
-              <div style={{ color:'rgba(255,255,255,0.15)' }}>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                </svg>
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 320px', overflow:'hidden' }}>
+        {/* Masonry grid */}
+        <div style={{ overflowY:'auto', padding:20 }}>
+          <div style={{ columns:'3', columnGap:12 }}>
+            {assets.map(a => (
+              <div key={a.id} onClick={() => setSelected(a)}
+                style={{ marginBottom:12, borderRadius:12, overflow:'hidden', cursor:'pointer', border:`1px solid ${selected?.id === a.id ? C.cyan : C.border}`, transition:'all 0.15s', breakInside:'avoid', boxShadow: selected?.id === a.id ? `0 0 0 2px ${C.cyan}` : 'none' }}>
+                <img src={a.url} alt="" style={{ width:'100%', display:'block' }}/>
+                <div style={{ padding:'6px 10px', background:C.surface, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:10, color:C.t4, textTransform:'capitalize' }}>{a.label || a.type}</span>
+                  <button onClick={e => { e.stopPropagation(); downloadAsset(a) }} style={{ background:'transparent', border:'none', color:C.t4, cursor:'pointer', padding:2 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize:14, color:'rgba(255,255,255,0.30)' }}>Configure packaging and generate your design</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.18)' }}>3D mockup will render here</div>
-            </div>
-          ) : pkgGenerating ? (
-            <div style={{ padding:'40px 32px' }}>
-              <Pkg3DLoading/>
-            </div>
-          ) : (
-            <PackagingViewer3D
-              ref={viewerRef as any}
-              design={pkgDesign}
-              packagingType={pkgType as any}
-              autoRotate={pkgAutoRotate}
-              width={520}
-              height={380}
-            />
-          )}
+            ))}
+          </div>
+        </div>
 
-          {/* Viewer controls overlay */}
-          {pkgDesign && !pkgGenerating && (
-            <div style={{
-              position:'absolute', bottom:10, right:10,
-              display:'flex', gap:6,
-            }}>
-              {/* Auto-rotate toggle */}
-              <button
-                onClick={()=>setPkgAutoRotate(!pkgAutoRotate)}
-                title={pkgAutoRotate ? 'Pause rotation' : 'Start rotation'}
-                style={{
-                  background:'rgba(0,0,0,0.60)', border:'1px solid rgba(255,255,255,0.14)',
-                  borderRadius:7, padding:'5px 8px', cursor:'pointer',
-                  fontSize:11, color: pkgAutoRotate ? C.cyan : C.t3,
-                  display:'flex', alignItems:'center', gap:4,
-                  fontFamily: F,
-                }}
-              >
-                {pkgAutoRotate ? '⏸' : '▶'} {pkgAutoRotate ? 'Stop' : 'Rotate'}
-              </button>
-
-              {/* Download dropdown */}
-              <div style={{ position:'relative' }}>
-                <button
-                  onClick={()=>setPkgDlOpen(!pkgDlOpen)}
-                  style={{
-                    background:'rgba(0,170,255,0.18)', border:'1px solid rgba(0,170,255,0.35)',
-                    borderRadius:7, padding:'5px 10px', cursor:'pointer',
-                    fontSize:11, fontWeight:600, color:C.cyan,
-                    display:'flex', alignItems:'center', gap:5,
-                    fontFamily: F,
-                  }}
-                >
-                  <DownloadIcon/> Export ▾
+        {/* Detail panel */}
+        <div style={{ borderLeft:`1px solid ${C.border}`, display:'flex', flexDirection:'column', overflow:'hidden', background:C.surface }}>
+          {selected ? (
+            <>
+              <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+                <img src={selected.url} alt="" style={{ width:'100%', borderRadius:12, marginBottom:16, border:`1px solid ${C.border}` }}/>
+                <div style={{ fontSize:12, fontWeight:700, color:C.t2, marginBottom:4 }}>{selected.label || selected.type}</div>
+                <div style={{ fontSize:11, color:C.t4, marginBottom:16 }}>{selected.style || selected.scene || selected.type}</div>
+                <button onClick={() => downloadAsset(selected)} style={{ width:'100%', padding:'9px 0', borderRadius:10, background:C.cyanD, border:`1px solid rgba(0,170,255,0.20)`, color:C.cyan, fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download
                 </button>
-                {pkgDlOpen && (
-                  <div style={{
-                    position:'absolute', bottom:'calc(100% + 6px)', right:0,
-                    background:'#1A1A1A', border:`1px solid ${C.border}`,
-                    borderRadius:9, padding:6, minWidth:170, zIndex:50,
-                    display:'flex', flexDirection:'column', gap:2,
-                  }}>
-                    {[
-                      { label:'3D PNG (screen)',    fn:()=>{ onDownloadPNG(); setPkgDlOpen(false) } },
-                      { label:'4K Print-ready PNG', fn:()=>{ onDownloadHiRes(); setPkgDlOpen(false) } },
-                      { label:'PDF Dieline',        fn:()=>{ onExportPDF(); setPkgDlOpen(false) } },
-                    ].map(item => (
-                      <button key={item.label} onClick={item.fn}
-                        style={{
-                          background:'transparent', border:'none', cursor:'pointer',
-                          padding:'8px 10px', borderRadius:6, textAlign:'left',
-                          fontSize:12, color:C.t2, fontFamily:F,
-                          transition:'background 0.12s',
-                        }}
-                        onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.06)')}
-                        onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
-                      >{item.label}</button>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
-          )}
 
-          {/* Drag hint */}
-          {pkgDesign && !pkgGenerating && (
-            <div style={{
-              position:'absolute', bottom:10, left:10,
-              fontSize:10, color:'rgba(255,255,255,0.20)',
-              pointerEvents:'none',
-            }}>
-              Drag to rotate · Click Export to download
+              {/* Art direction */}
+              <div style={{ borderTop:`1px solid ${C.border}`, padding:16 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.t3, marginBottom:10, letterSpacing:'0.08em', textTransform:'uppercase' }}>Art direction — {CREDIT_COSTS.product_edit} credits</div>
+                <textarea
+                  value={editPrompt}
+                  onChange={e => setEditPrompt(e.target.value)}
+                  placeholder="Change the background to a dark marble surface with gold accents..."
+                  style={{ width:'100%', minHeight:80, padding:'10px 12px', borderRadius:10, background:C.over, border:`1px solid ${C.border}`, color:C.t1, fontSize:12, fontFamily:EN, resize:'none', outline:'none', boxSizing:'border-box' }}
+                />
+                <button
+                  onClick={handleEdit}
+                  disabled={!editPrompt.trim() || editing}
+                  style={{ marginTop:8, width:'100%', padding:'9px 0', borderRadius:10, background:editing ? 'rgba(255,255,255,0.06)' : C.cyan, color: editing ? C.t4 : '#000', fontSize:12, fontWeight:700, cursor: editing ? 'not-allowed' : 'pointer', border:'none', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  {editing ? <><div className="nexa-spinner" style={{ width:12, height:12, borderWidth:2, borderTopColor:'currentColor' }}/> Editing...</> : 'Apply edit'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:C.t4, fontSize:13 }}>
+              Select a photo to preview
             </div>
           )}
         </div>
-
-        {/* Design spec card */}
-        {pkgDesign && (
-          <div style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, overflow:'hidden' }}>
-            <button onClick={()=>setPkgSpecOpen(!pkgSpecOpen)}
-              style={{
-                width:'100%', padding:'12px 16px', background:'none', border:'none', cursor:'pointer',
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-                fontFamily:F,
-              }}>
-              <span style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.55)' }}>Design specifications</span>
-              <span style={{ fontSize:12, color:'rgba(255,255,255,0.30)' }}>{pkgSpecOpen ? '↑' : '↓'}</span>
-            </button>
-            {pkgSpecOpen && (
-              <div style={{ padding:'0 16px 14px', display:'flex', flexDirection:'column', gap:5 }}>
-                {[
-                  ['Style',       pkgDesign.design_style],
-                  ['Layout',      pkgDesign.layout],
-                  ['Font weight', pkgDesign.font_weight],
-                  ['Elements',    (pkgDesign.special_elements || []).join(', ')],
-                  ['Secondary',   pkgDesign.secondary_copy],
-                  ['Dimensions',  pkgDesign.dims ? `${pkgDesign.dims.width_mm}×${pkgDesign.dims.height_mm}mm${pkgDesign.dims.depth_mm ? `×${pkgDesign.dims.depth_mm}mm` : ''} +${pkgDesign.dims.bleed_mm||3}mm bleed` : null],
-                ].filter(([,v])=>v).map(([k,v]) => (
-                  <div key={k as string} style={{ display:'flex', gap:8, fontSize:12 }}>
-                    <span style={{ color:'rgba(255,255,255,0.30)', width:90, flexShrink:0 }}>{k}</span>
-                    <span style={{ color:'rgba(255,255,255,0.65)' }}>{v}</span>
-                  </div>
-                ))}
-                {pkgDesign.print_notes && (
-                  <div style={{ marginTop:4, fontSize:11, color:'rgba(255,255,255,0.30)', fontStyle:'italic' }}>{pkgDesign.print_notes}</div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* History row */}
-        {pkgHistory.length > 1 && (
-          <div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginBottom:8 }}>Previous designs</div>
-            <div style={{ display:'flex', gap:8 }}>
-              {pkgHistory.slice(1, 5).map((h, i) => (
-                <button key={i} onClick={()=>setPkgDesign(h)}
-                  title={h.brand_name_display || 'Design'}
-                  style={{
-                    width:60, height:60, borderRadius:8, cursor:'pointer',
-                    background: h.bg_color || '#1A1A1A',
-                    border:'1px solid rgba(255,255,255,0.12)',
-                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
-                    overflow:'hidden', padding:4,
-                  }}
-                >
-                  <div style={{ fontSize:8, color: h.text_color || '#fff', fontWeight:700, textAlign:'center', overflow:'hidden', maxWidth:52 }}>
-                    {(h.brand_name_display || 'Brand').slice(0, 8)}
-                  </div>
-                  {h.accent_color && (
-                    <div style={{ width:20, height:3, borderRadius:2, background: h.accent_color }} />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

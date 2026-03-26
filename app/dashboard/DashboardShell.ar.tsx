@@ -70,7 +70,7 @@ const NAV = [
   { id:'insights',     href:'/dashboard/insights',     icon:'insights',     label:'الإنسايتس',    desc:'إيش يشتغل'             },
   { id:'lead-page',    href:'/dashboard/lead-page',    icon:'leadpage',     label:'صفحة العملاء', desc:'اصطد العملاء'          },
   { id:'agency',       href:'/dashboard/agency',       icon:'agency',       label:'الوكالة',      desc:'مساحات العملاء'        },
-  { id:'product-lab',  href:'/dashboard/product-lab',  icon:'lab',          label:'مختبر المنتج', desc:'تصوير المنتجات'        },
+  { id:'product-lab',  href:'/dashboard/product-lab',  icon:'lab',          label:'مختبر المنتج', desc:'تصوير المنتجات بالذكاء الاصطناعي' },
 ]
 
 const SEARCH_PAGES = [
@@ -85,7 +85,7 @@ const SEARCH_PAGES = [
   { label:'الإنسايتس',    href:'/dashboard/insights',     desc:'إيش يشتغل'          },
   { label:'صفحة العملاء', href:'/dashboard/lead-page',    desc:'اصطد العملاء'       },
   { label:'الوكالة',      href:'/dashboard/agency',       desc:'مساحات العملاء'     },
-  { label:'مختبر المنتج', href:'/dashboard/product-lab',  desc:'تصوير المنتجات'     },
+  { label:'مختبر المنتج', href:'/dashboard/product-lab',  desc:'تصوير المنتجات بالذكاء الاصطناعي' },
   { label:'الإعدادات',    href:'/dashboard/settings',     desc:'حسابك وفواتيرك'     },
 ]
 

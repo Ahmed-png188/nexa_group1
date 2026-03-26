@@ -69,11 +69,11 @@ export async function POST(request: NextRequest) {
     if (deny) return deny
 
     const shotCount = Math.min(Math.max(Number(count) || 4, 1), 4)
-    const totalCredits = CREDIT_COSTS.product_shot * shotCount
+    const totalCredits = CREDIT_COSTS.product_studio * shotCount
 
     const { ok, error: creditErr } = await checkCredits(
       workspace_id, user.id, totalCredits,
-      'product_shots', `Product shots x${shotCount}`
+      'product_studios', `Product shots x${shotCount}`
     )
     if (!ok) return creditErr!
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
           asset_type: 'shot',
           url: permanentUrl || url,
           prompt,
-          credits_used: CREDIT_COSTS.product_shot,
+          credits_used: CREDIT_COSTS.product_studio,
           metadata: { product_type, shot_index: i },
         }).select('id, url').single()
 
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
         console.error(`[product-lab/generate-shots] shot ${i} failed:`, err)
         await supabase.rpc('deduct_credits', {
           p_workspace_id:  workspace_id,
-          p_amount:        -CREDIT_COSTS.product_shot,
-          p_action:        'product_shot_refund',
+          p_amount:        -CREDIT_COSTS.product_studio,
+          p_action:        'product_studio_refund',
           p_user_id:       user.id,
           p_description:   `Refund: product shot ${i + 1} failed`,
         })

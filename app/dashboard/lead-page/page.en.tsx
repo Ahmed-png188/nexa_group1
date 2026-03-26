@@ -40,9 +40,9 @@ interface LeadPageConfig {
   sequenceId:    string
 }
 
+/* ─── Themes ─── */
 const F_DEFAULT = "'Geist', -apple-system, sans-serif"
 
-/* ─── Themes ─── */
 const THEMES: Record<string,{bg:string;surface:string;border:string;text1:string;text2:string;text3:string;label:string}> = {
   dark:     {bg:'#0C0C0C',surface:'#141414',border:'rgba(255,255,255,0.10)',text1:'#FFFFFF', text2:'rgba(255,255,255,0.72)',text3:'rgba(255,255,255,0.40)',label:'Dark'    },
   black:    {bg:'#000000',surface:'#0a0a0a',border:'rgba(255,255,255,0.08)',text1:'#FFFFFF', text2:'rgba(255,255,255,0.65)',text3:'rgba(255,255,255,0.35)',label:'Black'   },
@@ -82,10 +82,12 @@ const DEFAULT_FIELDS: FormField[] = [
 /* ─── Live Preview ─── */
 function LivePreview({cfg,brandName}:{cfg:LeadPageConfig;brandName:string}) {
   const t = THEMES[cfg.theme]||THEMES.dark
-  const f = FONTS[cfg.font]?.family||FONTS.geist.family
+  const isPreviewAr = cfg.formLang === 'ar'
+  const f = isPreviewAr ? "'Tajawal', system-ui, sans-serif" : (FONTS[cfg.font]?.family||FONTS.geist.family)
   const a = cfg.accent||'#00AAFF'
   const isLight = ['light','warm'].includes(cfg.theme)
   const initial = brandName[0]?.toUpperCase()||'N'
+  const dir = isPreviewAr ? 'rtl' : 'ltr'
 
   const btnBg    = cfg.buttonStyle==='filled'?a:cfg.buttonStyle==='soft'?`${a}20`:'transparent'
   const btnColor = cfg.buttonStyle==='filled'?(isLight?'#fff':'#000'):a
@@ -96,19 +98,20 @@ function LivePreview({cfg,brandName}:{cfg:LeadPageConfig;brandName:string}) {
     background: isLight?'rgba(0,0,0,0.05)':'rgba(255,255,255,0.07)',
     border:`1px solid ${t.border}`, borderRadius:8,
     color:t.text3, fontSize:12, fontFamily:f, boxSizing:'border-box',
+    textAlign: isPreviewAr ? 'right' : 'left', direction: dir,
   }
 
   function renderField(field:FormField) {
     if (field.type==='textarea') return <div style={{...inpBase,minHeight:56,lineHeight:1.5}}>{field.placeholder||''}</div>
     if (field.type==='select') return (
       <div style={{...inpBase,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span>{field.placeholder||'Select…'}</span><span style={{opacity:0.4,fontSize:10}}>▾</span>
+        <span>{isPreviewAr ? 'اختر…' : (field.placeholder||'Select…')}</span><span style={{opacity:0.4,fontSize:10}}>▾</span>
       </div>
     )
     if (field.type==='radio'||field.type==='multiselect') return (
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {(field.options||['Option 1','Option 2']).slice(0,3).map((o,i)=>(
-          <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:t.text2}}>
+          <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:t.text2,flexDirection:isPreviewAr?'row-reverse':'row'}}>
             <div style={{width:15,height:15,borderRadius:field.type==='radio'?'50%':4,border:`1.5px solid ${t.border}`,flexShrink:0,background:'transparent'}}/>
             {o}
           </div>
@@ -116,7 +119,7 @@ function LivePreview({cfg,brandName}:{cfg:LeadPageConfig;brandName:string}) {
       </div>
     )
     if (field.type==='checkbox') return (
-      <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:t.text2}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:t.text2,flexDirection:isPreviewAr?'row-reverse':'row'}}>
         <div style={{width:15,height:15,borderRadius:4,border:`1.5px solid ${t.border}`,flexShrink:0}}/>
         <span>{field.label}</span>
       </div>
@@ -125,7 +128,7 @@ function LivePreview({cfg,brandName}:{cfg:LeadPageConfig;brandName:string}) {
   }
 
   return (
-    <div style={{
+    <div dir={dir} style={{
       width:'100%', height:'100%',
       background:t.bg, fontFamily:f,
       overflowY:'auto', overflowX:'hidden',
@@ -170,7 +173,7 @@ function LivePreview({cfg,brandName}:{cfg:LeadPageConfig;brandName:string}) {
             {cfg.fields.map(field=>(
               <div key={field.id}>
                 {field.type!=='checkbox'&&(
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase' as const,color:t.text3,marginBottom:5,lineHeight:1,textAlign:'left' as const}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:isPreviewAr?0:'0.07em',textTransform:'uppercase' as const,color:t.text3,marginBottom:5,lineHeight:1,textAlign:isPreviewAr?'right':'left' as const}}>
                     {field.label}{field.required&&<span style={{color:a,marginLeft:2}}>*</span>}
                   </div>
                 )}

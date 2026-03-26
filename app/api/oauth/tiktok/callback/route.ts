@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,11 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.redirect(`${appUrl}/dashboard/schedule?tab=platforms&error=invalid_state`)
   }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.redirect(`${appUrl}/auth/login`)
+  const deny = await guardWorkspace(supabase, state.workspace_id, user.id)
+  if (deny) return NextResponse.redirect(`${appUrl}/dashboard/schedule?tab=platforms&error=unauthorized`)
 
   const clientKey = process.env.TIKTOK_CLIENT_KEY!
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET!

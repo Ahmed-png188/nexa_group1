@@ -21,9 +21,10 @@ const Ic = {
 
 /* ─── Avatar ─── */
 function Avatar({ name, size=40 }: { name:string; size?:number }) {
-  const initials = name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()||'C'
+  const safeName = name || 'Client'
+  const initials = safeName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()||'C'
   const colors = ['#4D9FFF','#A78BFA','#34D399','#FF7A40','#FFB547','#FF5757','#38BFFF','#F472B6']
-  const color = colors[name.charCodeAt(0) % colors.length]
+  const color = colors[safeName.charCodeAt(0) % colors.length]
   return (
     <div style={{ width:size, height:size, borderRadius:Math.round(size*0.3), background:`linear-gradient(135deg, ${color}, ${color}99)`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Geist', -apple-system, sans-serif", fontSize:Math.round(size*0.38), fontWeight:800, color:'#fff', flexShrink:0, boxShadow:`0 4px 12px ${color}30` }}>
       {initials}

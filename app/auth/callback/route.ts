@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         .select('workspace_id')
         .eq('user_id', data.user.id)
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (membership?.workspace_id) {
         return NextResponse.redirect(`${origin}/dashboard`)

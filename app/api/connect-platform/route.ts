@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic'
+import { createNotification } from '@/lib/notifications'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { checkPlanAccess } from '@/lib/plan-gate'
 import { createClient } from '@/lib/supabase/server'
+import { guardWorkspace } from '@/lib/workspace-guard'
 
 
 // Platform OAuth config
@@ -31,14 +33,18 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    // Plan gate
-    const _planErr = await checkPlanAccess(workspace_id, 'schedule')
-    if (_planErr) return _planErr
-
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
     const workspace_id = searchParams.get('workspace_id')
+    if (!workspace_id) return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
+
+    // Plan gate
+    const _planErr = await checkPlanAccess(workspace_id, 'schedule')
+    if (_planErr) return _planErr
 
     const { data: connections } = await supabase
       .from('connected_platforms')
@@ -81,6 +87,13 @@ export async function POST(request: NextRequest) {
       title: `${PLATFORM_CONFIG[platform]?.name ?? platform} connected`,
     })
 
+    await createNotification({
+      workspace_id,
+      type: 'platform_connected',
+      message: `${PLATFORM_CONFIG[platform]?.name ?? platform} connected — you can now schedule and publish directly from Nexa.`,
+      link: '/dashboard/schedule',
+    })
+
     return NextResponse.json({ success: true })
 
   } catch (error: unknown) {
@@ -96,6 +109,9 @@ export async function DELETE(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { workspace_id, platform } = await request.json()
+
+    const deny = await guardWorkspace(supabase, workspace_id, user.id)
+    if (deny) return deny
 
     await supabase.from('connected_platforms')
       .update({ is_active: false })

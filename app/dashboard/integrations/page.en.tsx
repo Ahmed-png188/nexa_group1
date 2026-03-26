@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 type Category = 'all' | 'publishing' | 'productivity' | 'automation' | 'crm' | 'analytics' | 'communication'
 
 const F_DEFAULT = "'Geist', -apple-system, sans-serif"
-const F = F_DEFAULT
 const MONO = "'Geist Mono', monospace"
 
 const INTEGRATIONS = [
@@ -53,7 +52,7 @@ function IntegrationLogo({ id, name, color }: { id: string; name: string; color:
     make:             <div style={{ width:40, height:40, borderRadius:'10px', background:'#A855F7', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="white" strokeWidth="1.5"/><path d="M9 12h6M12 9v6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></div>,
     zapier:           <div style={{ width:40, height:40, borderRadius:'10px', background:'#FF4A00', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13.5 2L3 13h7.5L9 22l12-11h-7.5L13.5 2z" fill="white"/></svg></div>,
   }
-  return <>{logos[id] || <div style={{ width:40, height:40, borderRadius:'10px', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:700, color, fontFamily:F }}>{name[0]}</div>}</>
+  return <>{logos[id] || <div style={{ width:40, height:40, borderRadius:'10px', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:700, color, fontFamily:F_DEFAULT }}>{name[0]}</div>}</>
 }
 
 export default function IntegrationsPage() {

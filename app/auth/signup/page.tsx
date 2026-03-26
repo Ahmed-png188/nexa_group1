@@ -2,10 +2,11 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { auth as authCopy, t } from '@/content/copy'
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState('')
@@ -15,61 +16,81 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [lang, setLang] = useState<'en'|'ar'>('en')
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexa_lang')
+      if (stored === 'ar' || stored === 'en') setLang(stored)
+    } catch {}
+  }, [])
+
+  const isArabic = lang === 'ar'
+  const c = t(authCopy, lang)
+  const AR = "'Tajawal', system-ui, sans-serif"
+  const EN = "'Geist', -apple-system, sans-serif"
+  const font = isArabic ? AR : EN
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px', fontSize: 14,
+    fontFamily: font,
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 10, color: '#fff', outline: 'none',
+    transition: 'border-color 0.18s', boxSizing: 'border-box',
+    direction: isArabic ? 'rtl' : 'ltr',
+    textAlign: isArabic ? 'right' : 'left',
+  }
 
   async function handleGoogleSignup() {
     setGoogleLoading(true)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://nexaa.cc/auth/callback' },
+      options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'}/auth/callback` },
     })
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-
+    setLoading(true); setError(null)
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: {
         data: { full_name: fullName },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+    if (error) { setError(c.error_signup); setLoading(false); return }
+    setSuccess(true); setLoading(false)
+  }
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
-    }
-
-    setSuccess(true)
-    setLoading(false)
+  const cardStyle: React.CSSProperties = {
+    width: '100%', maxWidth: 420,
+    background: '#141414',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 18, padding: '36px 32px',
+    position: 'relative', zIndex: 1,
+    backdropFilter: 'blur(20px)',
+    direction: isArabic ? 'rtl' : 'ltr',
+    fontFamily: font,
   }
 
   if (success) {
     return (
       <div style={cardStyle}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 48, height: 48,
-            borderRadius: 12,
-            background: 'rgba(0,214,143,0.1)',
-            border: '1px solid rgba(0,214,143,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
-            fontSize: 22,
-          }}>✓</div>
-          <h2 style={{ ...headingStyle, marginBottom: 10 }}>Check your email</h2>
-          <p style={{ color: 'var(--t4)', fontSize: 14, lineHeight: 1.65 }}>
-            We sent a confirmation link to <strong style={{ color: 'var(--t2)' }}>{email}</strong>.
-            Click it to activate your account.
+          <div style={{ width:48, height:48, borderRadius:12, background:'rgba(34,197,94,0.10)', border:'1px solid rgba(34,197,94,0.25)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', fontSize:22 }}>✓</div>
+          <h2 style={{ fontSize:20, fontWeight:800, color:'#fff', marginBottom:10, fontFamily:font }}>{isArabic ? 'راجع إيميلك' : 'Check your email'}</h2>
+          <p style={{ color:'rgba(255,255,255,0.40)', fontSize:14, lineHeight:1.65, fontFamily:font }}>
+            {isArabic
+              ? <>{`أرسلنا رابط التأكيد لـ `}<strong style={{ color:'rgba(255,255,255,0.80)' }}>{email}</strong>{`. اضغط عليه لتفعيل حسابك.`}</>
+              : <>We sent a confirmation link to <strong style={{ color:'rgba(255,255,255,0.80)' }}>{email}</strong>. Click it to activate your account.</>
+            }
           </p>
-          <p style={{ color: 'var(--t5)', fontSize: 12, marginTop: 16 }}>
-            Check your spam folder if you don&apos;t see it.
+          <p style={{ color:'rgba(255,255,255,0.25)', fontSize:12, marginTop:16, fontFamily:font }}>
+            {isArabic ? 'ما لقيت الإيميل؟ تحقق من مجلد الجانك.' : "Check your spam folder if you don't see it."}
           </p>
         </div>
       </div>
@@ -78,212 +99,107 @@ export default function SignupPage() {
 
   return (
     <div style={cardStyle}>
-      {/* Logo + wordmark */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28, justifyContent: 'center' }}>
-        <img src="/favicon.png" alt="Nexa" style={{
-          width: 28, height: 28, borderRadius: 7, objectFit: 'cover',
-        }}/>
-        <span style={{ fontFamily: 'var(--display)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Nexa
-        </span>
+      {/* Logo */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:28, justifyContent:'center' }}>
+        <img src="/favicon.png" alt="Nexa" style={{ width:28, height:28, borderRadius:7, objectFit:'cover' }}/>
+        <span style={{ fontFamily: isArabic ? AR : "'Geist',sans-serif", fontSize:16, fontWeight:700, letterSpacing:'-0.02em', color:'#fff' }}>Nexa</span>
       </div>
 
-      <h1 style={{ ...headingStyle, marginBottom: 6 }}>Create your account</h1>
-      <p style={{ color: 'var(--t4)', fontSize: 14, textAlign: 'center', marginBottom: 28 }}>
-        14-day free trial · No credit card required
+      {/* Free trial badge */}
+      <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#00AAFF', padding:'4px 12px', borderRadius:100, background:'rgba(0,170,255,0.10)', border:'1px solid rgba(0,170,255,0.22)', letterSpacing: isArabic ? 0 : '0.04em', fontFamily:font }}>
+          {c.free_trial_badge}
+        </div>
+      </div>
+
+      <h1 style={{ fontSize:22, fontWeight:800, color:'#fff', textAlign:'center', marginBottom:6, fontFamily:font, letterSpacing: isArabic ? 0 : '-0.03em' }}>
+        {c.signup_heading}
+      </h1>
+      <p style={{ color:'rgba(255,255,255,0.40)', fontSize:14, textAlign:'center', marginBottom:28, fontFamily:font }}>
+        {c.signup_sub}
       </p>
 
-      {/* Google OAuth */}
-      <button
-        type="button"
-        onClick={handleGoogleSignup}
-        disabled={googleLoading}
-        style={{ ...googleBtnStyle, opacity: googleLoading ? 0.7 : 1, cursor: googleLoading ? 'not-allowed' : 'pointer', marginBottom: 18 }}
-      >
-        {googleLoading ? 'Redirecting…' : (
-          <><GoogleIcon />Continue with Google</>
-        )}
+      {/* Google */}
+      <button type="button" onClick={handleGoogleSignup} disabled={googleLoading}
+        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:10, padding:'11px 16px', fontSize:14, fontWeight:600, fontFamily:font, background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.82)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:10, cursor: googleLoading ? 'not-allowed' : 'pointer', opacity: googleLoading ? 0.7 : 1, marginBottom:18 }}>
+        {googleLoading ? (isArabic ? '...تحويل' : 'Redirecting…') : (<><GoogleIcon />{isArabic ? 'التسجيل بـ Google' : 'Continue with Google'}</>)}
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--line2)' }} />
-        <span style={{ fontSize: 11, color: 'var(--t5)', fontWeight: 500, whiteSpace: 'nowrap' }}>or continue with</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--line2)' }} />
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+        <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }}/>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.28)', fontWeight:500, whiteSpace:'nowrap', fontFamily:font }}>
+          {isArabic ? 'أو تابع بـ' : 'or continue with'}
+        </span>
+        <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.10)' }}/>
       </div>
 
-      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
         <div>
-          <label style={labelStyle}>Full name</label>
-          <input
-            type="text"
-            placeholder="Ahmed Al-Rashidi"
-            value={fullName}
-            onChange={e => setFullName(e.target.value)}
-            required
-            style={inputStyle}
-            onFocus={e => (e.target.style.borderColor = 'var(--cyan-line)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-          />
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.40)', marginBottom:7, fontFamily:font }}>{c.name_label}</label>
+          <input type="text" placeholder={isArabic ? 'اسمك الكامل' : 'Ahmed Al-Rashidi'} value={fullName}
+            onChange={e => setFullName(e.target.value)} required style={inputStyle}
+            onFocus={e => (e.target.style.borderColor='rgba(0,170,255,0.50)')}
+            onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.12)')}/>
+        </div>
+        <div>
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.40)', marginBottom:7, fontFamily:font }}>{c.email_label}</label>
+          <input type="email" placeholder={c.email_placeholder} value={email}
+            onChange={e => setEmail(e.target.value)} required style={inputStyle}
+            onFocus={e => (e.target.style.borderColor='rgba(0,170,255,0.50)')}
+            onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.12)')}/>
+        </div>
+        <div>
+          <label style={{ display:'block', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.40)', marginBottom:7, fontFamily:font }}>{c.password_label}</label>
+          <input type="password" placeholder="••••••••" value={password}
+            onChange={e => setPassword(e.target.value)} required minLength={8} style={inputStyle}
+            onFocus={e => (e.target.style.borderColor='rgba(0,170,255,0.50)')}
+            onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.12)')}/>
         </div>
 
-        <div>
-          <label style={labelStyle}>Email address</label>
-          <input
-            type="email"
-            placeholder="you@brand.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={inputStyle}
-            onFocus={e => (e.target.style.borderColor = 'var(--cyan-line)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-          />
-        </div>
+        {error && <div style={{ padding:'10px 14px', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.20)', borderRadius:8, fontSize:13, color:'#EF4444', fontFamily:font }}>{error}</div>}
 
-        <div>
-          <label style={labelStyle}>Password</label>
-          <input
-            type="password"
-            placeholder="At least 8 characters"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            minLength={8}
-            style={inputStyle}
-            onFocus={e => (e.target.style.borderColor = 'var(--cyan-line)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--line2)')}
-          />
-        </div>
-
-        {error && (
-          <div style={{
-            padding: '10px 14px',
-            background: 'rgba(255,107,107,0.07)',
-            border: '1px solid rgba(255,107,107,0.2)',
-            borderRadius: 8,
-            fontSize: 13,
-            color: 'var(--red)',
-          }}>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            ...btnStyle,
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <span className="nexa-spinner" style={{ width:14, height:14 }}/>
-              Creating account...
-            </span>
-          ) : 'Create account →'}
+        <button type="button" onClick={handleSignup as any} disabled={loading}
+          style={{ width:'100%', padding:'12px', fontSize:14, fontWeight:700, fontFamily:font, background:'#00AAFF', color:'#000', border:'none', borderRadius:10, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop:4 }}>
+          {loading
+            ? <span style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'center' }}><span className="nexa-spinner" style={{ width:14, height:14 }}/>{c.creating}</span>
+            : c.signup_btn + ' →'}
         </button>
-      </form>
+      </div>
 
-      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--t4)', marginTop: 20 }}>
-        Already have an account?{' '}
-        <Link href="/auth/login" style={{ color: 'var(--cyan)', textDecoration: 'none', fontWeight: 600 }}>
-          Sign in
+      <p style={{ textAlign:'center', fontSize:13, color:'rgba(255,255,255,0.40)', marginTop:20, fontFamily:font }}>
+        {c.have_account}{' '}
+        <Link href="/auth/login" style={{ color:'#00AAFF', textDecoration:'none', fontWeight:600 }}>
+          {c.sign_in_link}
         </Link>
       </p>
 
-      <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--t5)', marginTop: 16, lineHeight: 1.6 }}>
-        By signing up you agree to our{' '}
-        <a href="/terms" style={{ color: 'var(--t4)', textDecoration: 'none' }}>Terms</a>
-        {' '}and{' '}
-        <a href="/privacy" style={{ color: 'var(--t4)', textDecoration: 'none' }}>Privacy Policy</a>.
+      <p style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.22)', marginTop:14, lineHeight:1.6, fontFamily:font }}>
+        {c.terms_agree}{' '}
+        <a href="/landing/terms" style={{ color:'rgba(255,255,255,0.35)', textDecoration:'none' }}>{c.terms_link}</a>
+        {isArabic ? ' و' : ' and '}
+        <a href="/landing/privacy" style={{ color:'rgba(255,255,255,0.35)', textDecoration:'none' }}>{c.privacy_link}</a>
+        .
       </p>
+
+      {/* Lang toggle */}
+      <div style={{ textAlign:'center', marginTop:16 }}>
+        <button onClick={() => {
+          const next = isArabic ? 'en' : 'ar'
+          localStorage.setItem('nexa_lang', next)
+          setLang(next)
+        }} style={{ background:'none', border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, color:'rgba(255,255,255,0.30)', fontSize:12, padding:'4px 12px', cursor:'pointer', fontFamily: isArabic ? EN : AR, transition:'all 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.70)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.25)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.30)'; (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.10)' }}>
+          {isArabic ? 'English' : 'عربي'}
+        </button>
+      </div>
     </div>
   )
 }
 
-const cardStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 420,
-  background: 'var(--bg2)',
-  border: '1px solid var(--line2)',
-  borderRadius: 18,
-  padding: '36px 32px',
-  position: 'relative',
-  zIndex: 1,
-  backdropFilter: 'blur(20px)',
-}
-
-const headingStyle: React.CSSProperties = {
-  fontFamily: 'var(--display)',
-  fontSize: 22,
-  fontWeight: 800,
-  letterSpacing: '-0.03em',
-  color: 'var(--t1)',
-  textAlign: 'center',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 600,
-  color: 'var(--t4)',
-  marginBottom: 7,
-  letterSpacing: '0.01em',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  fontSize: 14,
-  fontFamily: 'var(--sans)',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid var(--line2)',
-  borderRadius: 10,
-  color: 'var(--t1)',
-  outline: 'none',
-  transition: 'border-color 0.18s',
-}
-
-const btnStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px',
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: 'var(--sans)',
-  background: 'var(--cyan)',
-  color: '#000',
-  border: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  letterSpacing: '-0.01em',
-  transition: 'all 0.18s',
-  marginTop: 4,
-}
-
-const googleBtnStyle: React.CSSProperties = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 10,
-  padding: '11px 16px',
-  fontSize: 14,
-  fontWeight: 600,
-  fontFamily: 'var(--sans)',
-  background: 'rgba(255,255,255,0.04)',
-  color: 'rgba(255,255,255,0.82)',
-  border: '1px solid rgba(255,255,255,0.18)',
-  borderRadius: 10,
-  cursor: 'pointer',
-  letterSpacing: '-0.01em',
-  transition: 'all 0.18s',
-}
-
 function GoogleIcon() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
       <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>

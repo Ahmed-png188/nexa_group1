@@ -24,6 +24,16 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Rate limit: 10 image generations per minute per user
+    const { rateLimit: rl2, LIMITS: LIM2 } = await import('@/lib/rate-limit')
+    const imgRl = await rl2({ key: user.id, ...LIM2.imageGen })
+    if (imgRl.limited) {
+      return NextResponse.json(
+        { error: 'Too many image generation requests. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((imgRl.resetAt.getTime() - Date.now()) / 1000)) } }
+      )
+    }
+
     const { workspace_id, prompt: rawPrompt, style, aspect_ratio = '1:1' } = await request.json()
     const prompt = sanitize(rawPrompt, 1000)
 

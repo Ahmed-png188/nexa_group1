@@ -219,7 +219,7 @@ export default function InsightsPage() {
     try {
       const summary=`Posts: ${insights.posts_created||0}, Impressions: ${insights.impressions||0}, Engagement: ${insights.engagement||0}, Reach: ${insights.reach||0}, Clicks: ${insights.clicks||0} over last ${period} days.`
       const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace_id:ws.id,message:`Analyze my content performance for the last ${period} days. Give me 3 specific, actionable insights. Data: ${summary} What's working, what needs improvement, what should I focus on next week? Be direct.`,history:[]})})
-      const d=await r.json(); setAiText(d.reply||'No insights available yet.')
+      if (r.ok) { const d=await r.json(); setAiText(d.reply||'No insights available yet.') } else { setAiText('Analysis failed — try again.') }
     } catch {}
     setExplaining(false)
   }

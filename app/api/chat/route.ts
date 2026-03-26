@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
@@ -14,29 +16,46 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { messages, lang = 'en', conversationId, workspace_id } = body
+    const {
+      messages: messagesBody,
+      message,
+      history: historyBody = [],
+      lang = 'en',
+      conversationId,
+      workspace_id,
+    } = body
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: 'Messages required' }, { status: 400 })
+    // Support both {messages:[]} array format and {message, history:[]} format
+    const rawMessages: any[] = messagesBody ?? [
+      ...historyBody,
+      ...(message ? [{ role: 'user', content: message }] : []),
+    ]
+
+    if (!rawMessages.length) {
+      return NextResponse.json({ error: 'Message required' }, { status: 400 })
     }
 
     const brand = await getBrandContext(user.id)
     const brandContext = brand
       ? [
-          brand.brandName && `العلامة: ${brand.brandName}`,
-          brand.workspace.brand_voice && `الصوت: ${brand.workspace.brand_voice}`,
-          brand.workspace.brand_tone && `النبرة: ${brand.workspace.brand_tone}`,
-          brand.workspace.brand_audience && `الجمهور: ${brand.workspace.brand_audience}`,
+          brand.brandName && (lang === 'ar' ? `العلامة: ${brand.brandName}` : `Brand: ${brand.brandName}`),
+          brand.brandVoice && (lang === 'ar' ? `الصوت: ${brand.brandVoice}` : `Voice: ${brand.brandVoice}`),
+          brand.brandTone && (lang === 'ar' ? `النبرة: ${brand.brandTone}` : `Tone: ${brand.brandTone}`),
+          brand.brandAudience && (lang === 'ar' ? `الجمهور: ${brand.brandAudience}` : `Audience: ${brand.brandAudience}`),
         ].filter(Boolean).join('\n')
       : lang === 'ar' ? 'لا يوجد سياق علامة تجارية بعد' : 'No brand context yet'
 
     const systemPrompt = chatSystemPrompt(brandContext, lang)
 
     // Build message history (max 20 messages for context window)
-    const history = messages.slice(-20).map((m: any) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    }))
+    // Filter to only valid roles Anthropic accepts
+    const history = rawMessages.slice(-20)
+      .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+      .map((m: any) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content ?? '',
+      }))
+      .filter((m: any) => m.content.length > 0)
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -47,23 +66,24 @@ export async function POST(request: NextRequest) {
 
     const reply = (response.content[0] as any).text
 
-    // Save conversation if we have a conversationId and workspace_id
-    if (conversationId && workspace_id) {
-      const lastUserMsg = messages[messages.length - 1]
+    // Save conversation if we have a conversationId
+    const wsId = workspace_id ?? brand?.workspaceId
+    if (conversationId && wsId) {
+      const lastUserMsg = history[history.length - 1]
       await supabase.from('messages').insert([
         {
           conversation_id: conversationId,
-          workspace_id: workspace_id,
+          workspace_id: wsId,
           role: 'user',
-          content: lastUserMsg.content,
+          content: lastUserMsg?.content ?? message ?? '',
         },
         {
           conversation_id: conversationId,
-          workspace_id: workspace_id,
+          workspace_id: wsId,
           role: 'assistant',
           content: reply,
         },
-      ])
+      ]) // Non-critical — errors captured silently by outer catch
     }
 
     return NextResponse.json({ success: true, reply })

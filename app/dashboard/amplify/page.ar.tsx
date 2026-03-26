@@ -70,7 +70,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   const s = map[status] || map.DRAFT
   return (
-    <span style={{ padding: '3px 9px', borderRadius: '5px', fontSize: '10px', fontWeight: 700, fontFamily: F, letterSpacing: 0, background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>
+    <span style={{ padding: '3px 9px', borderRadius: '5px', fontSize: '10px', fontWeight: 700, fontFamily: F, letterSpacing: '0.02em', background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>
       {s.label}
     </span>
   )
@@ -531,7 +531,7 @@ function AmplifyInner() {
       <div style={{ position:'relative', zIndex:1, textAlign:'center', maxWidth:620, animation:'pageUp 0.4s cubic-bezier(0.22,1,0.36,1) both' }}>
         <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'6px 14px', borderRadius:999, background:'rgba(0,0,0,0.12)', border:'1px solid rgba(0,0,0,0.16)', marginBottom:32, backdropFilter:'blur(8px)' }}>
           <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(0,0,0,0.45)' }}/>
-          <span style={{ fontSize:12, fontWeight:600, color:'rgba(0,0,0,0.65)', letterSpacing:0, fontFamily:F }}>Amplify · غير مفعّل</span>
+          <span style={{ fontSize:12, fontWeight:600, color:'rgba(0,0,0,0.65)', letterSpacing:'0.02em', fontFamily:F }}>Amplify · غير مفعّل</span>
         </div>
         <h1 style={{ fontSize:'clamp(32px,5vw,52px)', fontWeight:800, color:'#0C0C0C', lineHeight:1.2, marginBottom:16, fontFamily:F }}>
           حوّل محتواك<br/>إلى إعلانات تبيع.
@@ -573,7 +573,7 @@ function AmplifyInner() {
       {/* ── الرأس ─────────────────────────────────────────── */}
       <div style={{ padding: '28px 36px 20px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontFamily: F, fontSize: '22px', fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', marginBottom: '4px' }}>Amplify</h1>
+          <h1 style={{ fontFamily: F, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.01em', color: '#FFFFFF', marginBottom: '4px' }}>Amplify</h1>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.42)', fontFamily: F }}>إعلانات Meta مدعومة بـ Brand Brain. بدون وكالة.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -629,8 +629,8 @@ function AmplifyInner() {
           { label: 'حملات نشطة',     value: String(activeCamps), sub: `${campaigns.length} إجمالي`, color: '#FB923C' },
         ].map((s, i) => (
           <div key={i} style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '18px 20px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', marginBottom: '10px', fontFamily: F }}>{s.label}</div>
-            <div style={{ fontFamily: MONO, fontSize: '26px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, lineHeight: 1, marginBottom: '6px' }}>{s.value}</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', marginBottom: '10px', fontFamily: F }}>{s.label}</div>
+            <div style={{ fontFamily: MONO, fontSize: '26px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '6px' }}>{s.value}</div>
             <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{s.sub}</div>
           </div>
         ))}
@@ -645,7 +645,7 @@ function AmplifyInner() {
 
             {/* تبديل الوضع */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
                 {adMode === 'simple' ? 'إطلاق سريع — الذكاء يختار الجمهور والنص' : 'الوضع المتقدم — تحكم كامل'}
               </div>
               <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: 3, gap: 3 }}>
@@ -663,7 +663,7 @@ function AmplifyInner() {
               <div>
                 {/* ١. المحتوى */}
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 10 }}>١. اختر أو ارفع صورة</div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 10 }}>١. اختر أو ارفع صورة</div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' as const }}>
                     <button onClick={() => uploadRef.current?.click()}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 7, fontSize: '12px', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: F }}>
@@ -695,7 +695,7 @@ function AmplifyInner() {
                 {/* ٢. نص الإعلان */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>٢. نص الإعلان</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>٢. نص الإعلان</div>
                     <button onClick={generateAdCopy} disabled={generatingCopy || (!selectedContent && !adCopy.trim() && !uploadedImage)}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'rgba(0,170,255,0.08)', border: '1px solid rgba(0,170,255,0.20)', borderRadius: 6, fontSize: '11px', fontWeight: 700, color: generatingCopy ? 'rgba(255,255,255,0.25)' : '#00AAFF', cursor: generatingCopy ? 'not-allowed' : 'pointer', fontFamily: F }}>
                       {generatingCopy ? <><div className="nexa-spinner" style={{ width: 9, height: 9 }}/> يكتب…</> : <>اكتب بالذكاء</>}
@@ -735,7 +735,7 @@ function AmplifyInner() {
 
                 {/* ٣. الميزانية */}
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 10 }}>٣. الميزانية اليومية</div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 10 }}>٣. الميزانية اليومية</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
                     {[10, 20, 50, 100, 200].map(b => (
                       <button key={b} onClick={() => setDailyBudget(b)}
@@ -776,7 +776,7 @@ function AmplifyInner() {
                 {/* الخطوة ١ — المحتوى الإبداعي */}
                 {currentStep === 1 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>المحتوى الإبداعي — النص والصورة</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>المحتوى الإبداعي — النص والصورة</div>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                       <button onClick={() => uploadRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 7, fontSize: '12px', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: F }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -829,7 +829,7 @@ function AmplifyInner() {
                 {/* الخطوة ٢ — الهدف */}
                 {currentStep === 2 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>هدف الحملة</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>هدف الحملة</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {OBJECTIVES.map(obj => (
                         <button key={obj.id} onClick={() => setSelectedObjective(obj.id)}
@@ -848,7 +848,7 @@ function AmplifyInner() {
                 {/* الخطوة ٣ — الجمهور */}
                 {currentStep === 3 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>استهداف الجمهور</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>استهداف الجمهور</div>
                     <div style={{ marginBottom: 14 }}>
                       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: F, marginBottom: 8 }}>الاهتمامات — مبنية تلقائياً من Brand Brain</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 8 }}>
@@ -905,7 +905,7 @@ function AmplifyInner() {
                 {/* الخطوة ٤ — إعادة الاستهداف */}
                 {currentStep === 4 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>إعادة الاستهداف والجماهير المتقدمة</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>إعادة الاستهداف والجماهير المتقدمة</div>
                     <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, marginBottom: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: retargetingEnabled ? 12 : 0 }}>
                         <div>
@@ -970,7 +970,7 @@ function AmplifyInner() {
                 {/* الخطوة ٥ — الميزانية */}
                 {currentStep === 5 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>الميزانية والجدول الزمني</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>الميزانية والجدول الزمني</div>
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: F, marginBottom: 8 }}>الميزانية اليومية</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 8 }}>
@@ -996,7 +996,7 @@ function AmplifyInner() {
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.40)', fontFamily: F }}>الوصول اليومي المتوقع بـ ${dailyBudget}/يوم</div>
                         {reachLoading && <div className="nexa-spinner" style={{ width: 10, height: 10 }}/>}
                       </div>
-                      <div style={{ fontFamily: MONO, fontSize: '22px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginTop: 6 }}>
+                      <div style={{ fontFamily: MONO, fontSize: '22px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.03em', marginTop: 6 }}>
                         {reachLoading ? '—' : `${(reachEstimate?.min || Math.round(dailyBudget * 80)).toLocaleString()} – ${(reachEstimate?.max || Math.round(dailyBudget * 220)).toLocaleString()}`}
                       </div>
                       <div style={{ fontSize: '11px', color: reachEstimate?.estimated ? 'rgba(34,197,94,0.60)' : 'rgba(255,255,255,0.35)', fontFamily: F, marginTop: 2 }}>
@@ -1009,7 +1009,7 @@ function AmplifyInner() {
                 {/* الخطوة ٦ — المراجعة */}
                 {currentStep === 6 && (
                   <div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>راجع قبل الإطلاق</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F, marginBottom: 14 }}>راجع قبل الإطلاق</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                       {[
                         { label: 'الهدف',       value: OBJECTIVES.find(o => o.id === selectedObjective)?.label || selectedObjective },
@@ -1070,12 +1070,12 @@ function AmplifyInner() {
             </div>
             {/* تقدير الوصول */}
             <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '12px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.28)', marginBottom: 8, fontFamily: F, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.28)', marginBottom: 8, fontFamily: F, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span>الوصول اليومي المتوقع</span>
                 {reachLoading && <div className="nexa-spinner" style={{ width: 10, height: 10 }}/>}
                 {!reachLoading && reachEstimate?.estimated && <span style={{ color: 'rgba(0,170,255,0.40)', fontSize: '8px' }}>مباشر من Meta</span>}
               </div>
-              <div style={{ fontFamily: MONO, fontSize: '22px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0 }}>
+              <div style={{ fontFamily: MONO, fontSize: '22px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.03em' }}>
                 {reachLoading ? '—' : `${(reachEstimate?.min || Math.round(dailyBudget * 80)).toLocaleString()}–${(reachEstimate?.max || Math.round(dailyBudget * 220)).toLocaleString()}`}
               </div>
               <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.30)', marginTop: 4, fontFamily: F }}>شخص يومياً · ميزانية ${dailyBudget}/يوم</div>
@@ -1131,7 +1131,7 @@ function AmplifyInner() {
       {activeTab === 'campaigns' && (
         <div style={{ padding: '0 36px 36px' }}>
           <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>الحملات</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>الحملات</div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>{campaigns.length} إجمالي</div>
           </div>
 
@@ -1140,7 +1140,7 @@ function AmplifyInner() {
               <div style={{ width: 48, height: 48, borderRadius: '10px', background: 'rgba(0,170,255,0.08)', border: '1px solid rgba(0,170,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00AAFF" strokeWidth="1.5" strokeLinecap="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
               </div>
-              <div style={{ fontFamily: F, fontSize: '18px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: 8 }}>ما في حملات بعد</div>
+              <div style={{ fontFamily: F, fontSize: '18px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: 8 }}>ما في حملات بعد</div>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)', lineHeight: 1.85, maxWidth: 380, margin: '0 auto 20px', fontFamily: F }}>
                 أنشئ أول حملة Meta. Brand Brain يبني الجمهور ويكتب النص ويتولى الاستهداف تلقائياً.
               </div>
@@ -1158,7 +1158,7 @@ function AmplifyInner() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }} onClick={() => setExpandedCamp(expandedCamp === camp.id ? null : camp.id)}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: camp.status === 'ACTIVE' ? '#22C55E' : camp.status === 'PAUSED' ? '#F59E0B' : camp.status === 'IN_REVIEW' ? '#00AAFF' : camp.status === 'REJECTED' || camp.status === 'ERROR' ? '#EF4444' : 'rgba(255,255,255,0.25)' }}/>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: F, fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, marginBottom: '3px' }}>{camp.name}</div>
+                        <div style={{ fontFamily: F, fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.01em', marginBottom: '3px' }}>{camp.name}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
                           ${camp.daily_budget}/يوم · {camp.start_date ? new Date(camp.start_date).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }) : 'بدون بداية'} · وضع {camp.mode === 'simple' ? 'سريع' : 'متقدم'}
                         </div>
@@ -1171,7 +1171,7 @@ function AmplifyInner() {
                           { v: camp.insights?.cpc ? `$${camp.insights.cpc.toFixed(2)}` : '—', l: 'CPC' },
                         ].map((s, i) => (
                           <div key={i} style={{ textAlign: 'left' as const }}>
-                            <div style={{ fontFamily: MONO, fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0 }}>{s.v}</div>
+                            <div style={{ fontFamily: MONO, fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>{s.v}</div>
                             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', fontFamily: F }}>{s.l}</div>
                           </div>
                         ))}

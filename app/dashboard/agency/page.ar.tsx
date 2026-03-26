@@ -51,7 +51,7 @@ function StatusBadge({ status }: { status: string }) {
       background: isActive ? 'rgba(34,197,94,0.10)' : 'rgba(255,255,255,0.05)',
       border: `1px solid ${isActive ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.09)'}`,
       color: isActive ? '#34D399' : 'rgba(255,255,255,0.35)',
-      fontFamily: F, letterSpacing: 0,
+      fontFamily: F, letterSpacing: '0.04em',
     }}>
       {isActive ? 'نشط' : 'غير نشط'}
     </span>
@@ -161,7 +161,7 @@ export default function AgencyPageAr() {
       gap: 16, background: '#0C0C0C',
     }}>
       <div className="nexa-spinner" style={{ width: 22, height: 22 }} />
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: F, letterSpacing: 0 }}>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: F, letterSpacing: '0.06em' }}>
         يحمّل الوكالة...
       </div>
     </div>
@@ -198,7 +198,7 @@ export default function AgencyPageAr() {
 
         <h1 style={{
           fontSize: 'clamp(34px,5vw,54px)', fontWeight: 800, color: '#0C0C0C',
-          lineHeight: 1.1, marginBottom: 18, fontFamily: F, letterSpacing: 0,
+          lineHeight: 1.1, marginBottom: 18, fontFamily: F, letterSpacing: '-0.03em',
         }}>
           وكالتك كاملة<br />في مكان واحد.
         </h1>
@@ -254,7 +254,7 @@ export default function AgencyPageAr() {
             padding: '15px 36px', fontSize: 15, fontWeight: 700, fontFamily: F,
             background: '#0C0C0C', color: '#ffffff', borderRadius: 13,
             textDecoration: 'none', boxShadow: '0 6px 28px rgba(0,0,0,0.28)',
-            letterSpacing: 0, transition: 'all 0.18s',
+            letterSpacing: '-0.01em', transition: 'all 0.18s',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 36px rgba(0,0,0,0.36)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 28px rgba(0,0,0,0.28)' }}
@@ -311,10 +311,10 @@ export default function AgencyPageAr() {
           { label: 'الحالة',            value: sel.status === 'active' ? 'نشط' : 'غير نشط',                                   color: sel.status === 'active' ? '#34D399' : '#FFB547' },
         ].map(s => (
           <div key={s.label} className="nexa-card" style={{ padding: '15px 17px', borderRadius: 14 }}>
-            <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginBottom: 7, fontFamily: F, letterSpacing: 0, textTransform: 'uppercase' as const }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginBottom: 7, fontFamily: F, letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>
               {s.label}
             </div>
-            <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 20, color: s.color, letterSpacing: 0 }}>
+            <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 20, color: s.color, letterSpacing: '-0.03em' }}>
               {s.value}
             </div>
           </div>
@@ -385,7 +385,7 @@ export default function AgencyPageAr() {
             <h1 style={{
               fontFamily: F, fontSize: 22, fontWeight: 800,
               color: 'rgba(255,255,255,0.92)', lineHeight: 1, marginBottom: 6,
-              letterSpacing: 0,
+              letterSpacing: '-0.02em',
             }}>
               الوكالة
             </h1>
@@ -402,7 +402,7 @@ export default function AgencyPageAr() {
               background: '#00AAFF', color: '#0C0C0C',
               border: 'none', borderRadius: 11, cursor: 'pointer',
               boxShadow: '0 4px 18px rgba(77,159,255,0.35)',
-              transition: 'all 0.18s', letterSpacing: 0,
+              transition: 'all 0.18s', letterSpacing: '-0.01em',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 7px 26px rgba(77,159,255,0.48)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 18px rgba(77,159,255,0.35)' }}
@@ -430,7 +430,7 @@ export default function AgencyPageAr() {
                 {s.icon}
               </div>
               <div>
-                <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 28, color: s.color, letterSpacing: 0, lineHeight: 1 }}>
+                <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 28, color: s.color, letterSpacing: '-0.04em', lineHeight: 1 }}>
                   {s.value}
                 </div>
                 <div style={{ fontFamily: F, fontSize: 9, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
@@ -459,7 +459,7 @@ export default function AgencyPageAr() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <ClientAvatar name={c.client_name} size={42} />
                       <div>
-                        <div style={{ fontFamily: F, fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.90)', letterSpacing: 0, marginBottom: 3 }}>
+                        <div style={{ fontFamily: F, fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.90)', letterSpacing: '-0.01em', marginBottom: 3 }}>
                           {c.client_name}
                         </div>
                         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.36)', fontFamily: F }}>
@@ -473,7 +473,7 @@ export default function AgencyPageAr() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
                       {c.monthly_retainer > 0 ? (
-                        <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 14, color: 'rgba(255,255,255,0.72)', letterSpacing: 0 }}>
+                        <div style={{ fontFamily: MONO, fontWeight: 300, fontSize: 14, color: 'rgba(255,255,255,0.72)', letterSpacing: '-0.02em' }}>
                           ${c.monthly_retainer?.toLocaleString()}
                           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontFamily: F, fontWeight: 400 }}>/شهر</span>
                         </div>
@@ -493,7 +493,7 @@ export default function AgencyPageAr() {
                           background: 'rgba(0,170,255,0.09)',
                           border: '1px solid rgba(77,159,255,0.22)',
                           color: '#00AAFF', cursor: 'pointer', fontFamily: F,
-                          transition: 'all 0.15s', letterSpacing: 0,
+                          transition: 'all 0.15s', letterSpacing: '-0.01em',
                         }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(77,159,255,0.18)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,170,255,0.38)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,170,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(77,159,255,0.22)' }}
@@ -523,7 +523,7 @@ export default function AgencyPageAr() {
             }}>
               {Ic.users}
             </div>
-            <h3 style={{ fontFamily: F, fontWeight: 800, fontSize: 20, letterSpacing: 0, color: 'rgba(255,255,255,0.85)', marginBottom: 10 }}>
+            <h3 style={{ fontFamily: F, fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.85)', marginBottom: 10 }}>
               ما في عملاء بعد
             </h3>
             <p style={{ fontFamily: F, fontSize: 14, lineHeight: 1.8, color: 'rgba(255,255,255,0.32)', maxWidth: 380, marginBottom: 26 }}>
@@ -534,7 +534,7 @@ export default function AgencyPageAr() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 padding: '13px 28px', fontFamily: F, fontWeight: 700,
-                fontSize: 13, letterSpacing: 0,
+                fontSize: 13, letterSpacing: '-0.01em',
                 background: '#00AAFF', color: '#0C0C0C',
                 border: 'none', borderRadius: 12, cursor: 'pointer',
                 boxShadow: '0 4px 24px rgba(77,159,255,0.40)', transition: 'all 0.18s',
@@ -565,7 +565,7 @@ export default function AgencyPageAr() {
                 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FFB547', boxShadow: '0 0 6px #FFB547', flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.80)', fontFamily: F, letterSpacing: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.80)', fontFamily: F, letterSpacing: '-0.01em' }}>
                       {inv.client_name}
                     </div>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.34)', marginTop: 3, fontFamily: F, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -576,7 +576,7 @@ export default function AgencyPageAr() {
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: '3px 11px', borderRadius: 100,
                     background: 'rgba(255,181,71,0.10)', border: '1px solid rgba(255,181,71,0.24)',
-                    color: '#FFB547', fontFamily: F, letterSpacing: 0,
+                    color: '#FFB547', fontFamily: F, letterSpacing: '0.04em',
                   }}>
                     معلق
                   </span>
@@ -608,7 +608,7 @@ export default function AgencyPageAr() {
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 26 }}>
               <div>
-                <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: 0, color: 'rgba(255,255,255,0.92)', lineHeight: 1, marginBottom: 5 }}>
+                <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.92)', lineHeight: 1, marginBottom: 5 }}>
                   أضف عميل جديد
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
@@ -670,7 +670,7 @@ export default function AgencyPageAr() {
               style={{
                 width: '100%', padding: '14px',
                 fontSize: 14, fontWeight: 700, fontFamily: F,
-                letterSpacing: 0,
+                letterSpacing: '-0.01em',
                 background: cName.trim() ? '#4D9FFF' : 'rgba(255,255,255,0.04)',
                 color: cName.trim() ? '#000' : 'rgba(255,255,255,0.2)',
                 border: 'none', borderRadius: 12,

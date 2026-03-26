@@ -95,7 +95,7 @@ function HBar({ value, max, color, label, sub }: { value: number; max: number; c
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }}/>
           <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', fontWeight: 500, textTransform: 'capitalize' as const, fontFamily: F }}>{label}</span>
         </div>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, fontFamily: MONO }}>{sub}</div>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', fontFamily: MONO }}>{sub}</div>
       </div>
       <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '100px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '100px', transition: 'width 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}/>
@@ -125,7 +125,7 @@ function StatCard({ icon, label, value, rawData, color, trend }: any) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <div style={{ color: 'rgba(255,255,255,0.30)', display: 'flex' }}>{icon}</div>
-          <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>{label}</span>
+          <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', fontFamily: F }}>{label}</span>
         </div>
         {trend !== undefined && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '3px 7px', borderRadius: '100px', background: isPos ? 'rgba(34,197,94,0.08)' : isNeg ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${isPos ? 'rgba(34,197,94,0.18)' : isNeg ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.08)'}` }}>
@@ -134,7 +134,7 @@ function StatCard({ icon, label, value, rawData, color, trend }: any) {
           </div>
         )}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', lineHeight: 1, marginBottom: '10px', fontFamily: MONO }}>{value}</div>
+      <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#FFFFFF', lineHeight: 1, marginBottom: '10px', fontFamily: MONO }}>{value}</div>
       {rawData && rawData.length > 1 && <Sparkline data={rawData} color={color} width={100} height={28}/>}
     </div>
   )
@@ -279,7 +279,7 @@ export default function InsightsPageAr() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--topbar-h))', flexDirection: 'column', gap: '14px', background: '#0C0C0C', fontFamily: F }}>
       <div className="nexa-spinner" style={{ width: 22, height: 22 }}/>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: 0 }}>لحظة...</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.04em' }}>لحظة...</div>
     </div>
   )
 
@@ -296,7 +296,7 @@ export default function InsightsPageAr() {
         <div style={{ backgroundImage: 'url(/cyan-header.png)', backgroundSize: 'cover', backgroundPosition: 'center top', padding: '40px 0 28px' }}>
           <div style={{ padding: '0 36px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
             <div>
-              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: 0, color: '#0A0A0A', lineHeight: 1, marginBottom: '8px' }}>الإنسايتس</h1>
+              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', color: '#0A0A0A', lineHeight: 1, marginBottom: '8px' }}>الإنسايتس</h1>
               <div style={{ fontSize: '13px', color: 'rgba(0,0,0,0.60)', fontWeight: 500 }}>
                 {connPlats.length > 0
                   ? `${connPlats.length} ${connPlats.length === 1 ? 'منصة متصلة' : 'منصات متصلة'} · آخر ${period} يوم`
@@ -360,7 +360,7 @@ export default function InsightsPageAr() {
         {!insights && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', gap: '16px', fontFamily: F }}>
             <div style={{ width: 52, height: 52, borderRadius: '14px', background: 'rgba(0,170,255,0.08)', border: '1px solid rgba(0,170,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,170,255,0.60)' }}>{Ic.chart}</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.70)', letterSpacing: 0 }}>ما في بيانات لهذه الفترة</div>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.70)', letterSpacing: '-0.02em' }}>ما في بيانات لهذه الفترة</div>
             <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, maxWidth: '380px', fontFamily: F }}>
               وصّل منصاتك وزامن التحليلات. Nexa تتابع الإمبريشنز والتفاعل ونمو المتابعين وأداء الإيميل.
             </div>
@@ -413,10 +413,10 @@ export default function InsightsPageAr() {
                 <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div>
-                      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '4px', fontFamily: F }}>الإمبريشنز عبر الوقت</div>
+                      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '4px', fontFamily: F }}>الإمبريشنز عبر الوقت</div>
                       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', fontFamily: F }}>آخر {period} يوم</div>
                     </div>
-                    <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: 0, color: '#00AAFF', fontFamily: MONO }}>{fmt(insights.impressions)}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.04em', color: '#00AAFF', fontFamily: MONO }}>{fmt(insights.impressions)}</div>
                   </div>
                   <AreaChart data={series('impressions')} color="#00AAFF" height={120} label="impressions"/>
                 </div>
@@ -431,11 +431,11 @@ export default function InsightsPageAr() {
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         <Donut pct={Math.min(m.pct, 100)} color="#00AAFF" size={80}/>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, fontFamily: MONO }}>{m.pct.toFixed(1)}%</div>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', fontFamily: MONO }}>{m.pct.toFixed(1)}%</div>
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '6px', fontFamily: F }}>{m.label}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '6px', fontFamily: F }}>{m.label}</div>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', marginBottom: '3px', fontFamily: F }}>{m.sub}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', fontFamily: F }}>{m.desc}</div>
                       </div>
@@ -446,7 +446,7 @@ export default function InsightsPageAr() {
                 {/* تحليل Nexa */}
                 {aiText ? (
                   <div style={{ background: '#141414', border: '1px solid rgba(0,170,255,0.18)', borderRight: '3px solid #00AAFF', borderRadius: '10px 0 0 10px', padding: '20px 24px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: 0, textTransform: 'uppercase', marginBottom: '10px', fontFamily: F }}>تحليل Nexa</div>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: F }}>تحليل Nexa</div>
                     <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.70)', lineHeight: 1.75, fontFamily: F }}>{aiText}</div>
                   </div>
                 ) : (
@@ -472,16 +472,16 @@ export default function InsightsPageAr() {
                 <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div>
-                      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '4px', fontFamily: F }}>التفاعل عبر الوقت</div>
+                      <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '4px', fontFamily: F }}>التفاعل عبر الوقت</div>
                       <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', fontFamily: F }}>لايكات، تعليقات، مشاركات · آخر {period} يوم</div>
                     </div>
-                    <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: 0, color: '#00AAFF', fontFamily: MONO }}>{fmt(insights.engagement)}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.04em', color: '#00AAFF', fontFamily: MONO }}>{fmt(insights.engagement)}</div>
                   </div>
                   <AreaChart data={series('engagement')} color="#00AAFF" height={110} label="engagement"/>
                 </div>
                 {raw.length > 0 && (
                   <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: 0, textTransform: 'uppercase', marginBottom: '16px', fontFamily: F }}>التفصيل اليومي</div>
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '16px', fontFamily: F }}>التفصيل اليومي</div>
                     {raw.slice(-10).reverse().map((row, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderBottom: i < 9 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: PC[row.platform] || 'rgba(255,255,255,0.20)', flexShrink: 0 }}/>
@@ -519,11 +519,11 @@ export default function InsightsPageAr() {
                       <div style={{ position: 'relative', flexShrink: 0 }}>
                         <Donut pct={Math.min(m.pct * 2, 100)} color="#00AAFF" size={88}/>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, fontFamily: MONO }}>{m.pct.toFixed(1)}%</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', fontFamily: MONO }}>{m.pct.toFixed(1)}%</div>
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '6px', fontFamily: F }}>{m.label}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(0,170,255,0.70)', marginBottom: '6px', fontFamily: F }}>{m.label}</div>
                         <div style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px', fontFamily: F }}>{m.sub} من المرسلة</div>
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', marginBottom: '8px', fontFamily: F }}>{m.desc}</div>
                         <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', fontFamily: F, background: m.good ? 'rgba(34,197,94,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${m.good ? 'rgba(34,197,94,0.18)' : 'rgba(245,158,11,0.18)'}`, color: m.good ? '#22C55E' : '#F59E0B' }}>
@@ -548,11 +548,11 @@ export default function InsightsPageAr() {
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                       <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: 0, textTransform: 'uppercase', marginBottom: '18px', fontFamily: F }}>الإمبريشنز حسب المنصة</div>
+                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '18px', fontFamily: F }}>الإمبريشنز حسب المنصة</div>
                         {platBreak.map(p => <HBar key={p.platform} value={p.impressions} max={maxPlat} color={PC[p.platform] || '#666'} label={p.platform} sub={fmt(p.impressions)}/>)}
                       </div>
                       <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px', padding: '20px 24px' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: 0, textTransform: 'uppercase', marginBottom: '18px', fontFamily: F }}>التفاعل حسب المنصة</div>
+                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(0,170,255,0.70)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '18px', fontFamily: F }}>التفاعل حسب المنصة</div>
                         {platBreak.map(p => <HBar key={p.platform} value={p.engagement} max={Math.max(...platBreak.map(x => x.engagement), 1)} color={PC[p.platform] || '#666'} label={p.platform} sub={fmt(p.engagement)}/>)}
                       </div>
                     </div>
@@ -578,7 +578,7 @@ export default function InsightsPageAr() {
                                 { l: 'متابعون',  v: `+${fmt(p.followers)}` },
                               ].map(s => (
                                 <div key={s.l} style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '7px', textAlign: 'center' as const }}>
-                                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, lineHeight: 1, fontFamily: MONO }}>{s.v}</div>
+                                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1, fontFamily: MONO }}>{s.v}</div>
                                   <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.28)', marginTop: '2px', fontFamily: F }}>{s.l}</div>
                                 </div>
                               ))}

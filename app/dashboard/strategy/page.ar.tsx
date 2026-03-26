@@ -24,7 +24,7 @@ const Ic = {
 // ─── مكونات مشتركة ────────────────────────────────────────────
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: 0, textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '10px', fontFamily: F }}>
+    <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'rgba(0,170,255,0.70)', marginBottom: '10px', fontFamily: F }}>
       {children}
     </div>
   )
@@ -34,8 +34,8 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   return (
     <div style={{ padding: '20px 24px', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px' }}>
       <div style={{ color: 'rgba(255,255,255,0.30)', marginBottom: '12px', display: 'flex' }}>{icon}</div>
-      <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: 0, color: '#FFFFFF', lineHeight: 1, fontFamily: MONO, marginBottom: '6px' }}>{value}</div>
-      <div style={{ fontSize: '11px', color: 'rgba(0,170,255,0.65)', fontWeight: 600, fontFamily: F, textTransform: 'uppercase' as const, letterSpacing: 0 }}>{label}</div>
+      <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#FFFFFF', lineHeight: 1, fontFamily: MONO, marginBottom: '6px' }}>{value}</div>
+      <div style={{ fontSize: '11px', color: 'rgba(0,170,255,0.65)', fontWeight: 600, fontFamily: F, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{label}</div>
     </div>
   )
 }
@@ -54,7 +54,7 @@ function EmptyState({ icon, title, desc, children }: { icon: React.ReactNode; ti
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '48px 32px', gap: '14px' }}>
       <div style={{ width: 56, height: 56, borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.30)' }}>{icon}</div>
-      <div style={{ fontSize: '18px', fontWeight: 600, letterSpacing: 0, color: 'rgba(255,255,255,0.85)', fontFamily: F }}>{title}</div>
+      <div style={{ fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.85)', fontFamily: F }}>{title}</div>
       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.75, maxWidth: '420px', fontFamily: F }}>{desc}</div>
       {children}
     </div>
@@ -137,7 +137,7 @@ export default function StrategyPageAr() {
     if (!ws || genTiming) return; setGenTiming(true)
     try {
       const r = await fetch('/api/strategy-timing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspace_id: ws.id }) })
-      const d = await r.json(); if (d.success) setTimingData(d.timing)
+      if (r.ok) { const d = await r.json(); if (d.success) setTimingData(d.timing) }
     } catch {}
     setGenTiming(false)
   }
@@ -146,7 +146,7 @@ export default function StrategyPageAr() {
     if (!ws || genComp) return; setGenComp(true)
     try {
       const r = await fetch('/api/competitor-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspace_id: ws.id, competitors: compInput, lang: 'ar' }) })
-      const d = await r.json(); if (d.success) setCompData(d.analysis)
+      if (r.ok) { const d = await r.json(); if (d.success) setCompData(d.analysis) }
     } catch {}
     setGenComp(false)
   }
@@ -157,7 +157,7 @@ export default function StrategyPageAr() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--topbar-h))', flexDirection: 'column', gap: '14px', background: '#0C0C0C', fontFamily: F }}>
       <div className="nexa-spinner" style={{ width: 22, height: 22 }}/>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: 0 }}>لحظة...</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.04em' }}>لحظة...</div>
     </div>
   )
 
@@ -177,7 +177,7 @@ export default function StrategyPageAr() {
           </div>
 
           {/* العنوان */}
-          <h1 style={{ fontSize: '48px', fontWeight: 700, letterSpacing: 0, color: '#0A0A0A', lineHeight: 1.05, marginBottom: '16px', fontFamily: F }}>
+          <h1 style={{ fontSize: '48px', fontWeight: 700, letterSpacing: '-0.04em', color: '#0A0A0A', lineHeight: 1.05, marginBottom: '16px', fontFamily: F }}>
             استراتيجيتك<br/>تنتظرك.
           </h1>
 
@@ -236,7 +236,7 @@ export default function StrategyPageAr() {
   if (generating) return (
     <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - var(--topbar-h))', gap: '16px', textAlign: 'center', padding: '40px', background: '#0C0C0C', fontFamily: F }}>
       <div style={{ width: 52, height: 52, borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.30)' }}>{Ic.star}</div>
-      <div style={{ fontSize: '20px', fontWeight: 600, letterSpacing: 0, color: 'rgba(255,255,255,0.88)', fontFamily: F }}>
+      <div style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.03em', color: 'rgba(255,255,255,0.88)', fontFamily: F }}>
         Nexa تبني استراتيجيتك...
       </div>
       <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.7, maxWidth: '360px', fontFamily: F }}>
@@ -293,7 +293,7 @@ export default function StrategyPageAr() {
         <div style={{ backgroundImage: 'url(/cyan-header.png)', backgroundSize: 'cover', backgroundPosition: 'center top', padding: '40px 0 28px' }}>
           <div style={{ padding: '0 36px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
             <div>
-              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: 0, color: '#0A0A0A', lineHeight: 1, marginBottom: '8px', fontFamily: F }}>الاستراتيجية</h1>
+              <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', color: '#0A0A0A', lineHeight: 1, marginBottom: '8px', fontFamily: F }}>الاستراتيجية</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(0,150,0,0.70)' }}/>
                 <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.60)', fontWeight: 500, fontFamily: F }}>
@@ -390,7 +390,7 @@ export default function StrategyPageAr() {
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.10)'}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
                         <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'rgba(0,170,255,0.10)', border: '1px solid rgba(0,170,255,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#00AAFF', flexShrink: 0, fontFamily: MONO }}>{i + 1}</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', letterSpacing: 0, fontFamily: F, lineHeight: 1.2 }}>{name}</div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.02em', fontFamily: F, lineHeight: 1.2 }}>{name}</div>
                       </div>
                       {desc && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.70, marginBottom: (topics.length || freq || example) ? '14px' : '0', fontFamily: F }}>{desc}</p>}
                       {freq && <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', fontWeight: 500, marginBottom: topics.length ? '10px' : '0', fontFamily: F }}>{freq}</div>}
@@ -432,11 +432,11 @@ export default function StrategyPageAr() {
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.10)'}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: (hook || why) ? '16px' : '0' }}>
                         <div style={{ width: 26, height: 26, borderRadius: '7px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.50)', flexShrink: 0, fontFamily: MONO }}>{i + 1}</div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', letterSpacing: 0, lineHeight: 1.4, fontFamily: F }}>{title}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.4, fontFamily: F }}>{title}</div>
                       </div>
                       {hook && (
                         <div style={{ padding: '12px 14px', background: 'rgba(0,170,255,0.04)', border: '1px solid rgba(0,170,255,0.12)', borderRight: '3px solid rgba(0,170,255,0.40)', borderRadius: '8px 0 0 8px', marginBottom: '10px' }}>
-                          <div style={{ fontSize: '9px', fontWeight: 600, color: 'rgba(0,170,255,0.80)', letterSpacing: 0, textTransform: 'uppercase', marginBottom: '5px', fontFamily: F }}>الهوك</div>
+                          <div style={{ fontSize: '9px', fontWeight: 600, color: 'rgba(0,170,255,0.80)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '5px', fontFamily: F }}>الهوك</div>
                           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.78)', lineHeight: 1.65, fontStyle: 'italic', fontFamily: F }}>"{hook}"</div>
                         </div>
                       )}
@@ -461,7 +461,7 @@ export default function StrategyPageAr() {
                 {/* شبكة التقويم */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '6px', marginBottom: '16px' }}>
                   {DAYS.map(d => (
-                    <div key={d} style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.20)', textAlign: 'center', padding: '0 0 8px', letterSpacing: 0, fontFamily: F }}>{d}</div>
+                    <div key={d} style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.20)', textAlign: 'center', padding: '0 0 8px', letterSpacing: '0.04em', fontFamily: F }}>{d}</div>
                   ))}
                   {planDays.map((day: any, i: number) => {
                     const num    = day.day || i + 1
@@ -479,7 +479,7 @@ export default function StrategyPageAr() {
                         <div style={{ fontFamily: MONO, fontSize: '12px', fontWeight: 400, color: isOpen ? '#00AAFF' : 'rgba(255,255,255,0.50)', lineHeight: 1, marginBottom: '5px' }}>
                           {String(num).padStart(2, '0')}
                         </div>
-                        {plat && <div style={{ fontSize: '8px', fontWeight: 700, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: 0, marginBottom: '3px', fontFamily: F }}>{plat.slice(0, 3)}</div>}
+                        {plat && <div style={{ fontSize: '8px', fontWeight: 700, color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '3px', fontFamily: F }}>{plat.slice(0, 3)}</div>}
                         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.30)', lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, fontFamily: F }}>{theme}</div>
                         {hovDay === num && !isOpen && (
                           <button
@@ -504,7 +504,7 @@ export default function StrategyPageAr() {
                           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', marginBottom: '4px', fontFamily: F }}>
                             {day.platform ? `${day.platform} · ` : ''}الأسبوع {Math.ceil(expanded / 7)}
                           </div>
-                          <div style={{ fontSize: '32px', fontWeight: 700, color: '#FFFFFF', letterSpacing: 0, lineHeight: 1, fontFamily: MONO, marginBottom: '4px' }}>
+                          <div style={{ fontSize: '32px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.05em', lineHeight: 1, fontFamily: MONO, marginBottom: '4px' }}>
                             يوم {String(expanded).padStart(2, '0')}
                           </div>
                           {day.theme && <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.50)', fontFamily: F }}>{day.theme}</div>}
@@ -588,7 +588,7 @@ export default function StrategyPageAr() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
                     {Object.entries(timingData.platforms).map(([pl, data]: any) => (
                       <div key={pl} style={{ padding: '20px', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,170,255,0.80)', marginBottom: '14px', textTransform: 'capitalize', letterSpacing: 0, fontFamily: F }}>{pl}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,170,255,0.80)', marginBottom: '14px', textTransform: 'capitalize', letterSpacing: '-0.01em', fontFamily: F }}>{pl}</div>
                         {data.best_times?.map((s: any, i: number) => (
                           <div key={i} style={{ display: 'flex', gap: '12px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '6px' }}>
                             <div style={{ flexShrink: 0 }}>
@@ -667,7 +667,7 @@ export default function StrategyPageAr() {
                 {compData.differentiation_strategy?.positioning_statement && (
                   <div style={{ padding: '22px 26px', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRight: '3px solid #00AAFF', borderRadius: '10px 0 0 10px' }}>
                     <Label>تموضعك</Label>
-                    <div style={{ fontSize: '17px', fontWeight: 600, color: 'rgba(255,255,255,0.88)', lineHeight: 1.55, fontFamily: F, letterSpacing: 0 }}>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: 'rgba(255,255,255,0.88)', lineHeight: 1.55, fontFamily: F, letterSpacing: '-0.02em' }}>
                       "{compData.differentiation_strategy.positioning_statement}"
                     </div>
                   </div>
@@ -708,10 +708,10 @@ export default function StrategyPageAr() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginTop: '10px' }}>
                       {compData.competitors.map((comp: any, i: number) => (
                         <div key={i} style={{ padding: '18px', background: '#141414', border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px' }}>
-                          <div style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginBottom: '14px', fontFamily: F, letterSpacing: 0 }}>{comp.name}</div>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', marginBottom: '14px', fontFamily: F, letterSpacing: '-0.01em' }}>{comp.name}</div>
                           {comp.strengths?.length > 0 && (
                             <div style={{ marginBottom: '12px' }}>
-                              <div style={{ fontSize: '9px', fontWeight: 700, color: '#22C55E', textTransform: 'uppercase', letterSpacing: 0, marginBottom: '6px', fontFamily: F }}>نقاط القوة</div>
+                              <div style={{ fontSize: '9px', fontWeight: 700, color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px', fontFamily: F }}>نقاط القوة</div>
                               {comp.strengths.slice(0, 2).map((s: string, j: number) => (
                                 <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', marginBottom: '4px' }}>
                                   <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22C55E', flexShrink: 0, marginTop: '6px' }}/>
@@ -722,7 +722,7 @@ export default function StrategyPageAr() {
                           )}
                           {comp.weaknesses?.length > 0 && (
                             <div style={{ marginBottom: '12px' }}>
-                              <div style={{ fontSize: '9px', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: 0, marginBottom: '6px', fontFamily: F }}>نقاط الضعف</div>
+                              <div style={{ fontSize: '9px', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px', fontFamily: F }}>نقاط الضعف</div>
                               {comp.weaknesses.slice(0, 2).map((w: string, j: number) => (
                                 <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', marginBottom: '4px' }}>
                                   <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#EF4444', flexShrink: 0, marginTop: '6px' }}/>

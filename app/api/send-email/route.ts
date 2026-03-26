@@ -28,6 +28,13 @@ export async function POST(request: NextRequest) {
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
 
+    if (!Array.isArray(to_emails) || to_emails.length === 0) {
+      return NextResponse.json({ error: 'to_emails must be a non-empty array' }, { status: 400 })
+    }
+    if (to_emails.length > 5000) {
+      return NextResponse.json({ error: 'Max 5000 emails per request' }, { status: 400 })
+    }
+
     // Check credits (15 per 100 sends)
     const batchSize = to_emails.length
     const creditCost = Math.ceil(batchSize / 100) * 15

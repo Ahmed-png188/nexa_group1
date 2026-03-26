@@ -29,11 +29,15 @@ export async function POST(
       return NextResponse.json({ error: 'Webhook not found' }, { status: 404 })
     }
 
-    // Update trigger stats
-    await supabase.from('webhooks').update({
-      last_triggered: new Date().toISOString(),
-      trigger_count: (webhook.trigger_count ?? 0) + 1,
-    }).eq('id', webhook.id)
+    // Update trigger stats atomically
+    try {
+      await supabase.rpc('increment_webhook_trigger', { webhook_id: webhook.id })
+    } catch {
+      await supabase.from('webhooks').update({
+        last_triggered: new Date().toISOString(),
+        trigger_count: (webhook.trigger_count ?? 0) + 1,
+      }).eq('id', webhook.id)
+    }
 
     const brand = await getBrandContext(webhook.workspace_id)
     const results = []

@@ -9,6 +9,11 @@ import { Resend } from 'resend'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function GET(request: NextRequest) {
+  const secret = request.headers.get('authorization')?.replace('Bearer ', '')
+  if (secret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const resend = new Resend(process.env.RESEND_API_KEY!)
   const service = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

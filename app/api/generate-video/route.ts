@@ -1,3 +1,4 @@
+import { rateLimit, LIMITS } from '@/lib/rate-limit'
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -5,28 +6,37 @@ import { createClient } from '@/lib/supabase/server'
 import { enhanceVideoPrompt, enhanceImageToVideoPrompt } from '@/lib/prompt-enhancer'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
-import { checkPlanAccess, checkCredits, CREDIT_COSTS } from '@/lib/plan-gate'
+import { checkPlanAccess, checkCredits } from '@/lib/plan-gate'
 import { persistFile } from '@/lib/storage'
+import { getVideoCreditCost } from '@/lib/plan-constants'
+import { fal } from '@fal-ai/client'
 
+// Configure fal client
+fal.config({ credentials: process.env.FAL_KEY })
 
 function sanitize(input: unknown, max = 2000): string {
   if (typeof input !== 'string') throw new Error('Invalid input')
   return input.trim().slice(0, max)
 }
 
-// Fetch image URL and convert to base64 for Veo API
-async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') || 'image/jpeg'
-    const mimeType = contentType.split(';')[0].trim()
-    const buf = await res.arrayBuffer()
-    const base64 = Buffer.from(buf).toString('base64')
-    return { data: base64, mimeType }
-  } catch {
-    return null
+// Resolve which fal model to call — server-side only, never exposed to client
+function getVideoModel(
+  mode: string,
+  quality: string,
+  audio: boolean,
+  hasImage: boolean
+): string {
+  if (mode === 'frame') return 'fal-ai/kling-video/o3/standard/image-to-video'
+  if (quality === 'cinema') {
+    return hasImage
+      ? 'fal-ai/veo3.1/image-to-video'
+      : 'fal-ai/veo3.1/text-to-video'
   }
+  // standard quality
+  const variant = audio ? 'pro' : 'standard'
+  return hasImage
+    ? `fal-ai/kling-video/v3/${variant}/image-to-video`
+    : `fal-ai/kling-video/v3/${variant}/text-to-video`
 }
 
 export async function POST(request: NextRequest) {
@@ -35,14 +45,24 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Rate limit: per user
+    const _rl = await rateLimit({ key: user.id, ...LIMITS.videoGen })
+    if (_rl.limited) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((_rl.resetAt.getTime() - Date.now()) / 1000)) } }
+      )
+    }
+
     const {
       workspace_id,
       prompt:          rawPrompt,
-      aspect_ratio = '9:16',
+      mode         = 'text',    // 'text' | 'image' | 'frame'
+      quality      = 'standard', // 'standard' | 'cinema'
+      audio        = true,
       duration     = 8,
-      mode         = 'text',  // 'text' | 'image' | 'frame'
-      image_url,              // for image-to-video
-      start_frame_url,        // for frame-to-frame
+      image_url,
+      start_frame_url,
       end_frame_url,
     } = await request.json()
 
@@ -55,24 +75,26 @@ export async function POST(request: NextRequest) {
     const gateError = await checkPlanAccess(workspace_id, 'video_generation')
     if (gateError) return gateError
 
-    // Duration-based credit cost — all 4 durations
-    const clampedDuration = [5,8,10,16].includes(duration) ? duration : 8
-    // Credit costs: 5s=6cr, 8s=10cr, 10s=12cr, 16s=20cr
-    const creditCost = clampedDuration===5 ? 6
-      : clampedDuration===8  ? CREDIT_COSTS.video_8s
-      : clampedDuration===10 ? 12
-      : CREDIT_COSTS.video_16s
+    // Clamp duration to valid values
+    const clampedDuration = ([5, 8, 10, 16] as const).includes(duration as 5|8|10|16)
+      ? (duration as 5|8|10|16)
+      : 8 as const
+
+    // Determine effective mode for credit calculation
+    const effectiveMode = mode === 'frame' ? 'frame' : (quality === 'cinema' ? 'cinema' : 'standard') as 'standard' | 'cinema' | 'frame'
+
+    const creditCost = getVideoCreditCost(clampedDuration, effectiveMode, audio)
 
     const { ok, error: creditError } = await checkCredits(
       workspace_id, user.id, creditCost,
-      'video_gen', `Video ${mode} ${clampedDuration}s — Veo 3.1 Fast`,
+      'video_gen', `Video ${mode} ${clampedDuration}s`,
     )
     if (!ok) return creditError!
 
     // Get brand context for smart prompting
     const brand = await getBrandContext(workspace_id)
 
-    // Build the enhanced prompt — different logic per mode
+    // Build enhanced prompt
     let finalPrompt = prompt || 'cinematic brand video'
     try {
       if (mode === 'image' || mode === 'frame') {
@@ -84,112 +106,59 @@ export async function POST(request: NextRequest) {
       // Keep original if enhancer fails
     }
 
-    const apiKey = process.env.GOOGLE_AI_API_KEY
-    if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
+    const hasImage = mode === 'image' && !!image_url
+    const modelId = getVideoModel(mode, quality, audio, hasImage)
 
-    // Build the Veo API instance payload
-    const instance: Record<string, any> = { prompt: finalPrompt }
-
-    // Image-to-video: attach reference image
-    if (mode === 'image' && image_url) {
-      const img = await urlToBase64(image_url)
-      if (img) {
-        instance.image = {
-          bytesBase64Encoded: img.data,
-          mimeType: img.mimeType,
-        }
-      }
+    // Build fal input
+    const falInput: Record<string, unknown> = {
+      prompt: finalPrompt,
+      duration: clampedDuration,
     }
 
-    // Frame-to-frame: attach start and end frames
+    // Audio flag (cinema/veo models handle this natively)
+    if (quality !== 'cinema') {
+      // Kling models don't take an audio flag — silent variant chosen via model ID
+    } else {
+      falInput.audio = audio
+    }
+
+    if (image_url) falInput.image_url = image_url
     if (mode === 'frame') {
-      if (start_frame_url) {
-        const startImg = await urlToBase64(start_frame_url)
-        if (startImg) {
-          instance.startImage = {
-            bytesBase64Encoded: startImg.data,
-            mimeType: startImg.mimeType,
-          }
-        }
-      }
-      if (end_frame_url) {
-        const endImg = await urlToBase64(end_frame_url)
-        if (endImg) {
-          instance.endImage = {
-            bytesBase64Encoded: endImg.data,
-            mimeType: endImg.mimeType,
-          }
-        }
-      }
+      if (start_frame_url) falInput.first_frame_image = start_frame_url
+      if (end_frame_url)   falInput.last_frame_image  = end_frame_url
     }
 
-    const submitRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instances: [instance],
-          parameters: {
-            aspectRatio:     aspect_ratio,
-            durationSeconds: clampedDuration,
-            generateAudio:   true,
-            resolution:      '720p',
-          }
-        })
-      }
-    )
+    let videoUrl: string | null = null
+    try {
+      const result = await fal.subscribe(modelId, {
+        input: falInput,
+        logs: false,
+        onQueueUpdate: () => {},
+      })
 
-    if (!submitRes.ok) {
-      const errText = await submitRes.text()
-      console.error('[generate-video] Veo error:', submitRes.status, errText)
+      videoUrl = (result as any).data?.video?.url
+        || (result as any).data?.url
+        || (result as any).video?.url
+        || null
+    } catch (falErr: unknown) {
+      console.error('[generate-video] fal error:', falErr instanceof Error ? falErr.message : falErr)
+      // Refund credits on API failure
       await supabase.rpc('deduct_credits', {
         p_workspace_id: workspace_id, p_amount: -creditCost,
         p_action: 'video_gen_refund', p_user_id: user.id,
-        p_description: 'Video generation refund — Veo API error',
+        p_description: 'Video generation refund — provider error',
       })
-      throw new Error(`Veo API error: ${submitRes.status}`)
-    }
-
-    const operation = await submitRes.json()
-    const operationName = operation.name
-    if (!operationName) throw new Error('No operation name from Veo')
-
-    // Poll for completion — max ~3 minutes
-    let videoUrl: string | null = null
-    for (let i = 0; i < 22; i++) {
-      await new Promise(r => setTimeout(r, 8000))
-      const pollRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`)
-      if (!pollRes.ok) continue
-      const pollData = await pollRes.json()
-      if (pollData.done) {
-        const samples = pollData.response?.predictions?.[0]?.videos ||
-                        pollData.response?.generateVideoResponse?.generatedSamples ||
-                        pollData.response?.predictions
-        if (samples?.[0]?.video?.uri) {
-          videoUrl = samples[0].video.uri
-        } else if (samples?.[0]?.bytesBase64Encoded) {
-          const buf = Buffer.from(samples[0].bytesBase64Encoded, 'base64')
-          const fileName = `video_${user.id}_${Date.now()}.mp4`
-          const { data: upload } = await supabase.storage
-            .from('generated-content').upload(fileName, buf, { contentType: 'video/mp4' })
-          if (upload) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('generated-content').getPublicUrl(fileName)
-            videoUrl = publicUrl
-          }
-        }
-        break
-      }
+      return NextResponse.json({ error: 'Video generation failed' }, { status: 500 })
     }
 
     if (!videoUrl) {
+      // Refund credits if no video returned
       await supabase.rpc('deduct_credits', {
         p_workspace_id: workspace_id, p_amount: -creditCost,
         p_action: 'video_gen_refund', p_user_id: user.id,
-        p_description: 'Video generation refund — timeout',
+        p_description: 'Video generation refund — no output',
       })
-      throw new Error('Video generation timed out')
+      return NextResponse.json({ error: 'Video generation failed' }, { status: 500 })
     }
 
     const permanentUrl = await persistFile(videoUrl, workspace_id, 'video', undefined)
@@ -199,19 +168,17 @@ export async function POST(request: NextRequest) {
       type: 'video', platform: 'general', status: 'draft',
       video_url: permanentUrl || videoUrl,
       prompt: finalPrompt, credits_used: creditCost,
-      ai_model: 'veo-3.1-fast',
+      ai_model: 'nexa-video',
       metadata: {
-        aspect_ratio, duration: clampedDuration, mode,
-        original_prompt: prompt, enhanced_prompt: finalPrompt,
-        provider: 'google-veo', has_audio: true,
-        has_reference_image: mode === 'image' && !!image_url,
+        duration: clampedDuration, mode, quality, audio,
+        has_image: !!image_url,
         has_frames: mode === 'frame' && (!!start_frame_url || !!end_frame_url),
       },
     }).select().single()
 
     await supabase.from('activity').insert({
       workspace_id, user_id: user.id, type: 'video_generated',
-      title: `Video generated (${mode}) — "${(prompt||'brand video').slice(0,50)}"`,
+      title: `Video generated (${mode}) — "${(prompt || 'brand video').slice(0, 50)}"`,
       metadata: { content_id: savedContent?.id, credits_used: creditCost, duration: clampedDuration, mode },
     })
 
@@ -222,7 +189,6 @@ export async function POST(request: NextRequest) {
       credits_used: creditCost,
       duration: clampedDuration,
       mode,
-      provider: 'veo-3.1-fast',
       enhanced_prompt: finalPrompt,
     })
 

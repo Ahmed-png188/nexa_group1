@@ -2,21 +2,40 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-export async function enhanceImagePrompt(userPrompt: string, brandContext: any): Promise<string> {
-  const brand     = brandContext?.workspace?.brand_name || 'this brand'
-  const visual    = brandContext?.profile?.visual?.aesthetic || 'premium, modern, professional'
-  const colors    = brandContext?.profile?.visual?.color_mood || brandContext?.profile?.visual?.colors || 'rich, deep tones'
-  const photoStyle= brandContext?.profile?.visual?.photography_style || 'professional brand photography'
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE PROMPT ENHANCER — bilingual
+// ─────────────────────────────────────────────────────────────────────────────
+export async function enhanceImagePrompt(
+  userPrompt: string,
+  brandContext: any,
+  lang: 'en' | 'ar' = 'en'
+): Promise<string> {
+  const brand       = brandContext?.workspace?.brand_name || 'this brand'
+  const visual      = brandContext?.profile?.visual?.aesthetic || 'premium, modern, professional'
+  const colors      = brandContext?.profile?.visual?.color_mood || brandContext?.profile?.visual?.colors || 'rich, deep tones'
+  const photoStyle  = brandContext?.profile?.visual?.photography_style || 'professional brand photography'
   const composition = brandContext?.profile?.visual?.composition || 'clean, purposeful'
-  const industry  = brandContext?.profile?.business?.industry || 'professional services'
-  const customPfx = brandContext?.profile?.generation_instructions?.image_prompt_prefix || ''
+  const industry    = brandContext?.profile?.business?.industry || 'professional services'
+  const customPfx   = brandContext?.profile?.generation_instructions?.image_prompt_prefix || ''
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 300,
-    messages: [{
-      role: 'user',
-      content: `You are a world-class commercial photographer and art director. Transform this basic image prompt into a professional photographic brief that produces results indistinguishable from a real professional photoshoot.
+  const prompt = lang === 'ar'
+    ? `أنت مصور تجاري ومدير فني على مستوى عالمي. حوّل هذا الوصف البسيط إلى موجّه احترافي ينتج صورة لا تُميَّز من التصوير الحقيقي.
+
+قواعد غير قابلة للتفاوض:
+- يجب أن تبدو الصورة وكأنها صورة فوتوغرافية حقيقية، لا صورة ذكاء اصطناعي
+- البشرة البشرية: مسام مرئية، شوائب طبيعية، قوام حقيقي
+- المنتجات: قوام مادي حقيقي، انعكاسات واقعية، وزن وعمق
+- لا بشرة بلاستيكية، لا حواف مضيئة، لا ضبابية حالمة
+- الضوء يجب أن يكون له مصدر حقيقي — سمِّه تحديداً
+- دائماً حدد الكاميرا والعدسة
+- دائماً حدد درجة الألوان أو مرجع فيلم
+- دائماً حدد أسلوب التكوين
+
+العلامة: ${brand} | الجماليات: ${visual} | الألوان: ${colors} | التصوير: ${photoStyle} | التكوين: ${composition} | القطاع: ${industry}${customPfx ? ' | ' + customPfx : ''}
+
+أخرج الموجّه المحسَّن فقط. ١٤٠ كلمة كحد أقصى. بلا تفسير.
+الوصف البسيط: "${userPrompt}"`
+    : `You are a world-class commercial photographer and art director. Transform this basic image prompt into a professional photographic brief that produces results indistinguishable from a real professional photoshoot.
 
 CRITICAL RULES — non-negotiable:
 - Output must look like a real photograph, NOT AI-generated
@@ -31,15 +50,25 @@ CRITICAL RULES — non-negotiable:
 Brand: ${brand} | Aesthetic: ${visual} | Colors: ${colors} | Photography: ${photoStyle} | Composition: ${composition} | Industry: ${industry}${customPfx ? ' | ' + customPfx : ''}
 
 Output ONLY the enhanced prompt. Maximum 140 words. No explanation. No preamble.
+Basic prompt to enhance: "${userPrompt}"`
 
-Basic prompt to enhance: "${userPrompt}"`,
-    }],
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 300,
+    messages: [{ role: 'user', content: prompt }],
   })
 
   return (response.content[0] as any).text.trim()
 }
 
-export async function enhanceVideoPrompt(userPrompt: string, brandContext: any): Promise<string> {
+// ─────────────────────────────────────────────────────────────────────────────
+// VIDEO PROMPT ENHANCER — bilingual
+// ─────────────────────────────────────────────────────────────────────────────
+export async function enhanceVideoPrompt(
+  userPrompt: string,
+  brandContext: any,
+  lang: 'en' | 'ar' = 'en'
+): Promise<string> {
   const brand     = brandContext?.workspace?.brand_name || 'this brand'
   const industry  = brandContext?.profile?.business?.industry || 'professional services'
   const tone      = brandContext?.profile?.voice?.primary_tone || 'confident, premium'
@@ -49,23 +78,46 @@ export async function enhanceVideoPrompt(userPrompt: string, brandContext: any):
   const audience  = brandContext?.profile?.audience?.primary || 'professional audience'
   const customPfx = brandContext?.profile?.generation_instructions?.video_prompt_prefix || ''
 
-  const brandDNA = [
-    `Brand: ${brand}`,
-    `Industry: ${industry}`,
-    `Tone: ${tone}`,
-    `Visual aesthetic: ${aesthetic}`,
-    `Color palette mood: ${colorMood}`,
-    `Video style: ${vidStyle}`,
-    `Audience: ${audience}`,
-    customPfx ? `Custom brand direction: ${customPfx}` : ''
-  ].filter(Boolean).join('\n')
+  const brandDNA = lang === 'ar'
+    ? [
+        `العلامة: ${brand}`,
+        `القطاع: ${industry}`,
+        `النبرة: ${tone}`,
+        `الجماليات البصرية: ${aesthetic}`,
+        `مزاج الألوان: ${colorMood}`,
+        `أسلوب الفيديو: ${vidStyle}`,
+        `الجمهور: ${audience}`,
+        customPfx ? `توجيه العلامة المخصص: ${customPfx}` : '',
+      ].filter(Boolean).join('\n')
+    : [
+        `Brand: ${brand}`,
+        `Industry: ${industry}`,
+        `Tone: ${tone}`,
+        `Visual aesthetic: ${aesthetic}`,
+        `Color palette mood: ${colorMood}`,
+        `Video style: ${vidStyle}`,
+        `Audience: ${audience}`,
+        customPfx ? `Custom brand direction: ${customPfx}` : '',
+      ].filter(Boolean).join('\n')
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 350,
-    messages: [{
-      role: 'user',
-      content: `You are a creative director who has shot campaigns for Nike, Apple, Chanel and Rolex. You don't just make beautiful videos — you make videos that feel unmistakably like a specific brand.
+  const prompt = lang === 'ar'
+    ? `أنت مدير إبداعي صوّر حملات لـ Nike وApple وChanel وRolex. لا تصنع فيديوهات جميلة فحسب — تصنع فيديوهات لا تُخطئ هوية العلامة.
+
+هوية العلامة البصرية (كل قرار إبداعي يخدم هذا):
+${brandDNA}
+
+قواعد غير قابلة للتفاوض:
+- يجب أن يبدو الإنتاج حقيقياً، لا مُولَّداً بذكاء اصطناعي
+- كل عنصر يعكس هوية العلامة: الألوان، الحركة، الطاقة، الإضاءة
+- حدد حركة الكاميرا التي تناسب طاقة العلامة (فاخر = بطيء، طاقة = ديناميكي، تقني = ثابت)
+- حدد الإضاءة التي تناسب مزاج الألوان
+- حدد درجة الألوان التي تناسب الجماليات
+- حدد الإيقاع الذي يناسب نبرة العلامة
+- لا كلمات مبهمة — أظهر ما تعنيه "سينمائي" لهذه العلامة تحديداً
+
+أخرج الموجّه المحسَّن فقط. ١٦٠ كلمة كحد أقصى. بلا تفسير.
+الوصف البسيط: "${userPrompt}"`
+    : `You are a creative director who has shot campaigns for Nike, Apple, Chanel and Rolex. You don't just make beautiful videos — you make videos that feel unmistakably like a specific brand.
 
 BRAND DNA (every creative decision must serve this):
 ${brandDNA}
@@ -81,23 +133,52 @@ CRITICAL RULES — non-negotiable:
 - One specific film or campaign reference if relevant to the brand world
 
 Output ONLY the enhanced prompt. Maximum 160 words. No explanation.
+Basic prompt: "${userPrompt}"`
 
-Basic prompt: "${userPrompt}"`,
-    }],
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 350,
+    messages: [{ role: 'user', content: prompt }],
   })
 
   return (response.content[0] as any).text.trim()
 }
 
-export async function enhanceVoiceScript(script: string, brandContext: any): Promise<string> {
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE SCRIPT ENHANCER — bilingual
+// The Arabic version adds tajweed-style delivery notation
+// ─────────────────────────────────────────────────────────────────────────────
+export async function enhanceVoiceScript(
+  script: string,
+  brandContext: any,
+  lang: 'en' | 'ar' = 'en'
+): Promise<string> {
   const tone = brandContext?.profile?.voice?.primary_tone || 'confident, authoritative'
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 600,
-    messages: [{
-      role: 'user',
-      content: `You are a voice director who has directed Morgan Freeman, David Attenborough style narrations, and premium brand campaigns. Add professional delivery notation to this script.
+  const prompt = lang === 'ar'
+    ? `أنت مخرج صوتي يفهم الإيقاع العربي والنبرة الخليجية. أضف علامات التوصيل الاحترافية لهذا النص.
+
+نظام علامات التوصيل:
+- [توقف] = توقف نصف ثانية متعمد
+- [نبضة] = توقف ثانية للوقع والتأثير
+- [توقف طويل] = توقف ثانيتين للدراما
+- *كلمة* = تأكيد — أبطأ وأعلى قليلاً
+- (بهدوء) = خفض الصوت والدفء
+- (بناء) = زيادة الطاقة تدريجياً
+- (هبوط) = تباطؤ ودع الكلمة تنزل
+
+قواعد:
+- لا تزيد على ٤ علامات في الجملة الواحدة
+- التوقفات تُكسَب، لا تُفرض
+- التأكيد يكشف المعنى، لا يزينه
+- السطر الأول دائماً يعقبه [نبضة]
+- السطر الأخير دائماً يتباطأ
+- النبرة: ${tone}
+- احتفظ بالروح الخليجية — لا تحوّله إلى فصحى جافة
+
+أخرج النص مع العلامات فقط. بلا تفسير.
+النص: "${script}"`
+    : `You are a voice director who has directed Morgan Freeman, David Attenborough style narrations, and premium brand campaigns. Add professional delivery notation to this script.
 
 DELIVERY NOTATION SYSTEM:
 - [pause] = 0.5 second deliberate pause
@@ -117,18 +198,25 @@ RULES:
 - Brand tone: ${tone}
 
 Output ONLY the marked-up script with delivery notations. No explanation.
+Script: "${script}"`
 
-Script: "${script}"`,
-    }],
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
   })
 
   return (response.content[0] as any).text.trim()
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE-TO-VIDEO PROMPT ENHANCER — bilingual
+// ─────────────────────────────────────────────────────────────────────────────
 export async function enhanceImageToVideoPrompt(
   userPrompt: string,
   brandContext: any,
-  mode: 'image' | 'frame'
+  mode: 'image' | 'frame',
+  lang: 'en' | 'ar' = 'en'
 ): Promise<string> {
   const brand     = brandContext?.workspace?.brand_name || 'this brand'
   const industry  = brandContext?.profile?.business?.industry || 'professional services'
@@ -138,27 +226,36 @@ export async function enhanceImageToVideoPrompt(
   const vidStyle  = brandContext?.profile?.visual?.video_style || 'cinematic brand content'
   const customPfx = brandContext?.profile?.generation_instructions?.video_prompt_prefix || ''
 
-  // Brand visual DNA — this is what makes every video feel on-brand
-  const brandDNA = `
-Brand: ${brand}
-Industry: ${industry}
-Tone: ${tone}
-Visual aesthetic: ${aesthetic}
-Color palette mood: ${colorMood}
-Video style: ${vidStyle}
-${customPfx ? `Custom brand direction: ${customPfx}` : ''}
-`.trim()
+  const brandDNA = lang === 'ar'
+    ? `العلامة: ${brand}\nالقطاع: ${industry}\nالنبرة: ${tone}\nالجماليات البصرية: ${aesthetic}\nمزاج الألوان: ${colorMood}\nأسلوب الفيديو: ${vidStyle}${customPfx ? `\nتوجيه مخصص: ${customPfx}` : ''}`
+    : `Brand: ${brand}\nIndustry: ${industry}\nTone: ${tone}\nVisual aesthetic: ${aesthetic}\nColor palette mood: ${colorMood}\nVideo style: ${vidStyle}${customPfx ? `\nCustom brand direction: ${customPfx}` : ''}`
 
-  const modeContext = mode === 'image'
-    ? `The user is animating a STILL IMAGE into a video. The motion should feel intentional and premium — not random. Enhance with specific camera movement that respects the composition of the original image.`
-    : `The user is creating a video that TRANSITIONS between a start frame and end frame. The motion should connect both frames naturally and cinematically.`
+  const modeContext = lang === 'ar'
+    ? mode === 'image'
+      ? 'المستخدم يحوّل صورة ثابتة إلى فيديو. الحركة يجب أن تكون مقصودة وراقية — لا عشوائية. حدد حركة كاميرا تحترم تكوين الصورة الأصلية.'
+      : 'المستخدم يصنع فيديو ينتقل بين إطار بداية وإطار نهاية. الحركة يجب أن تربط الإطارين بشكل طبيعي وسينمائي.'
+    : mode === 'image'
+      ? 'The user is animating a STILL IMAGE into a video. The motion should feel intentional and premium — not random. Enhance with specific camera movement that respects the composition of the original image.'
+      : 'The user is creating a video that TRANSITIONS between a start frame and end frame. The motion should connect both frames naturally and cinematically.'
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 350,
-    messages: [{
-      role: 'user',
-      content: `You are a creative director at a top-tier brand agency — the kind that shoots campaigns for Porsche, Apple, and Rolex. You understand brand identity deeply and translate it into cinematic motion.
+  const prompt = lang === 'ar'
+    ? `أنت مدير إبداعي في وكالة من الدرجة الأولى — النوع الذي يصنع حملات بورش وآبل ورولكس. تفهم الهوية البصرية وتترجمها إلى حركة سينمائية.
+
+${modeContext}
+
+هوية العلامة البصرية:
+${brandDNA}
+
+مهمتك كمدير إبداعي:
+- خذ وصف المستخدم وارفعه بلغة حركة تناسب العلامة
+- حدد حركة كاميرا تناسب جماليات العلامة (فاخر = بطيء متعمد؛ طاقة = ديناميكي)
+- حدد إضاءة تعزز مزاج الألوان
+- حدد عنصر الحركة الأهم الواحد — ماذا يتحرك، كيف، ولماذا
+- ١٥٠ كلمة كحد أقصى
+- أخرج الموجّه المحسَّن فقط — بلا تفسير
+
+وصف المستخدم: "${userPrompt || 'حرّك هذه الصورة بأسلوب سينمائي'}"`
+    : `You are a creative director at a top-tier brand agency — the kind that shoots campaigns for Porsche, Apple, and Rolex. You understand brand identity deeply and translate it into cinematic motion.
 
 ${modeContext}
 
@@ -167,19 +264,60 @@ ${brandDNA}
 
 AS CREATIVE DIRECTOR, your job is to:
 1. Take the user's basic prompt and elevate it with brand-appropriate motion language
-2. Specify camera movement that matches the brand's aesthetic (luxury brands = slow, deliberate; energy brands = dynamic, kinetic)
-3. Specify lighting that reinforces the color mood (warm amber for warmth, cool blue for tech, golden hour for aspiration)
+2. Specify camera movement that matches the brand's aesthetic (luxury = slow, deliberate; energy brands = dynamic, kinetic)
+3. Specify lighting that reinforces the color mood
 4. Specify the ONE most important motion element — what moves, how it moves, why it moves
 5. Reference the brand's visual tone in the motion style
 
 RULES:
 - Every word must serve the brand aesthetic
 - Motion must feel INTENTIONAL, not random
-- Specify: camera movement + lighting + color grade + key motion element
 - Maximum 150 words
 - Output ONLY the enhanced prompt — no explanation, no preamble
 
-User's prompt: "${userPrompt || 'animate this brand image cinematically'}"`,
+User's prompt: "${userPrompt || 'animate this brand image cinematically'}"`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 350,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  return (response.content[0] as any).text.trim()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEXT CONTENT ANTI-ROBOT REFINER — Arabic only
+// Runs AFTER generation to humanize Arabic output
+// ─────────────────────────────────────────────────────────────────────────────
+export async function humanizeArabicContent(
+  content: string,
+  brandContext: any
+): Promise<string> {
+  const brandName = brandContext?.workspace?.brand_name || 'هذه العلامة'
+  const tone      = brandContext?.profile?.voice?.primary_tone || 'واثق، مباشر'
+  const audience  = brandContext?.profile?.audience?.primary || 'عملاء محتملون'
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{
+      role: 'user',
+      content: `أنت محرر لغوي خبير في الكتابة الإبداعية العربية. مهمتك: اجعل هذا المحتوى يبدو وكأنه كتبه إنسان يعرف ما يفعل — لا آلة تقلّد الكتابة.
+
+علامة: ${brandName} | النبرة: ${tone} | الجمهور: ${audience}
+
+قواعد التحرير:
+١. احذف أي جملة تبدأ بـ "في عالم..." أو "في ظل..." أو "لا شك أن..." — مبتذلة
+٢. احذف: "بكل تأكيد" / "يسعدنا" / "نفخر بتقديم" / "الحل الأمثل" / "المتكامل"
+٣. قصّر الجمل الطويلة — إذا تجاوزت ٢٠ كلمة، اكسرها
+٤. افتح بجملة تشدّ الانتباه، لا بتعريف
+٥. احتفظ بنبرة خليجية دافئة — لا تحوّله إلى فصحى جافة
+٦. لا تغير المعنى — فقط اجعله أكثر إنسانية
+٧. إذا كان المحتوى جيداً بالفعل، أعده كما هو بلا تعديل مبالغ فيه
+
+أخرج المحتوى المحرَّر فقط. بلا تفسير.
+المحتوى: "${content}"`,
     }],
   })
 

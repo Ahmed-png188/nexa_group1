@@ -198,7 +198,6 @@ export async function PATCH(request: NextRequest) {
               }),
             })
             const data = await res.json()
-            console.log('[LinkedIn]', data)
             if (data.id) { published = true; platformPostId = data.id }
           }
         } catch (e) {

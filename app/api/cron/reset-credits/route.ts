@@ -57,6 +57,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log(`Credit reset complete: ${reset} reset, ${skipped} skipped`)
   return NextResponse.json({ success: true, reset, skipped, total: workspaces?.length ?? 0 })
 }

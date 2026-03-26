@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
     if (deny) return deny
 
     const { ok, error: creditErr } = await checkCredits(
-      workspace_id, user.id, CREDIT_COSTS.product_bg_remove,
-      'product_bg_remove', 'Background removal'
+      workspace_id, user.id, CREDIT_COSTS.product_clean,
+      'product_clean', 'Background removal'
     )
     if (!ok) return creditErr!
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           workspace_id,
           asset_type: 'cleaned',
           url: finalUrl,
-          credits_used: CREDIT_COSTS.product_bg_remove,
+          credits_used: CREDIT_COSTS.product_clean,
           metadata: {},
         })
       }
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
       // Refund credit
       await supabase.rpc('deduct_credits', {
         p_workspace_id:  workspace_id,
-        p_amount:        -CREDIT_COSTS.product_bg_remove,
-        p_action:        'product_bg_remove_refund',
+        p_amount:        -CREDIT_COSTS.product_clean,
+        p_action:        'product_clean_refund',
         p_user_id:       user.id,
         p_description:   'Refund: background removal failed',
       })
