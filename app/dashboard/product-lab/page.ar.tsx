@@ -1,8 +1,13 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
+import { usePackagingDownload } from './usePackagingDownload'
+import type { PackagingViewer3DHandle } from './PackagingViewer3D'
+
+const PackagingViewer3D = dynamic(() => import('./PackagingViewer3D'), { ssr: false })
 
 const C = {
   bg:      '#0C0C0C',
@@ -104,6 +109,10 @@ export default function ProductLabAr() {
   const [pkgHistory,    setPkgHistory]    = useState<any[]>([])
   const [pkgSpecOpen,   setPkgSpecOpen]   = useState(false)
   const [pkgError,      setPkgError]      = useState('')
+  const [pkgAutoRotate, setPkgAutoRotate] = useState(true)
+  const [pkgDlOpen,     setPkgDlOpen]     = useState(false)
+  const viewerRef = useRef<PackagingViewer3DHandle>(null)
+  const { downloadPNG, downloadHiRes } = usePackagingDownload(viewerRef, pkgDesign, pkgType)
 
   useEffect(() => {
     supabase.from('workspace_members')
@@ -421,8 +430,13 @@ export default function ProductLabAr() {
                 pkgHistory={pkgHistory}
                 pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
                 pkgError={pkgError}
+                pkgAutoRotate={pkgAutoRotate} setPkgAutoRotate={setPkgAutoRotate}
+                pkgDlOpen={pkgDlOpen} setPkgDlOpen={setPkgDlOpen}
+                viewerRef={viewerRef}
                 onGenerate={generatePackaging}
                 onExportPDF={exportPDF}
+                onDownloadPNG={downloadPNG}
+                onDownloadHiRes={downloadHiRes}
               />
             )}
           </div>
@@ -770,6 +784,7 @@ const PKG_ICONS_AR: Record<string, JSX.Element> = {
   sleeve: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M2 14h20"/></svg>,
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function shadeColorAr(hex: string, pct: number): string {
   try {
     const n = parseInt(hex.replace('#',''), 16)
@@ -780,62 +795,19 @@ function shadeColorAr(hex: string, pct: number): string {
   } catch { return hex }
 }
 
-function PackagingPreviewAr({ design, packagingType }: { design: any; packagingType: string }) {
-  const bg      = design?.bg_color     || '#1A1A1A'
-  const textCol = design?.text_color   || '#FFFFFF'
-  const accent  = design?.accent_color || '#00AAFF'
-  const dims    = design?.dims         || { width_mm: 100, height_mm: 100, depth_mm: 0 }
-  const scale   = 2.2
-  const previewW = Math.min(320, dims.width_mm  * scale)
-  const previewH = Math.min(240, dims.height_mm * scale)
-  const isCircle = Math.abs(previewW - previewH) < 10
-  const borderRadius = isCircle ? '50%' : packagingType === 'pouch' ? '12px 12px 4px 4px' : '8px'
+const PKG_LOADING_MSGS_AR = ['تعيين القوام على الشكل…', 'ضبط إضاءة الاستوديو…', 'عرض النموذج ثلاثي الأبعاد…', 'يكاد ينتهي…']
 
+function Pkg3DLoadingAr() {
+  const [msg, setMsg] = useState(PKG_LOADING_MSGS_AR[0])
+  useEffect(() => {
+    let i = 0
+    const iv = setInterval(() => { i = (i + 1) % PKG_LOADING_MSGS_AR.length; setMsg(PKG_LOADING_MSGS_AR[i]) }, 1400)
+    return () => clearInterval(iv)
+  }, [])
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-      <div style={{ fontSize:10, fontWeight:600, letterSpacing:0, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', fontFamily:FA }}>
-        معاينة
-      </div>
-      <div style={{
-        width: previewW, height: previewH,
-        background: bg, border: '3px solid rgba(255,255,255,0.15)',
-        borderRadius, display:'flex', flexDirection:'column',
-        alignItems:'center', justifyContent:'center',
-        padding:16, textAlign:'center', position:'relative', overflow:'hidden',
-        boxShadow:'0 12px 40px rgba(0,0,0,0.6)', transition:'all 0.25s',
-      }}>
-        {packagingType === 'box' && dims.depth_mm > 0 && (
-          <>
-            <div style={{ position:'absolute', left:0, top:0, bottom:0, width:Math.min(40, dims.depth_mm*scale*0.4), background:shadeColorAr(bg,-20), borderRight:'1px dashed rgba(255,255,255,0.15)' }}/>
-            <div style={{ position:'absolute', right:0, top:0, bottom:0, width:Math.min(40, dims.depth_mm*scale*0.4), background:shadeColorAr(bg,-20), borderLeft:'1px dashed rgba(255,255,255,0.15)' }}/>
-          </>
-        )}
-        {packagingType === 'pouch' && (
-          <div style={{ position:'absolute', top:14, left:8, right:8, height:4, background:'rgba(255,255,255,0.2)', borderRadius:2 }}/>
-        )}
-        {packagingType === 'bag' && (
-          <div style={{ position:'absolute', top:-8, left:'50%', transform:'translateX(-50%)', width:60, height:16, border:'3px solid rgba(255,255,255,0.25)', borderBottom:'none', borderRadius:'8px 8px 0 0' }}/>
-        )}
-        {design?.logo_url && (
-          <img src={design.logo_url} alt="logo" style={{ maxWidth:60, maxHeight:40, objectFit:'contain', marginBottom:8, position:'relative', zIndex:1 }}/>
-        )}
-        <div style={{ fontSize:Math.max(10,Math.min(20,previewW/10)), fontWeight:700, color:textCol, letterSpacing:0, fontFamily:FA, position:'relative', zIndex:1, wordBreak:'break-word' }}>
-          {design?.brand_name_display || 'العلامة'}
-        </div>
-        {design?.tagline_display && (
-          <div style={{ fontSize:Math.max(7,Math.min(11,previewW/16)), color:accent, marginTop:4, fontFamily:FA, letterSpacing:0, position:'relative', zIndex:1 }}>
-            {design.tagline_display}
-          </div>
-        )}
-        {design?.main_copy && (
-          <div style={{ fontSize:Math.max(6,Math.min(9,previewW/20)), color:textCol, opacity:0.65, marginTop:6, lineHeight:1.4, fontFamily:FA, letterSpacing:0, position:'relative', zIndex:1, maxWidth:'80%' }}>
-            {design.main_copy.split('\n')[0]}
-          </div>
-        )}
-      </div>
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', fontFamily:FA, letterSpacing:0 }}>
-        {dims.width_mm}×{dims.height_mm}mm{dims.depth_mm ? `×${dims.depth_mm}mm` : ''} + {dims.bleed_mm || 3}mm bleed
-      </div>
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+      <LoadingDotsAr/>
+      <div style={{ fontSize:13, color:'rgba(255,255,255,0.35)', fontFamily:FA, letterSpacing:0 }}>{msg}</div>
     </div>
   )
 }
@@ -856,7 +828,9 @@ function PackagingTabAr({
   pkgGenerating, pkgDesign, setPkgDesign, pkgDesignId,
   pkgExporting, pkgEditField, setPkgEditField,
   pkgHistory, pkgSpecOpen, setPkgSpecOpen,
-  pkgError, onGenerate, onExportPDF,
+  pkgError, pkgAutoRotate, setPkgAutoRotate,
+  pkgDlOpen, setPkgDlOpen, viewerRef,
+  onGenerate, onExportPDF, onDownloadPNG, onDownloadHiRes,
 }: {
   pkgType: string; setPkgType: (t: string) => void
   pkgSizeId: string; setPkgSizeId: (s: string) => void
@@ -870,8 +844,13 @@ function PackagingTabAr({
   pkgHistory: any[]
   pkgSpecOpen: boolean; setPkgSpecOpen: (o: boolean) => void
   pkgError: string
+  pkgAutoRotate: boolean; setPkgAutoRotate: (v: boolean) => void
+  pkgDlOpen: boolean; setPkgDlOpen: (v: boolean) => void
+  viewerRef: React.RefObject<PackagingViewer3DHandle | null>
   onGenerate: (isRegen?: boolean) => void
   onExportPDF: () => void
+  onDownloadPNG: () => void
+  onDownloadHiRes: () => void
 }) {
   const tmpl = getTemplate(pkgType)
   const selectedSize = tmpl?.sizes.find(s => s.id === pkgSizeId)
@@ -1038,25 +1017,98 @@ function PackagingTabAr({
         )}
       </div>
 
-      {/* ── LEFT PREVIEW ── */}
-      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:16 }}>
-        <div style={{ background:'#0C0C0C', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:'40px 32px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:300 }}>
+      {/* ── LEFT PANEL: 3D VIEWER ── */}
+      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:12 }}>
+
+        {/* Viewer container */}
+        <div style={{
+          background:'#0C0C0C', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14,
+          overflow:'hidden', position:'relative',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          minHeight:360,
+        }}>
           {!pkgDesign && !pkgGenerating ? (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center' }}>
+            <div style={{ padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center' }}>
               <div style={{ color:'rgba(255,255,255,0.15)' }}>
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                 </svg>
               </div>
               <div style={{ fontSize:14, color:'rgba(255,255,255,0.30)', fontFamily:FA, letterSpacing:0 }}>جهّز التغليف وولّد تصميمك</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.18)', fontFamily:FA, letterSpacing:0 }}>النموذج ثلاثي الأبعاد سيظهر هنا</div>
             </div>
           ) : pkgGenerating ? (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
-              <LoadingDotsAr/>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.40)', fontFamily:FA, letterSpacing:0 }}>جاري تصميم التغليف…</div>
-            </div>
+            <div style={{ padding:'40px 32px' }}><Pkg3DLoadingAr/></div>
           ) : (
-            <PackagingPreviewAr design={pkgDesign} packagingType={pkgType} />
+            <PackagingViewer3D
+              ref={viewerRef as any}
+              design={pkgDesign}
+              packagingType={pkgType as any}
+              autoRotate={pkgAutoRotate}
+              width={520}
+              height={380}
+            />
+          )}
+
+          {/* Viewer controls */}
+          {pkgDesign && !pkgGenerating && (
+            <div style={{ position:'absolute', bottom:10, left:10, display:'flex', gap:6 }}>
+              <button
+                onClick={()=>setPkgAutoRotate(!pkgAutoRotate)}
+                title={pkgAutoRotate ? 'إيقاف الدوران' : 'تشغيل الدوران'}
+                style={{
+                  background:'rgba(0,0,0,0.60)', border:'1px solid rgba(255,255,255,0.14)',
+                  borderRadius:7, padding:'5px 8px', cursor:'pointer',
+                  fontSize:11, color:pkgAutoRotate ? '#00AAFF' : 'rgba(255,255,255,0.35)',
+                  display:'flex', alignItems:'center', gap:4, fontFamily:FA, letterSpacing:0,
+                }}
+              >
+                {pkgAutoRotate ? '⏸' : '▶'} {pkgAutoRotate ? 'إيقاف' : 'دوران'}
+              </button>
+              <div style={{ position:'relative' }}>
+                <button
+                  onClick={()=>setPkgDlOpen(!pkgDlOpen)}
+                  style={{
+                    background:'rgba(0,170,255,0.18)', border:'1px solid rgba(0,170,255,0.35)',
+                    borderRadius:7, padding:'5px 10px', cursor:'pointer',
+                    fontSize:11, fontWeight:600, color:'#00AAFF',
+                    display:'flex', alignItems:'center', gap:5, fontFamily:FA, letterSpacing:0,
+                  }}
+                >
+                  ↓ تصدير ▾
+                </button>
+                {pkgDlOpen && (
+                  <div style={{
+                    position:'absolute', bottom:'calc(100% + 6px)', left:0,
+                    background:'#1A1A1A', border:'1px solid rgba(255,255,255,0.10)',
+                    borderRadius:9, padding:6, minWidth:170, zIndex:50,
+                    display:'flex', flexDirection:'column', gap:2, direction:'rtl',
+                  }}>
+                    {[
+                      { label:'PNG ثلاثي الأبعاد', fn:()=>{ onDownloadPNG(); setPkgDlOpen(false) } },
+                      { label:'طباعة 4K عالية الدقة', fn:()=>{ onDownloadHiRes(); setPkgDlOpen(false) } },
+                      { label:'PDF Dieline', fn:()=>{ onExportPDF(); setPkgDlOpen(false) } },
+                    ].map(item => (
+                      <button key={item.label} onClick={item.fn}
+                        style={{
+                          background:'transparent', border:'none', cursor:'pointer',
+                          padding:'8px 10px', borderRadius:6, textAlign:'right',
+                          fontSize:12, color:'rgba(255,255,255,0.65)', fontFamily:FA, letterSpacing:0,
+                        }}
+                        onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.06)')}
+                        onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
+                      >{item.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pkgDesign && !pkgGenerating && (
+            <div style={{ position:'absolute', bottom:10, right:10, fontSize:10, color:'rgba(255,255,255,0.20)', fontFamily:FA, letterSpacing:0, pointerEvents:'none' }}>
+              اسحب للتدوير · اضغط تصدير للتنزيل
+            </div>
           )}
         </div>
 
@@ -1075,8 +1127,9 @@ function PackagingTabAr({
                   ['الخط',      pkgDesign.font_weight],
                   ['العناصر',   (pkgDesign.special_elements||[]).join('، ')],
                   ['نص ثانوي',  pkgDesign.secondary_copy],
+                  ['الأبعاد',   pkgDesign.dims ? `${pkgDesign.dims.width_mm}×${pkgDesign.dims.height_mm}mm` : null],
                 ].filter(([,v])=>v).map(([k,v]) => (
-                  <div key={k} style={{ display:'flex', gap:8, fontSize:12, flexDirection:'row-reverse' }}>
+                  <div key={k as string} style={{ display:'flex', gap:8, fontSize:12, flexDirection:'row-reverse' }}>
                     <span style={{ color:'rgba(255,255,255,0.30)', width:70, flexShrink:0, textAlign:'right', fontFamily:FA, letterSpacing:0 }}>{k}</span>
                     <span style={{ color:'rgba(255,255,255,0.65)', textAlign:'right', fontFamily:FA, letterSpacing:0 }}>{v}</span>
                   </div>
