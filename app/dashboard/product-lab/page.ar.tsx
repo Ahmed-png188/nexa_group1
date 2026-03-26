@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PACKAGING_TEMPLATES, getTemplate } from '@/lib/packaging-templates'
 import { CREDIT_COSTS } from '@/lib/plan-constants'
@@ -68,6 +69,7 @@ function LoadingDots() {
 
 export default function ProductLabAr() {
   const supabase = createClient()
+  const router   = useRouter()
 
   const [uploadedUrl, setUploadedUrl]     = useState<string|null>(null)
   const [uploading, setUploading]         = useState(false)
@@ -415,29 +417,48 @@ export default function ProductLabAr() {
               </div>
             )}
 
-            {/* Packaging tab — always accessible */}
+            {/* تبويب التغليف — فتح الاستوديو المستقل */}
             {tab === 'packaging' && (
-              <PackagingTabAr
-                pkgType={pkgType} setPkgType={(t)=>{ setPkgType(t); setPkgSizeId(getTemplate(t)?.sizes[0]?.id || '') }}
-                pkgSizeId={pkgSizeId} setPkgSizeId={setPkgSizeId}
-                pkgCustomW={pkgCustomW} setPkgCustomW={setPkgCustomW}
-                pkgCustomH={pkgCustomH} setPkgCustomH={setPkgCustomH}
-                pkgGenerating={pkgGenerating}
-                pkgDesign={pkgDesign} setPkgDesign={setPkgDesign}
-                pkgDesignId={pkgDesignId}
-                pkgExporting={pkgExporting}
-                pkgEditField={pkgEditField} setPkgEditField={setPkgEditField}
-                pkgHistory={pkgHistory}
-                pkgSpecOpen={pkgSpecOpen} setPkgSpecOpen={setPkgSpecOpen}
-                pkgError={pkgError}
-                pkgAutoRotate={pkgAutoRotate} setPkgAutoRotate={setPkgAutoRotate}
-                pkgDlOpen={pkgDlOpen} setPkgDlOpen={setPkgDlOpen}
-                viewerRef={viewerRef}
-                onGenerate={generatePackaging}
-                onExportPDF={exportPDF}
-                onDownloadPNG={downloadPNG}
-                onDownloadHiRes={downloadHiRes}
-              />
+              <div dir="rtl" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:400, padding:'48px 24px' }}>
+                <div style={{
+                  maxWidth:480, width:'100%', textAlign:'center',
+                  padding:'48px 40px',
+                  background:'rgba(255,255,255,0.02)',
+                  border:`1px solid rgba(255,255,255,0.08)`,
+                  borderRadius:20,
+                  fontFamily:FA,
+                }}>
+                  <div style={{ fontSize:48, marginBottom:24, lineHeight:1 }}>📦</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'#FFFFFF', marginBottom:10, letterSpacing:0 }}>
+                    استوديو التغليف
+                  </div>
+                  <div style={{ fontSize:14, color:'rgba(255,255,255,0.65)', lineHeight:1.8, marginBottom:28, letterSpacing:0 }}>
+                    صمّم تغليفاً احترافياً لمنتجاتك. اختر من أكثر من 14 نوعاً، وولّد تصاميم متوافقة مع علامتك التجارية بالذكاء الاصطناعي، أو ارفع تصميمك الخاص.
+                  </div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center', marginBottom:28 }}>
+                    {['معاينة ثلاثية الأبعاد','تصميم AI','محرر مرئي','PDF للطباعة','14+ قالب'].map(f => (
+                      <span key={f} style={{
+                        fontSize:11, padding:'4px 10px', borderRadius:99, letterSpacing:0,
+                        background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)',
+                        color:'rgba(255,255,255,0.35)',
+                      }}>{f}</span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => router.push('/dashboard/product-lab/packaging')}
+                    style={{
+                      padding:'14px 32px', borderRadius:12, fontSize:14, fontWeight:700,
+                      background:'#FFFFFF', color:'#0C0C0C', border:'none', cursor:'pointer',
+                      transition:'all 0.15s', display:'inline-flex', alignItems:'center', gap:8,
+                      letterSpacing:0,
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.88)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='#FFFFFF'}
+                  >
+                    افتح استوديو التغليف ←
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
