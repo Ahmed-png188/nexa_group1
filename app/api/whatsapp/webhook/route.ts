@@ -70,6 +70,27 @@ async function sendWAMedia(to: string, mediaUrl: string, body: string): Promise<
   }
 }
 
+// Visual button simulation (real buttons need Twilio Content API + approved sender)
+async function sendWAButtons(
+  to: string,
+  body: string,
+  buttons: Array<{ id: string; title: string }>
+): Promise<void> {
+  const buttonText = buttons.map(b => `👉 *${b.title}*`).join('\n')
+  await sendWA(to, `${body}\n\n${buttonText}`)
+}
+
+// Split long content across two messages if needed
+async function sendLongContent(to: string, content: string, footer: string): Promise<void> {
+  if (content.length + footer.length < 3500) {
+    await sendWA(to, content + footer)
+    return
+  }
+  await sendWA(to, content)
+  await new Promise(r => setTimeout(r, 500))
+  await sendWA(to, footer)
+}
+
 // ── Types ─────────────────────────────────────────────────────
 type WorkspaceData = {
   brand_name?:    string
@@ -389,9 +410,10 @@ async function handleApprovalEdit(
     type: 'post', body: newContent, content_id: contentId, topic: pending.topic as string
   })
 
-  await sendWA(from, isAr
-    ? `المنشور المعدّل 👇\n\n${newContent}\n\n———\nرد بـ *نعم* للحفظ أو اطلب تعديلاً آخر`
-    : `Edited post 👇\n\n${newContent}\n\n———\nReply *yes* to save or request another edit`)
+  const editFooter = isAr
+    ? `\n\n———\n👉 *نعم* — احفظه\n👉 *تعديل [ما تريد]* — غيّره\n👉 *لا* — ألغِه`
+    : `\n\n———\n👉 *yes* — save it\n👉 *edit [what]* — change it\n👉 *no* — cancel`
+  await sendLongContent(from, (isAr ? 'المنشور المعدّل 👇\n\n' : 'Edited post 👇\n\n') + newContent, editFooter)
 }
 
 async function handleCreatePost(
@@ -415,8 +437,8 @@ async function handleCreatePost(
     model:      'claude-sonnet-4-20250514',
     max_tokens: 600,
     system: isAr
-      ? `أنت كاتب محتوى احترافي. إليك كل ما تحتاجه عن هذه العلامة:\n${ws?.brandContext}\n\nاكتب بالعربية الخليجية الطبيعية. المنشور يجب أن يبدأ بهوك قوي يوقف التمرير. ثم القيمة. ثم الدعوة للفعل. الهاشتاقات في النهاية فقط.`
-      : `You are a professional content writer. Here is everything about this brand:\n${ws?.brandContext}\n\nWrite in the EXACT brand voice described above. Start with a scroll-stopping hook. Then value. Then CTA. Hashtags last only.`,
+      ? `أنت كاتب محتوى احترافي لـ${brandName}.\n${ws?.brandContext}\n\nقواعد التنسيق لواتساب:\n- الهوك: جملة واحدة تشدّ الانتباه\n- الجسم: ٢-٣ فقرات قصيرة، كل فقرة ٢-٣ أسطر\n- الدعوة للفعل: جملة واحدة\n- الهاشتاقات: في النهاية فقط، ١٠ كحد أقصى\n- لا جدران نص طويلة\n- سطر فارغ بين كل فقرة`
+      : `You are a professional content writer for ${brandName}.\n${ws?.brandContext}\n\nFORMATTING RULES — strictly follow:\n- Hook: 1 punchy sentence that stops scrolling\n- Body: 2-3 SHORT paragraphs, max 3 lines each\n- ONE blank line between paragraphs\n- CTA: 1 short sentence\n- Hashtags: end only, max 10\n- NO walls of text\n- WhatsApp bold: *word* — use for emphasis only`,
     messages: [{
       role:    'user',
       content: isAr
@@ -442,9 +464,12 @@ async function handleCreatePost(
     type: 'post', body: content, content_id: contentId, topic, platform
   })
 
-  await sendWA(from, isAr
-    ? `هذا منشورك 👇\n\n${content}\n\n———\nرد بـ:\n*نعم* — للحفظ كمسودة جاهزة\n*تعديل [ما تريد]* — لتغييره\n*لا* — للإلغاء`
-    : `Here's your post 👇\n\n${content}\n\n———\nReply:\n*yes* — save as ready draft\n*edit [what you want]* — to change it\n*no* — to cancel`)
+  const approvalFooter = isAr
+    ? `\n\n———\n👉 *نعم* — احفظه\n👉 *تعديل [ما تريد]* — غيّره\n👉 *لا* — ألغِه`
+    : `\n\n———\n👉 *yes* — save it\n👉 *edit [what]* — change it\n👉 *no* — cancel`
+
+  const header = isAr ? 'هذا منشورك 👇\n\n' : 'Here\'s your post 👇\n\n'
+  await sendLongContent(from, header + content, approvalFooter)
 }
 
 async function handleCreateImage(
@@ -501,8 +526,8 @@ Output ONLY the prompt, no explanation.`
     })
 
     await sendWAMedia(from, imageUrl, isAr
-      ? 'صورتك جاهزة 👆\n\nرد بـ *نعم* للحفظ، *فيديو* لتحريكها، أو *لا* للإلغاء'
-      : 'Your image is ready 👆\n\nReply *yes* to save, *video* to animate it, or *no* to cancel')
+      ? 'صورتك جاهزة 👆\n\n👉 *نعم* — احفظها\n👉 *فيديو* — حرّكها\n👉 *لا* — ألغِ'
+      : 'Your image is ready 👆\n\n👉 *yes* — save it\n👉 *video* — animate it\n👉 *no* — cancel')
 
   } catch (e: unknown) {
     console.error('[wa] image gen error:', (e as Error).message)
@@ -569,8 +594,8 @@ Output ONLY the prompt.`
     })
 
     await sendWAMedia(from, videoUrl, isAr
-      ? 'الفيديو جاهز 🎬👆\n\nرد بـ *نعم* للحفظ أو *لا* للإلغاء'
-      : 'Your video is ready 🎬👆\n\nReply *yes* to save or *no* to cancel')
+      ? 'الفيديو جاهز 🎬👆\n\n👉 *نعم* — احفظه\n👉 *لا* — ألغِ'
+      : 'Your video is ready 🎬👆\n\n👉 *yes* — save it\n👉 *no* — cancel')
 
   } catch (e: unknown) {
     console.error('[wa] video gen error:', (e as Error).message)
@@ -659,8 +684,8 @@ async function handleProductPhoto(
     })
 
     await sendWAMedia(from, heroUrl, isAr
-      ? `${detected.name} بخلفية احترافية ✨👆\n\nرد بـ:\n*المزيد* — لقطات إضافية (جانب، من أعلى)\n*فيديو* — ريل لهذا المنتج\n*منشور* — منشور مع هذه الصورة\n*نعم* — حفظ فقط`
-      : `${detected.name} on professional background ✨👆\n\nReply:\n*more* — additional angles (side, top)\n*video* — make a reel for this product\n*post* — create a post with this image\n*yes* — just save it`)
+      ? `${detected.name} بخلفية احترافية ✨👆\n\n👉 *المزيد* — زوايا إضافية\n👉 *فيديو* — ريل للمنتج\n👉 *منشور* — منشور مع الصورة\n👉 *نعم* — حفظ فقط`
+      : `${detected.name} on professional background ✨👆\n\n👉 *more* — extra angles\n👉 *video* — make a reel\n👉 *post* — create a post\n👉 *yes* — just save it`)
 
   } catch (e: unknown) {
     console.error('[wa] product photo error:', (e as Error).message)
@@ -885,8 +910,8 @@ export async function POST(request: NextRequest) {
       const wsG = await getWorkspace(workspace_id)
       const brandName = (wsG?.brand_name as string) || (wsG?.name as string) || 'your brand'
       await sendWA(from, isAr
-        ? `أهلاً! أنا Nexa لـ *${brandName}* 🎯\n\nكلّمني وقت ما تبي:\n• "اكتب لي منشور"\n• "كم رصيدي؟"\n• "ملخص اليوم"\n• "ولّد صورة"\n• "ولّد فيديو"\n• أو أرسل صورة منتجك`
-        : `Hey! I'm Nexa for *${brandName}* 🎯\n\nTell me anytime:\n• "Write me a post"\n• "How many credits?"\n• "Today's brief"\n• "Generate an image"\n• "Generate a video"\n• Or send a product photo`)
+        ? `أهلاً! أنا Nexa لـ *${brandName}* 🎯\n\nقولي:\n• "اكتب منشور"\n• "كم رصيدي"\n• "ملخص اليوم"\n• "ولّد صورة"\n• "ولّد فيديو"\n\nأو أرسل صورة منتجك 📸`
+        : `Hey! I'm Nexa for *${brandName}* 🎯\n\nTry:\n• "Write a post"\n• "Credits?"\n• "Today's brief"\n• "Generate image"\n• "Generate video"\n\nOr send a product photo 📸`)
       break
     }
 
@@ -940,8 +965,8 @@ export async function POST(request: NextRequest) {
           model:      'claude-sonnet-4-20250514',
           max_tokens: 300,
           system: isAr
-            ? `أنت Nexa، مساعد تسويق ذكي لـ${bn}. إليك كل ما تعرفه عن هذه العلامة:\n${ws?.brandContext}\n\nرد بالعربية الخليجية الطبيعية، مفيد ومختصر، ٣ جمل كحد أقصى.`
-            : `You are Nexa, the AI marketing assistant for ${bn}. Here is everything you know about this brand:\n${ws?.brandContext}\n\nBe helpful, direct, and brief. Max 3 sentences. You KNOW this brand — speak from that knowledge.`,
+            ? `أنت Nexa، مساعد تسويق ذكي لـ${bn}. إليك كل ما تعرفه عن هذه العلامة:\n${ws?.brandContext}\n\nرد بالعربية الخليجية الطبيعية. ٣ جمل كحد أقصى. لا قوائم إلا إذا طُلبت. فكرة واحدة لكل رسالة.`
+            : `You are Nexa, the AI marketing assistant for ${bn}. Here is everything you know about this brand:\n${ws?.brandContext}\n\nBe helpful, direct, and brief. Max 3 sentences. No lists unless asked. One idea per message. Speak from brand knowledge.`,
           messages: [{ role: 'user', content: processText }],
         })
         const reply = ((response.content[0] as { type: string; text: string }).text)?.trim()
