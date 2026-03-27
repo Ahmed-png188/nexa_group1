@@ -27,6 +27,8 @@ export async function waSendText(
   })
 
   try {
+    console.log('[wa] sendText → to:', to, '| body length:', body.length)
+    console.log('[wa] sendText → TWILIO_ACCOUNT_SID set:', !!TWILIO_ACCOUNT_SID, '| TWILIO_AUTH_TOKEN set:', !!TWILIO_AUTH_TOKEN, '| FROM:', TWILIO_WHATSAPP_FROM)
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
       {
@@ -38,8 +40,13 @@ export async function waSendText(
         body: params.toString(),
       }
     )
-    const data = await res.json()
-    return data.sid || null
+    const data = await res.json() as { sid?: string; message?: string; code?: number }
+    if (!res.ok || !data.sid) {
+      console.error('[wa] sendText Twilio error:', res.status, JSON.stringify(data))
+      return null
+    }
+    console.log('[wa] sendText success, sid:', data.sid)
+    return data.sid
   } catch (err) {
     console.error('[wa] sendText failed:', err)
     return null
@@ -73,8 +80,12 @@ export async function waSendMedia(
         body: params.toString(),
       }
     )
-    const data = await res.json()
-    return data.sid || null
+    const data = await res.json() as { sid?: string; message?: string; code?: number }
+    if (!res.ok || !data.sid) {
+      console.error('[wa] sendMedia Twilio error:', res.status, JSON.stringify(data))
+      return null
+    }
+    return data.sid
   } catch (err) {
     console.error('[wa] sendMedia failed:', err)
     return null
@@ -190,7 +201,7 @@ export async function waResolveWorkspace(phone: string): Promise<{
     .replace('whatsapp:', '')
     .replace(/\s/g, '')
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('whatsapp_connections')
     .select('workspace_id, user_id, lang')
     .or(`phone_number.eq.${normalized},phone_number_raw.eq.${phone}`)
@@ -198,6 +209,7 @@ export async function waResolveWorkspace(phone: string): Promise<{
     .limit(1)
     .single()
 
+  if (error) console.error('[wa] waResolveWorkspace DB error:', error.message, '| phone:', normalized)
   if (!data) return null
   return {
     workspace_id: data.workspace_id,

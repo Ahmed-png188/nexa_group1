@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
 
 async function processIncomingMessage(body: Record<string, string>) {
   try {
+    console.log('[wa-webhook] env check:', {
+      hasTwilioSid:   !!process.env.TWILIO_ACCOUNT_SID,
+      hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
+      hasTwilioFrom:  !!process.env.TWILIO_WHATSAPP_NUMBER,
+      hasServiceKey:  !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    })
+
     const from      = body.From || ''  // 'whatsapp:+971501234567'
     const msgBody   = body.Body || ''
     const numMedia  = parseInt(body.NumMedia || '0')
