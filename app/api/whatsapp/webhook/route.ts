@@ -70,6 +70,160 @@ async function sendWAMedia(to: string, mediaUrl: string, body: string): Promise<
   }
 }
 
+async function sendVoiceNote(
+  to: string,
+  text: string,
+  workspace_id: string,
+  isAr: boolean
+): Promise<boolean> {
+  const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY
+  if (!ELEVEN_KEY) {
+    console.log('[wa-voice] no ElevenLabs key — falling back to text')
+    await sendWA(to, text)
+    return false
+  }
+
+  // Keep voice notes concise — strip markdown formatting
+  const cleanText = text
+    .replace(/\*/g, '')
+    .replace(/_/g, '')
+    .replace(/#+/g, '')
+    .slice(0, 500)
+
+  const voiceId = isAr
+    ? (process.env.ELEVENLABS_AR_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL')
+    : 'EXAVITQu4vr4xnSDxMaL'
+
+  try {
+    console.log('[wa-voice] generating audio, chars:', cleanText.length)
+
+    const audioRes = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+      {
+        method: 'POST',
+        headers: {
+          'xi-api-key': ELEVEN_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: cleanText,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.8,
+            style: 0.2,
+            use_speaker_boost: true,
+          },
+        }),
+      }
+    )
+
+    if (!audioRes.ok) {
+      const errText = await audioRes.text()
+      console.error('[wa-voice] ElevenLabs error:', audioRes.status, errText.slice(0, 200))
+      await sendWA(to, text)
+      return false
+    }
+
+    const audioBuffer = await audioRes.arrayBuffer()
+    console.log('[wa-voice] audio generated, bytes:', audioBuffer.byteLength)
+
+    // Upload to Supabase storage
+    const { createClient: sb } = await import('@supabase/supabase-js')
+    const storage = sb(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const fileName = `whatsapp/voice/${workspace_id}/${Date.now()}.mp3`
+    const { error: uploadErr } = await storage.storage
+      .from('brand-assets')
+      .upload(fileName, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: false,
+      })
+
+    if (uploadErr) {
+      console.error('[wa-voice] upload error:', uploadErr.message)
+      await sendWA(to, text)
+      return false
+    }
+
+    const { data: { publicUrl } } = storage.storage
+      .from('brand-assets')
+      .getPublicUrl(fileName)
+
+    console.log('[wa-voice] uploading to Twilio, url:', publicUrl.slice(0, 60))
+    await sendWAMedia(to, publicUrl, '')
+    console.log('[wa-voice] voice note sent ✓')
+    return true
+
+  } catch (e: any) {
+    console.error('[wa-voice] error:', e.message)
+    await sendWA(to, text)
+    return false
+  }
+}
+
+function shouldUseVoice(
+  cleanReply: string,
+  userMessage: string,
+  actionType: string | null,
+  isFirstMessage: boolean,
+): boolean {
+  if (!process.env.ELEVENLABS_API_KEY) return false
+  if (cleanReply.length > 400) return false
+  if (cleanReply.length < 20) return false
+
+  const msg = userMessage.toLowerCase()
+
+  // NEVER voice — functional content user needs to read
+  const neverVoice = [
+    actionType === 'create_post',
+    actionType === 'create_image',
+    actionType === 'create_video',
+    actionType === 'show_credits',
+    actionType === 'show_schedule',
+    /\d{3,}/.test(cleanReply),           // numbers like credit balance
+    cleanReply.includes('📅'),           // schedule lists
+    cleanReply.includes('👉'),           // approval buttons
+    cleanReply.includes('#'),            // hashtags in content
+    cleanReply.toLowerCase().includes("couldn't"),
+    cleanReply.includes('ما قدرت'),
+    cleanReply.includes('خطأ'),
+    cleanReply.toLowerCase().includes('error'),
+    cleanReply.includes('nexaa.cc'),     // links — send as text
+  ].some(Boolean)
+
+  if (neverVoice) return false
+
+  // ALWAYS voice — warm human moments
+  const alwaysVoice = [
+    msg.includes('brief') || msg.includes('ملخص'),
+    msg.includes('good morning') || msg.includes('صباح'),
+    isFirstMessage,
+    cleanReply.includes('🎉') || cleanReply.includes('✨'),
+  ].some(Boolean)
+
+  if (alwaysVoice) return true
+
+  // SOMETIMES voice — conversational questions
+  const sometimesVoice = [
+    msg.includes('hi') || msg.includes('hello') || msg.includes('hey'),
+    msg.includes('مرحب') || msg.includes('أهلا') || msg.includes('هلا'),
+    msg.includes('strategy') || msg.includes('استراتيجية'),
+    msg.includes('what should') || msg.includes('ماذا أفعل'),
+    msg.includes('advice') || msg.includes('نصيحة'),
+    msg.includes('what do you think') || msg.includes('رأيك'),
+    msg.includes('what can you') || msg.includes('ماذا تقدر'),
+    msg.includes('who are') || msg.includes('من أنت') || msg.includes('what is nexa'),
+    msg.includes('brand') && !msg.includes('write') && !msg.includes('post'),
+  ].some(Boolean)
+
+  return sometimesVoice
+}
+
 // Visual button simulation (real buttons need Twilio Content API + approved sender)
 async function sendWAButtons(
   to: string,
@@ -682,7 +836,11 @@ async function handleBrief(from: string, workspace_id: string, isAr: boolean) {
     const cached = isAr ? ws?.weekly_brief_ar : ws?.weekly_brief
     if (cached && typeof cached === 'object') {
       const b = cached as Record<string, string>
-      await sendWA(from, `*${b.headline}*\n\n${b.todays_priority || ''}\n\n💡 ${b.one_thing || ''}`)
+      const briefText = `*${b.headline}*\n\n${b.todays_priority || ''}\n\n💡 ${b.one_thing || ''}`
+      const briefVoice = briefText.replace(/\*/g, '').replace(/💡/g, '').trim()
+      await sendVoiceNote(from, briefVoice, workspace_id, isAr)
+      await new Promise(r => setTimeout(r, 1200))
+      await sendWA(from, briefText)
       return
     }
 
@@ -700,7 +858,11 @@ async function handleBrief(from: string, workspace_id: string, isAr: boolean) {
     const match = raw?.match(/\{[\s\S]*\}/)
     if (match) {
       const brief = JSON.parse(match[0]) as Record<string, string>
-      await sendWA(from, `*${brief.headline}*\n\n${brief.todays_priority}\n\n💡 ${brief.one_thing}`)
+      const briefText = `*${brief.headline}*\n\n${brief.todays_priority}\n\n💡 ${brief.one_thing}`
+      const briefVoice = briefText.replace(/\*/g, '').replace(/💡/g, '').trim()
+      await sendVoiceNote(from, briefVoice, workspace_id, isAr)
+      await new Promise(r => setTimeout(r, 1200))
+      await sendWA(from, briefText)
     } else {
       await sendWA(from, isAr ? 'ما قدرت أجهّز الملخص' : "Couldn't prepare the brief")
     }
@@ -889,27 +1051,42 @@ If no action needed, just reply naturally without any ACTION line.
       messages,
     })
 
-    const fullReply   = ((response.content[0] as { type: string; text: string }).text)?.trim() || ''
+    const fullReply  = ((response.content[0] as { type: string; text: string }).text)?.trim() || ''
     const actionMatch = fullReply.match(/\nACTION:([^\n]+)/)
     const cleanReply  = fullReply.replace(/\nACTION:[^\n]+/g, '').trim()
+    const actionFull  = actionMatch?.[1]?.trim() || ''
+    const [actionType] = actionFull.split(':')
 
-    // Send conversational reply first
+    // Decide voice vs text
+    const isFirstMessage = history.length === 0
+    const useVoice = shouldUseVoice(
+      cleanReply,
+      userMessage,
+      actionType || null,
+      isFirstMessage,
+    )
+
+    console.log('[wa-brain] reply length:', cleanReply.length, '| voice:', useVoice, '| action:', actionType || 'none')
+
+    // Send the conversational reply
     if (cleanReply) {
-      await sendWA(from, cleanReply)
+      if (useVoice) {
+        await sendVoiceNote(from, cleanReply, workspace_id, isAr)
+      } else {
+        await sendWA(from, cleanReply)
+      }
       await logOutbound(workspace_id, phone, cleanReply)
     }
 
-    // Then execute action if present
-    if (actionMatch) {
-      const actionFull  = actionMatch[1]?.trim() || ''
-      const colonIdx    = actionFull.indexOf(':')
-      const actionType  = colonIdx === -1 ? actionFull : actionFull.slice(0, colonIdx)
-      const actionParam = colonIdx === -1 ? '' : actionFull.slice(colonIdx + 1).trim()
+    // Execute action with small delay
+    if (actionMatch && actionFull) {
+      const [actionType2, ...actionParams] = actionFull.split(':')
+      const actionParam = actionParams.join(':').trim()
 
-      console.log('[wa] nexaBrain action:', actionType, '|', actionParam)
+      console.log('[wa] nexaBrain action:', actionType2, '|', actionParam)
       await new Promise(r => setTimeout(r, 800))
 
-      switch (actionType) {
+      switch (actionType2) {
         case 'create_post':
           await handleCreatePost(from, workspace_id, user_id, isAr, actionParam || userMessage, 'instagram')
           break
@@ -924,11 +1101,11 @@ If no action needed, just reply naturally without any ACTION line.
           break
         case 'show_credits': {
           const bal = await getCredits(workspace_id)
-          const msg = isAr
-            ? `رصيدك: *${bal.toLocaleString()} كريديت* 💳\n${bal < 50 ? '⚠️ منخفض' : '✅ كافٍ'}`
-            : `Balance: *${bal.toLocaleString()} credits* 💳\n${bal < 50 ? '⚠️ Running low' : '✅ Good to go'}`
-          await sendWA(from, msg)
-          await logOutbound(workspace_id, phone, msg)
+          const credMsg = isAr
+            ? `رصيدك: *${bal.toLocaleString()} كريديت* 💳\n${bal < 50 ? '⚠️ منخفض — شحّن من nexaa.cc' : '✅ كافٍ للعمل'}`
+            : `Balance: *${bal.toLocaleString()} credits* 💳\n${bal < 50 ? '⚠️ Running low — top up at nexaa.cc' : '✅ Good to go'}`
+          await sendWA(from, credMsg)
+          await logOutbound(workspace_id, phone, credMsg)
           break
         }
         case 'show_schedule':
@@ -939,6 +1116,7 @@ If no action needed, just reply naturally without any ACTION line.
           break
         case 'cancel_pending':
           await clearPendingAction(workspace_id)
+          await sendWA(from, isAr ? 'تم الإلغاء ✓' : 'Cancelled ✓')
           break
         case 'edit_pending':
           if (pending) await handleApprovalEdit(from, workspace_id, user_id, isAr, pending, actionParam, userMessage)
