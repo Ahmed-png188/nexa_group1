@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'
 import {
   waSendText,
   waSendMedia,
@@ -112,7 +114,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       await waSendText(phone, ack)
 
       // Generate content via existing API
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate-content`, {
+      const res = await fetch(`${APP_URL}/api/generate-content`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,7 +166,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       )
       await waSendText(phone, ack)
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate-image`, {
+      const res = await fetch(`${APP_URL}/api/generate-image`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspace_id, prompt: topic, lang }),
@@ -202,7 +204,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       await waSendText(phone, ack)
 
       // Step 1: Detect product
-      const detectRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/product-lab/detect`, {
+      const detectRes = await fetch(`${APP_URL}/api/product-lab/detect`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: ctx.mediaUrl, workspace_id }),
@@ -210,7 +212,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       const detected = await detectRes.json() as Record<string, string>
 
       // Step 2: Clean background
-      const cleanRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/product-lab/clean`, {
+      const cleanRes = await fetch(`${APP_URL}/api/product-lab/clean`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: ctx.mediaUrl, workspace_id }),
@@ -218,7 +220,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       const cleaned = await cleanRes.json() as Record<string, string>
 
       // Step 3: Generate studio shot (hero only for WhatsApp — keep it fast)
-      const shotRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/product-lab/studio-shots`, {
+      const shotRes = await fetch(`${APP_URL}/api/product-lab/studio-shots`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

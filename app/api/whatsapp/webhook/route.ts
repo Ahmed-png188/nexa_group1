@@ -18,6 +18,8 @@ export async function GET() {
 
 // POST: Incoming WhatsApp message from Twilio
 export async function POST(request: NextRequest) {
+  console.log('[wa-webhook] POST received at', new Date().toISOString())
+
   // Return 200 IMMEDIATELY — Twilio requires <5s response
   // Process everything asynchronously
 
@@ -31,6 +33,8 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ received: true })
   }
+
+  console.log('[wa-webhook] received:', JSON.stringify(body))
 
   // Process asynchronously without blocking the response
   processIncomingMessage(body).catch(err => {
@@ -65,6 +69,7 @@ async function processIncomingMessage(body: Record<string, string>) {
 
     // Resolve workspace from phone number
     const connection = await waResolveWorkspace(phone)
+    console.log('[wa-webhook] connection:', connection ? 'found' : 'NOT FOUND for phone: ' + phone)
 
     // Handle unregistered users
     if (!connection) {
@@ -118,6 +123,7 @@ async function processIncomingMessage(body: Record<string, string>) {
       lang,
       brandName,
     )
+    console.log('[wa-webhook] intent:', intent.intent, '|', intent.summary)
 
     // Log intent
     await waLogMessage({
@@ -142,6 +148,7 @@ async function processIncomingMessage(body: Record<string, string>) {
       brand,
       context,
     })
+    console.log('[wa-webhook] action handled for intent:', intent.intent)
 
   } catch (err) {
     console.error('[wa-webhook] processIncomingMessage error:', err)
