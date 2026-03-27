@@ -77,10 +77,10 @@ export const CREDIT_COSTS = {
   product_lifestyle:  8,
   product_upscale:    3,
   product_edit:       4,
-  // Storyboard — single Kling multi_prompt commercial
-  storyboard_3shot:   155,
-  storyboard_4shot:   206,
-  storyboard_5shot:   258,
+  // Storyboard — Kling v3 pro image-to-video, cinema quality per shot
+  storyboard_3shot:   258,
+  storyboard_4shot:   344,
+  storyboard_5shot:   430,
 } as const
 
 // ── Video credit costs ────────────────────────────────────────

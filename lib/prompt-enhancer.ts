@@ -323,3 +323,131 @@ export async function humanizeArabicContent(
 
   return (response.content[0] as any).text.trim()
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STORYBOARD / COMMERCIAL DIRECTOR — bilingual
+// Returns structured shot plan for Kling multi_prompt image-to-video
+// ─────────────────────────────────────────────────────────────────────────────
+export async function enhanceStoryboardPrompts(
+  userDirection: string,
+  brandContext: any,
+  shotCount: number,
+  durationPerShot: number,
+  outputFormat: string,
+  lang: 'en' | 'ar' = 'en'
+): Promise<{
+  commercial_concept: string
+  environment: string
+  master_style: string
+  color_grade: string
+  lighting_setup: string
+  shots: Array<{ prompt: string; duration: number; shot_label: string }>
+  commercial_hook: string
+}> {
+  const brand     = brandContext?.workspace?.brand_name     || 'the brand'
+  const voice     = brandContext?.workspace?.brand_voice    || 'premium, confident'
+  const audience  = brandContext?.workspace?.brand_audience || 'modern consumers'
+  const tone      = brandContext?.workspace?.brand_tone     || 'sophisticated'
+  const aesthetic = brandContext?.profile?.visual?.aesthetic || 'cinematic, premium'
+  const colorMood = brandContext?.profile?.visual?.color_mood || 'rich, warm tones'
+  const vidStyle  = brandContext?.profile?.visual?.video_style || 'luxury brand film'
+  const industry  = brandContext?.profile?.business?.industry || 'consumer goods'
+  const customPfx = brandContext?.profile?.generation_instructions?.video_prompt_prefix || ''
+
+  const formatLabel = outputFormat === '9:16'
+    ? 'vertical 9:16 (Stories/Reels)'
+    : outputFormat === '16:9'
+      ? 'cinematic widescreen 16:9'
+      : 'square 1:1 (feed post)'
+
+  const systemPrompt = `You are the Creative Director at a world-class production house.
+You have directed commercial campaigns for Chanel, Apple, Nike, and Rolex.
+You think in narrative arcs, not individual shots.
+
+Your job: given a product and a brand, write a complete ${shotCount}-shot
+commercial that feels like a $500,000 production — not AI-generated content.
+
+ABSOLUTE RULES for every shot prompt you write:
+- Write in English always (Kling performs best in English)
+- Every shot MUST feel like it belongs to the same commercial — same world, same light, same energy
+- Be specific: name the lens (35mm, 85mm), name the lighting (golden key light, diffused overhead), name the movement (slow push, aerial orbit, locked-off hero)
+- Reference real filmmaking technique — this is a brief for a real DP
+- The product is always the hero — it must appear prominently in every shot
+- No generic words like "beautiful" or "amazing" — show the technique
+- Each shot prompt must start with the camera/movement, then product placement, then environment, then mood
+- Format: "[Camera movement]. [Product appearance]. [Environment detail]. [Lighting]. [Mood/atmosphere]. Shot on [lens equivalent], [color reference]."
+- Maximum 80 words per shot prompt
+
+SHOT FLOW LAW — always follow this narrative arc:
+Shot 1: Establish the world (environment, mood, brand universe)
+Shot 2: Introduce the hero (product enters the scene)
+Shot 3: Intimacy/detail (close-up, texture, the product's soul)
+${shotCount > 3 ? `Shot 4: Aspiration (product in context, lifestyle moment)` : ''}
+${shotCount === 5 ? 'Shot 5: Brand close (tagline moment, emotional peak)' : ''}`
+
+  const userPrompt = `Brand DNA:
+Brand: ${brand}
+Industry: ${industry}
+Voice: ${voice}
+Audience: ${audience}
+Tone: ${tone}
+Visual aesthetic: ${aesthetic}
+Color mood: ${colorMood}
+Video style: ${vidStyle}
+${customPfx ? `Custom direction: ${customPfx}` : ''}
+
+Commercial specifications:
+- ${shotCount} shots
+- ${durationPerShot} seconds per shot (${shotCount * durationPerShot} seconds total)
+- Format: ${formatLabel}
+- User's creative direction: "${userDirection || 'Premium brand commercial — let the brand DNA guide you'}"
+
+Output ONLY valid JSON. No preamble. No explanation. No markdown.
+{
+  "commercial_concept": "One sentence. The director's vision for this commercial. Make it specific and evocative.",
+  "environment": "The physical world of this commercial — specific location, time of day, surfaces, atmosphere",
+  "master_style": "The cinematography language — specific camera style, movement philosophy, lens choice",
+  "color_grade": "Specific color grade and film reference (e.g. 'Fuji 400H push-1, warm highlights, teal shadows')",
+  "lighting_setup": "The consistent lighting approach across all shots",
+  "shots": [
+    {
+      "shot_label": "Shot name (e.g. 'Wide Establish', 'Hero Reveal', 'Macro Detail')",
+      "prompt": "Complete shot prompt following the format rules above. 60-80 words.",
+      "duration": ${durationPerShot}
+    }
+  ],
+  "commercial_hook": "The emotional truth or tagline of this commercial. 8 words max."
+}`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  })
+
+  const raw = (response.content[0] as any).text?.trim()
+
+  try {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('No JSON found')
+    const parsed = JSON.parse(match[0])
+    if (!parsed.shots || !Array.isArray(parsed.shots)) throw new Error('No shots array')
+    parsed.shots = parsed.shots.slice(0, shotCount)
+    return parsed
+  } catch {
+    return {
+      commercial_concept: `Premium ${brand} commercial`,
+      environment: 'Luxury studio environment with dramatic lighting',
+      master_style: 'Slow, deliberate camera movements on 85mm equivalent',
+      color_grade: 'Kodak Vision3 500T, warm highlights, rich shadows',
+      lighting_setup: 'Single large soft source from upper left, practical fill',
+      shots: Array.from({ length: shotCount }, (_, i) => ({
+        shot_label: ['Wide Establish', 'Hero Reveal', 'Macro Detail', 'Lifestyle', 'Brand Close'][i] || `Shot ${i + 1}`,
+        prompt: `Slow push forward on ${brand} product. Luxury environment. Soft directional lighting. Cinematic atmosphere. Shot on 85mm equivalent, warm color grade.`,
+        duration: durationPerShot,
+      })),
+      commercial_hook: `${brand}. Crafted for those who know.`,
+    }
+  }
+}

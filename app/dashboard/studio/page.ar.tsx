@@ -303,19 +303,18 @@ function StudioArInner() {
   const [pipelineVidDur,       setPipelineVidDur]       = useState(5)
   const [pipelineSlideCount,   setPipelineSlideCount]   = useState(5)
 
-  // ── Storyboard state ──────────────────────────────────────────
+  // ── Storyboard ───────────────────────────────────────
   const isArabic = true
   const lang     = 'ar'
-  const [sbProductImage, setSbProductImage] = useState<string>('')
-  const [sbDirection,    setSbDirection]    = useState<string>('')
-  const [sbShotCount,    setSbShotCount]    = useState<3|4|5>(4)
-  const [sbDuration,     setSbDuration]     = useState<5|8>(5)
-  const [sbFormat,       setSbFormat]       = useState<'9:16'|'16:9'|'1:1'>('9:16')
-  const [sbAudio,        setSbAudio]        = useState(true)
-  const [sbGenerating,   setSbGenerating]   = useState(false)
-  const [sbResult,       setSbResult]       = useState<any>(null)
-  const [sbMsg,          setSbMsg]          = useState<{text:string; ok:boolean}|null>(null)
-  const toast_ = (msg: string, ok = true) => setSbMsg({ text: msg, ok })
+  const [sbImg,        setSbImg]        = useState<string>('')
+  const [sbDirection,  setSbDirection]  = useState<string>('')
+  const [sbShots,      setSbShots]      = useState<3|4|5>(4)
+  const [sbDur,        setSbDur]        = useState<5|8>(5)
+  const [sbFmt,        setSbFmt]        = useState<'9:16'|'16:9'|'1:1'>('9:16')
+  const [sbAudio,      setSbAudio]      = useState<boolean>(true)
+  const [sbLoading,    setSbLoading]    = useState<boolean>(false)
+  const [sbResult,     setSbResult]     = useState<any>(null)
+  const [sbErr,        setSbErr]        = useState<string|null>(null)
 
   // ── Init ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -368,7 +367,7 @@ function StudioArInner() {
     if (!refImage) return
     const refParam = searchParams.get('ref')
     if (refParam !== 'product') return
-    setSbProductImage(refImage)
+    setSbImg(refImage)
     setTab('storyboard')
     localStorage.removeItem('studio_reference_image')
     localStorage.removeItem('studio_reference_type')
@@ -592,38 +591,59 @@ function StudioArInner() {
 
   // ── Storyboard functions ──────────────────────────────────────
 
-  async function handleSbUpload(file: File) {
+  function getSbCost(): number {
+    const perShot = sbDur === 5 ? 86 : 138
+    return sbShots * perShot
+  }
+
+  async function handleSbImageUpload(file: File) {
     if (!file.type.startsWith('image/') || !ws?.id) return
-    const path = `storyboard/${ws.id}/ref-${Date.now()}.${file.name.split('.').pop()}`
+    const path = `storyboard/${ws.id}/${Date.now()}.${file.name.split('.').pop() || 'jpg'}`
     const { error } = await supabase.storage.from('brand-assets').upload(path, file)
-    if (error) { toast_('فشل الرفع', false); return }
+    if (error) { setSbErr('فشل الرفع'); return }
     const { data: { publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(path)
-    setSbProductImage(publicUrl)
+    setSbImg(publicUrl)
   }
 
-  function getSbCreditCost() {
-    const costs: Record<number, number> = { 3: 155, 4: 206, 5: 258 }
-    return costs[sbShotCount] ?? 206
-  }
-
-  async function generateStoryboard() {
-    if (!sbProductImage || !ws?.id || sbGenerating) return
-    const cost = getSbCreditCost()
-    if (creditBalance < cost) { toast_(`رصيد غير كافٍ — تحتاج ${cost} كريديت`, false); return }
-    setSbGenerating(true); setSbResult(null); setSbMsg(null)
+  async function generateCommercial() {
+    if (!sbImg || !ws?.id || sbLoading) return
+    const cost = getSbCost()
+    if (creditBalance < cost) {
+      setSbErr(`تحتاج ${cost} رصيد لهذا الإعلان — رصيدك ${creditBalance}`)
+      return
+    }
+    setSbLoading(true)
+    setSbResult(null)
+    setSbErr(null)
     try {
       const res = await fetch('/api/storyboard', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: ws.id, product_image_url: sbProductImage, story_direction: sbDirection.trim() || undefined, shot_count: sbShotCount, duration_per_shot: sbDuration, output_format: sbFormat, audio: sbAudio, lang }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id:      ws.id,
+          product_image_url: sbImg,
+          story_direction:   sbDirection.trim() || undefined,
+          shot_count:        sbShots,
+          duration_per_shot: sbDur,
+          output_format:     sbFmt,
+          audio:             sbAudio,
+          lang,
+        }),
       })
       const data = await res.json()
-      if (!res.ok) { toast_(data.error || 'فشل التوليد', false); return }
+      if (!res.ok) {
+        setSbErr(data.error || 'فشل الإنتاج')
+        return
+      }
       setSbResult(data)
-      toast_('الإعلان جاهز')
-      const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', ws.id).single()
+      const { data: cr } = await supabase
+        .from('credits').select('balance').eq('workspace_id', ws.id).single()
       if (cr?.balance !== undefined) setCreditBalance(cr.balance)
-    } catch { toast_('فشل التوليد', false) }
-    finally { setSbGenerating(false) }
+    } catch {
+      setSbErr('صار خطأ ما')
+    } finally {
+      setSbLoading(false)
+    }
   }
 
   const selFmt       = FORMATS.find(f=>f.id===fmt)!
@@ -1465,172 +1485,251 @@ function StudioArInner() {
 
           {/* ── STORYBOARD tab ─────────────────────────────────── */}
           {tab === 'storyboard' && (
-            <div className="s-in">
+            <div style={{ padding:'28px', maxWidth:760, margin:'0 auto', width:'100%' }}>
 
-              {/* صورة المنتج */}
-              <div style={{ marginBottom:'24px' }}>
-                <Label>صورة المنتج</Label>
-                {sbProductImage ? (
-                  <div style={{ position:'relative', borderRadius:'10px', overflow:'hidden', border:'1px solid rgba(255,255,255,0.10)', marginBottom:'8px' }}>
-                    <img src={sbProductImage} alt="" style={{ width:'100%', height:'180px', objectFit:'contain', background:'#141414', display:'block' }}/>
-                    <button onClick={() => setSbProductImage('')}
-                      style={{ position:'absolute', top:8, left:8, padding:'4px 10px', borderRadius:'6px', fontSize:'11px', background:'rgba(0,0,0,0.70)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.60)', cursor:'pointer', fontFamily:F }}>
-                      تغيير
-                    </button>
-                  </div>
-                ) : (
-                  <div onClick={() => sbFileRef.current?.click()}
-                    style={{ borderRadius:'10px', border:'2px dashed rgba(255,255,255,0.12)', padding:'36px 20px', textAlign:'center', cursor:'pointer', transition:'border-color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}>
-                    <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.30)', lineHeight:1.6, fontFamily:F }}>
-                      ارفع صورة المنتج<br/>
-                      <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.18)' }}>PNG · JPG · WEBP</span>
+              {/* ── HEADER */}
+              <div style={{ marginBottom:28 }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', color:'rgba(0,170,255,0.65)', textTransform:'uppercase' as const, marginBottom:8, fontFamily:F }}>
+                  ستوري بورد
+                </div>
+                <div style={{ fontSize:24, fontWeight:700, color:'#FFFFFF', letterSpacing:'-0.03em', marginBottom:10, fontFamily:F }}>
+                  مخرج الإعلانات التجارية
+                </div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', lineHeight:1.7, maxWidth:500, fontFamily:F }}>
+                  ارفع صورة منتجك. Nexa يكتب السيناريو ويوجّه الكاميرا وينتج إعلاناً كاملاً متعدد اللقطات — لقطة واحدة من Kling.
+                </div>
+              </div>
+
+              {!sbResult ? (
+                <div style={{ display:'flex', flexDirection:'column' as const, gap:14 }}>
+
+                  {/* ── PRODUCT IMAGE */}
+                  <div style={{ padding:'20px', borderRadius:14, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'rgba(255,255,255,0.28)', textTransform:'uppercase' as const, marginBottom:14, fontFamily:F }}>
+                      المنتج — المرجع البصري
                     </div>
-                  </div>
-                )}
-                <input ref={sbFileRef} type="file" accept="image/*" style={{ display:'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if(f) handleSbUpload(f); e.target.value='' }}/>
-              </div>
-
-              {/* التوجيه الإبداعي */}
-              <div style={{ marginBottom:'24px' }}>
-                <Label>التوجيه الإبداعي</Label>
-                <div style={{ borderRadius:'10px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)' }}>
-                  <textarea value={sbDirection} onChange={e => setSbDirection(e.target.value)} rows={3}
-                    placeholder="مثال: فاخر، ليلي، مع إضاءة ذهبية..."
-                    style={{ width:'100%', padding:'14px 16px', fontSize:'13px', fontFamily:F, background:'transparent', border:'none', color:'rgba(255,255,255,0.88)', outline:'none', resize:'vertical', lineHeight:1.72, boxSizing:'border-box' as const, direction:'rtl' }}
-                  />
-                </div>
-              </div>
-
-              {/* عدد اللقطات */}
-              <div style={{ marginBottom:'20px' }}>
-                <Label>عدد اللقطات</Label>
-                <div style={{ display:'flex', gap:'8px' }}>
-                  {([3,4,5] as const).map(n => (
-                    <button key={n} onClick={() => setSbShotCount(n)}
-                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'12px', fontWeight:500, fontFamily:F, background: sbShotCount===n ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbShotCount===n?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbShotCount===n ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
-                      {n} لقطات
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* مدة كل لقطة */}
-              <div style={{ marginBottom:'20px' }}>
-                <Label>مدة كل لقطة</Label>
-                <div style={{ display:'flex', gap:'8px' }}>
-                  {([5,8] as const).map(d => (
-                    <button key={d} onClick={() => setSbDuration(d)}
-                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'12px', fontWeight:500, fontFamily:F, background: sbDuration===d ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbDuration===d?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbDuration===d ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* تنسيق الإخراج */}
-              <div style={{ marginBottom:'20px' }}>
-                <Label>تنسيق الإخراج</Label>
-                <div style={{ display:'flex', gap:'8px' }}>
-                  {([{ id:'9:16', label:'ستوري 9:16' },{ id:'16:9', label:'أفقي 16:9' },{ id:'1:1', label:'مربع 1:1' }] as const).map(f => (
-                    <button key={f.id} onClick={() => setSbFormat(f.id)}
-                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'11px', fontWeight:500, fontFamily:F, background: sbFormat===f.id ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbFormat===f.id?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbFormat===f.id ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* توليد صوت */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'28px', padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px' }}>
-                <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.50)', fontFamily:F }}>توليد صوت</span>
-                <button onClick={() => setSbAudio(!sbAudio)}
-                  style={{ width:36, height:20, borderRadius:'100px', background: sbAudio ? '#00AAFF' : 'rgba(255,255,255,0.12)', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-                  <div style={{ position:'absolute', top:3, right: sbAudio ? 18 : 3, width:14, height:14, borderRadius:'50%', background:'#FFFFFF', transition:'right 0.2s' }}/>
-                </button>
-              </div>
-
-              {/* الكريديت والزر */}
-              {(() => {
-                const cost = getSbCreditCost()
-                const totalDur = sbShotCount * sbDuration
-                const hasEnough = creditBalance >= cost
-                const canGenerate = !!sbProductImage && hasEnough
-                return (
-                  <>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
-                      <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', fontFamily:F }}>
-                        {sbShotCount} لقطات · {totalDur}s إجمالاً · <span style={{ fontFamily:MONO }}>{cost} كريديت</span>
-                      </span>
-                      <span style={{ fontSize:'11px', color: hasEnough ? 'rgba(255,255,255,0.25)' : '#EF4444', fontWeight:500, fontFamily:F }}>
-                        {hasEnough ? `${creditBalance} متاح` : `تحتاج ${cost}`}
-                      </span>
-                    </div>
-                    <GenerateBtn active={canGenerate} loading={sbGenerating}
-                      label="وجّه هذا الإعلان ←"
-                      loadingLabel="Nexa تخرج الإعلان... (٣–٥ دقائق)"
-                      onClick={generateStoryboard}/>
-                  </>
-                )
-              })()}
-
-              {/* رسالة الحالة */}
-              {sbMsg && (
-                <div style={{ marginTop:'12px', padding:'10px 14px', borderRadius:'8px', fontSize:'12px', fontFamily:F, background: sbMsg.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border:`1px solid ${sbMsg.ok ? 'rgba(34,197,94,0.20)' : 'rgba(239,68,68,0.20)'}`, color: sbMsg.ok ? '#4ADE80' : '#F87171' }}>
-                  {sbMsg.text}
-                </div>
-              )}
-
-              {/* النتيجة */}
-              {sbResult && (
-                <div style={{ marginTop:'32px', animation:'studioUp 0.3s ease both' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                      <div style={{ width:6, height:6, borderRadius:'50%', background:'#00AAFF' }}/>
-                      <span style={{ fontSize:'11px', fontWeight:500, color:'rgba(255,255,255,0.35)', fontFamily:F }}>
-                        {sbResult.shot_count} لقطات · {sbResult.total_duration}s · {sbResult.credits_used} كريديت
-                      </span>
-                    </div>
-                    <a href={sbResult.video_url} download={'nexa-commercial-'+Date.now()+'.mp4'}
-                      style={{ display:'flex', alignItems:'center', gap:'5px', padding:'6px 11px', borderRadius:'7px', fontSize:'11px', fontWeight:500, background:'transparent', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.40)', textDecoration:'none', fontFamily:F }}>
-                      {Ic.dl} تحميل
-                    </a>
-                  </div>
-
-                  <div style={{ borderRadius:'10px', overflow:'hidden', background:'#000', marginBottom:'20px', border:'1px solid rgba(255,255,255,0.08)' }}>
-                    <video src={sbResult.video_url} controls style={{ width:'100%', display:'block', maxHeight:'360px' }}/>
-                  </div>
-
-                  {sbResult.plan?.shots && (
-                    <div>
-                      <div style={{ fontSize:'11px', fontWeight:600, color:'rgba(255,255,255,0.25)', letterSpacing:'0.07em', textTransform:'uppercase' as const, marginBottom:'12px', fontFamily:F }}>
-                        اللقطات
-                      </div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                        {sbResult.plan.shots.map((shot: any, i: number) => (
-                          <div key={i} style={{ padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px' }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>
-                              <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'4px', background:'rgba(0,170,255,0.10)', color:'#00AAFF', letterSpacing:'0.04em', fontFamily:F }}>
-                                لقطة {i+1}
-                              </span>
-                              {shot.purpose && <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.20)', textTransform:'uppercase' as const, letterSpacing:'0.04em' }}>{shot.purpose}</span>}
-                            </div>
-                            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.40)', lineHeight:1.55, fontFamily:F }}>{shot.prompt}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {sbResult.plan.concept && (
-                        <div style={{ marginTop:'12px', padding:'10px 14px', background:'rgba(0,170,255,0.04)', border:'1px solid rgba(0,170,255,0.12)', borderRadius:'8px', fontSize:'11px', color:'rgba(0,170,255,0.65)', fontStyle:'italic', fontFamily:F }}>
-                          "{sbResult.plan.concept}"
+                    {sbImg ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                        <div style={{ position:'relative' as const, flexShrink:0 }}>
+                          <img src={sbImg} alt="" style={{ width:88, height:88, objectFit:'cover', borderRadius:10, border:'1px solid rgba(255,255,255,0.12)' }}/>
+                          <button onClick={() => setSbImg('')}
+                            style={{ position:'absolute' as const, top:-8, right:-8, width:20, height:20, borderRadius:'50%', background:'rgba(239,68,68,0.90)', border:'none', color:'#fff', fontSize:13, cursor:'pointer', lineHeight:1, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700 }}>×</button>
                         </div>
-                      )}
+                        <div>
+                          <div style={{ fontSize:13, fontWeight:600, color:'#FFFFFF', marginBottom:4, fontFamily:F }}>
+                            المنتج محدد
+                          </div>
+                          <div style={{ fontSize:11, color:'rgba(0,170,255,0.65)', fontFamily:F }}>
+                            Kling سيثبّت هذا المنتج في كل لقطة
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' as const }}>
+                        <button onClick={() => sbFileRef.current?.click()}
+                          style={{ padding:'11px 18px', borderRadius:10, fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.80)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', fontFamily:F }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.12)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.07)'}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          ارفع صورة المنتج
+                        </button>
+                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.20)' }}>أو</span>
+                        <a href="/dashboard/product-lab" style={{ fontSize:12, color:'#00AAFF', textDecoration:'none', fontWeight:600, fontFamily:F }}>
+                          اختر من مختبر المنتج ←
+                        </a>
+                        <input ref={sbFileRef} type="file" accept="image/*" style={{ display:'none' }}
+                          onChange={e => e.target.files?.[0] && handleSbImageUpload(e.target.files[0])}/>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── CREATIVE DIRECTION */}
+                  <div style={{ padding:'20px', borderRadius:14, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'rgba(255,255,255,0.28)', textTransform:'uppercase' as const, marginBottom:12, fontFamily:F }}>
+                      التوجيه الإبداعي — اختياري
+                    </div>
+                    <textarea value={sbDirection} onChange={e => setSbDirection(e.target.value)}
+                      placeholder="مثال: فاخر دبي، ذهبي دافئ، مناسب للخليج..."
+                      style={{ width:'100%', minHeight:68, padding:'11px 14px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', color:'#FFFFFF', fontSize:13, resize:'none' as const, outline:'none', boxSizing:'border-box' as const, lineHeight:1.65, fontFamily:F, direction:'rtl' }}/>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.22)', marginTop:6, fontFamily:F }}>
+                      فارغ = Nexa يقرر بناءً على Brand Brain
+                    </div>
+                  </div>
+
+                  {/* ── SETTINGS */}
+                  <div style={{ padding:'20px', borderRadius:14, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'rgba(255,255,255,0.28)', textTransform:'uppercase' as const, marginBottom:16, fontFamily:F }}>
+                      مواصفات الإعلان
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:16 }}>
+
+                      {/* Shots */}
+                      <div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', marginBottom:8, fontWeight:500, fontFamily:F }}>اللقطات</div>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {([3,4,5] as const).map(n => (
+                            <button key={n} onClick={() => setSbShots(n)}
+                              style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:14, fontWeight:700, border:'none', cursor:'pointer', transition:'all 0.12s', background: sbShots===n ? '#FFFFFF' : 'rgba(255,255,255,0.06)', color: sbShots===n ? '#0C0C0C' : 'rgba(255,255,255,0.38)' }}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Duration */}
+                      <div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', marginBottom:8, fontWeight:500, fontFamily:F }}>مدة اللقطة</div>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {([5,8] as const).map(d => (
+                            <button key={d} onClick={() => setSbDur(d)}
+                              style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:13, fontWeight:700, border:'none', cursor:'pointer', transition:'all 0.12s', background: sbDur===d ? '#FFFFFF' : 'rgba(255,255,255,0.06)', color: sbDur===d ? '#0C0C0C' : 'rgba(255,255,255,0.38)' }}>
+                              {d}s
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Format */}
+                      <div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', marginBottom:8, fontWeight:500 }}>التنسيق</div>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {([{ id:'9:16' as const, l:'ستوري' },{ id:'16:9' as const, l:'أفقي' },{ id:'1:1' as const, l:'مربع' }]).map(f => (
+                            <button key={f.id} onClick={() => setSbFmt(f.id)}
+                              style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:10, fontWeight:700, border:'none', cursor:'pointer', transition:'all 0.12s', background: sbFmt===f.id ? '#FFFFFF' : 'rgba(255,255,255,0.06)', color: sbFmt===f.id ? '#0C0C0C' : 'rgba(255,255,255,0.38)' }}>
+                              {f.l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Audio */}
+                      <div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', marginBottom:8, fontWeight:500, fontFamily:F }}>الصوت</div>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {([{ v:true as const, l:'مع' },{ v:false as const, l:'بدون' }]).map(a => (
+                            <button key={String(a.v)} onClick={() => setSbAudio(a.v)}
+                              style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:11, fontWeight:700, border:'none', cursor:'pointer', transition:'all 0.12s', fontFamily:F, background: sbAudio===a.v ? '#FFFFFF' : 'rgba(255,255,255,0.06)', color: sbAudio===a.v ? '#0C0C0C' : 'rgba(255,255,255,0.38)' }}>
+                              {a.l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Credit breakdown */}
+                    <div style={{ marginTop:14, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:8, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ fontSize:12, color:'rgba(255,255,255,0.32)', fontFamily:F }}>
+                        {sbShots} لقطات × {sbDur}s = {sbShots * sbDur}s
+                      </span>
+                      <span style={{ fontSize:14, fontWeight:700, fontFamily:MONO, color: creditBalance < getSbCost() ? '#EF4444' : '#FFFFFF' }}>
+                        {getSbCost()} cr
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Error */}
+                  {sbErr && (
+                    <div style={{ padding:'12px 16px', borderRadius:10, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)', fontSize:12, color:'#EF4444', fontFamily:F }}>
+                      {sbErr}
                     </div>
                   )}
 
-                  <div style={{ marginTop:'16px', display:'flex', gap:'8px' }}>
-                    <ActionBtn icon={Ic.redo} label="إعادة التوجيه" onClick={generateStoryboard}/>
+                  {/* THE BUTTON */}
+                  <button onClick={generateCommercial}
+                    disabled={!sbImg || sbLoading || creditBalance < getSbCost()}
+                    style={{ width:'100%', padding:'17px', borderRadius:14, fontSize:15, fontWeight:700, border:'none', transition:'all 0.15s', cursor: sbImg && !sbLoading && creditBalance >= getSbCost() ? 'pointer' : 'not-allowed', background: sbImg && !sbLoading && creditBalance >= getSbCost() ? '#FFFFFF' : 'rgba(255,255,255,0.06)', color: sbImg && !sbLoading && creditBalance >= getSbCost() ? '#0C0C0C' : 'rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+                    {sbLoading ? (
+                      <>
+                        <div className="nexa-spinner" style={{ width:16, height:16, borderWidth:2, borderTopColor:'currentColor' }}/>
+                        <span style={{ fontFamily:F }}>المخرج الإبداعي يعمل — ٢ إلى ٤ دقائق...</span>
+                      </>
+                    ) : (
+                      <span style={{ fontFamily:F }}>وجّه هذا الإعلان ←</span>
+                    )}
+                  </button>
+
+                  {sbLoading && (
+                    <div style={{ textAlign:'center' as const, fontSize:11, color:'rgba(255,255,255,0.22)', lineHeight:1.8, fontFamily:F }}>
+                      Claude يكتب السيناريو الآن ← Kling يصوّر جميع اللقطات دفعة واحدة
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ── RESULT */
+                <div style={{ animation:'studioUp 0.45s ease both' }}>
+
+                  {/* Brief card */}
+                  <div style={{ padding:'18px 20px', borderRadius:12, marginBottom:16, background:'rgba(0,170,255,0.05)', border:'1px solid rgba(0,170,255,0.18)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', color:'rgba(0,170,255,0.60)', textTransform:'uppercase' as const, marginBottom:8, fontFamily:F }}>
+                      المفهوم الإبداعي
+                    </div>
+                    <div style={{ fontSize:15, fontWeight:600, color:'#FFFFFF', lineHeight:1.55, marginBottom:10, fontFamily:F }}>
+                      {sbResult.storyboard?.commercial_concept}
+                    </div>
+                    <div style={{ display:'flex', flexWrap:'wrap' as const, gap:14 }}>
+                      {[
+                        { icon:'📍', val: sbResult.storyboard?.environment },
+                        { icon:'🎞', val: sbResult.storyboard?.color_grade },
+                        { icon:'💡', val: sbResult.storyboard?.lighting_setup },
+                      ].filter(x => x.val).map((x, i) => (
+                        <span key={i} style={{ fontSize:11, color:'rgba(255,255,255,0.38)' }}>{x.icon} {x.val}</span>
+                      ))}
+                    </div>
+                    {sbResult.storyboard?.commercial_hook && (
+                      <div style={{ marginTop:10, fontSize:12, fontStyle:'italic', color:'rgba(255,255,255,0.45)', fontFamily:F }}>
+                        "{sbResult.storyboard.commercial_hook}"
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shot breakdown */}
+                  {sbResult.storyboard?.shots?.length > 0 && (
+                    <div style={{ display:'flex', flexDirection:'column' as const, gap:6, marginBottom:16 }}>
+                      {sbResult.storyboard.shots.map((s: any, i: number) => (
+                        <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 14px', borderRadius:9, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, background:'rgba(0,170,255,0.10)', border:'1px solid rgba(0,170,255,0.20)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#00AAFF' }}>{i+1}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.60)', marginBottom:3 }}>{s.shot_label}</div>
+                            <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', lineHeight:1.55 }}>{s.prompt?.slice(0,100)}{s.prompt?.length > 100 ? '...' : ''}</div>
+                          </div>
+                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.22)', flexShrink:0, fontFamily:MONO }}>{s.duration}s</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* The video */}
+                  <div style={{ borderRadius:14, overflow:'hidden', background:'#000000', marginBottom:16, border:'1px solid rgba(34,197,94,0.22)' }}>
+                    <video src={sbResult.video_url} controls autoPlay loop playsInline
+                      style={{ width:'100%', display:'block', maxHeight: sbFmt === '9:16' ? 560 : 380 }}/>
+                  </div>
+
+                  {/* Stats + actions */}
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' as const }}>
+                    <div style={{ display:'flex', gap:20 }}>
+                      {[
+                        { val: sbResult.shot_count,           label: 'لقطات'   },
+                        { val: `${sbResult.total_duration}s`, label: 'مدة'     },
+                        { val: sbResult.output_format,        label: 'تنسيق'   },
+                        { val: `${sbResult.credits_used} cr`, label: 'رصيد'    },
+                      ].map((x, i) => (
+                        <div key={i} style={{ textAlign:'center' as const }}>
+                          <div style={{ fontSize:15, fontWeight:700, color:'#FFFFFF', fontFamily:MONO }}>{x.val}</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontFamily:F }}>{x.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <a href={sbResult.video_url} download={`nexa-commercial-${Date.now()}.mp4`} target="_blank"
+                        style={{ padding:'11px 20px', borderRadius:10, fontSize:13, fontWeight:700, background:'#22C55E', color:'#000000', textDecoration:'none', display:'flex', alignItems:'center', gap:7, fontFamily:F }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        تحميل الإعلان
+                      </a>
+                      <button onClick={() => { setSbResult(null); setSbImg(''); setSbDirection(''); setSbErr(null) }}
+                        style={{ padding:'11px 16px', borderRadius:10, fontSize:12, fontWeight:500, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.10)', color:'rgba(255,255,255,0.45)', cursor:'pointer', fontFamily:F }}>
+                        إعلان جديد
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
