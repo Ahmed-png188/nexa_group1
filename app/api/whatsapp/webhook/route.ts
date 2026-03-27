@@ -77,17 +77,19 @@ async function sendVoiceNote(
   isAr: boolean
 ): Promise<boolean> {
   const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY
+
+  // No key — send as text silently
   if (!ELEVEN_KEY) {
-    console.log('[wa-voice] no ElevenLabs key — falling back to text')
     await sendWA(to, text)
     return false
   }
 
-  // Keep voice notes concise — strip markdown formatting
   const cleanText = text
     .replace(/\*/g, '')
     .replace(/_/g, '')
     .replace(/#+/g, '')
+    .replace(/💡/g, '')
+    .trim()
     .slice(0, 500)
 
   const voiceId = isAr
@@ -95,8 +97,6 @@ async function sendVoiceNote(
     : 'EXAVITQu4vr4xnSDxMaL'
 
   try {
-    console.log('[wa-voice] generating audio, chars:', cleanText.length)
-
     const audioRes = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
@@ -119,15 +119,20 @@ async function sendVoiceNote(
       }
     )
 
+    // Any failure — fall back to text silently
     if (!audioRes.ok) {
-      const errText = await audioRes.text()
-      console.error('[wa-voice] ElevenLabs error:', audioRes.status, errText.slice(0, 200))
+      console.log('[wa-voice] ElevenLabs unavailable, using text')
       await sendWA(to, text)
       return false
     }
 
     const audioBuffer = await audioRes.arrayBuffer()
-    console.log('[wa-voice] audio generated, bytes:', audioBuffer.byteLength)
+
+    if (!audioBuffer.byteLength) {
+      console.log('[wa-voice] empty audio, using text')
+      await sendWA(to, text)
+      return false
+    }
 
     // Upload to Supabase storage
     const { createClient: sb } = await import('@supabase/supabase-js')
@@ -145,7 +150,7 @@ async function sendVoiceNote(
       })
 
     if (uploadErr) {
-      console.error('[wa-voice] upload error:', uploadErr.message)
+      console.log('[wa-voice] upload failed, using text')
       await sendWA(to, text)
       return false
     }
@@ -154,14 +159,19 @@ async function sendVoiceNote(
       .from('brand-assets')
       .getPublicUrl(fileName)
 
-    console.log('[wa-voice] uploading to Twilio, url:', publicUrl.slice(0, 60))
     await sendWAMedia(to, publicUrl, '')
-    console.log('[wa-voice] voice note sent ✓')
+    console.log('[wa-voice] voice sent ✓')
     return true
 
-  } catch (e: any) {
-    console.error('[wa-voice] error:', e.message)
-    await sendWA(to, text)
+  } catch {
+    // Any unexpected error — fall back to text silently
+    // Never expose voice errors to the user
+    try {
+      await sendWA(to, text)
+    } catch {
+      // Even text failed — nothing we can do, log only
+      console.log('[wa-voice] both voice and text failed silently')
+    }
     return false
   }
 }
