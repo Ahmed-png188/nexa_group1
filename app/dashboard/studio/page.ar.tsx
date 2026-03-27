@@ -11,7 +11,7 @@ const MONO = "'Geist Mono', monospace"
 // ── Types ──────────────────────────────────────────────────────
 type ContentType    = 'post' | 'thread' | 'email' | 'caption' | 'hook' | 'bio' | 'ad' | 'story'
 type Platform       = 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'email' | 'general'
-type Tab            = 'pipeline' | 'copy' | 'image' | 'video' | 'voice'
+type Tab            = 'pipeline' | 'copy' | 'image' | 'video' | 'voice' | 'storyboard'
 type PipelineFormat = 'post' | 'image' | 'carousel' | 'reel' | 'voice'
 type ELVoice        = { id:string; name:string; preview:string|null; gender:string; accent:string; age:string; style:string }
 
@@ -33,6 +33,7 @@ const Ic = {
   arrow:   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
   back:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
   amplify: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>,
+  storyboard:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="6" height="8" rx="1"/><rect x="9" y="3" width="6" height="8" rx="1"/><rect x="16" y="3" width="6" height="8" rx="1"/><line x1="2" y1="15" x2="22" y2="15"/><line x1="5" y1="18" x2="5" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="19" y1="18" x2="19" y2="21"/></svg>,
 }
 
 // ── Static data ────────────────────────────────────────────────
@@ -57,11 +58,12 @@ const ANGLES_AR = [
 ]
 
 const TABS = [
-  { id:'pipeline' as Tab, label:'البايبلاين', sub:'ابدأ هنا' },
-  { id:'copy'     as Tab, label:'الكتابة',    sub:'كل الخطط' },
-  { id:'image'    as Tab, label:'الصورة',     sub:'٥ cr/صورة' },
-  { id:'video'    as Tab, label:'الفيديو',    sub:'٤٩–٣٠٩ cr' },
-  { id:'voice'    as Tab, label:'الصوت',      sub:'٥–٢٠ cr'  },
+  { id:'pipeline'   as Tab, label:'البايبلاين',   sub:'ابدأ هنا',            icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> },
+  { id:'copy'       as Tab, label:'الكتابة',      sub:'كل الخطط',            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
+  { id:'image'      as Tab, label:'الصورة',       sub:'٥ cr/صورة',           icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> },
+  { id:'video'      as Tab, label:'الفيديو',      sub:'٤٩–٣٠٩ cr',           icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> },
+  { id:'voice'      as Tab, label:'الصوت',        sub:'٥–٢٠ cr',             icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> },
+  { id:'storyboard' as Tab, label:'ستوري بورد',  sub:'إعلان متعدد اللقطات',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="6" height="8" rx="1"/><rect x="9" y="3" width="6" height="8" rx="1"/><rect x="16" y="3" width="6" height="8" rx="1"/><line x1="2" y1="15" x2="22" y2="15"/><line x1="5" y1="18" x2="5" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="19" y1="18" x2="19" y2="21"/></svg> },
 ]
 
 const FORMATS = [
@@ -206,6 +208,7 @@ function StudioArInner() {
   const startRef     = useRef<HTMLInputElement>(null)
   const endRef       = useRef<HTMLInputElement>(null)
   const imgRef       = useRef<HTMLInputElement>(null)
+  const sbFileRef    = useRef<HTMLInputElement>(null)
 
   // workspace + credits
   const [ws,            setWs]            = useState<any>(null)
@@ -300,6 +303,20 @@ function StudioArInner() {
   const [pipelineVidDur,       setPipelineVidDur]       = useState(5)
   const [pipelineSlideCount,   setPipelineSlideCount]   = useState(5)
 
+  // ── Storyboard state ──────────────────────────────────────────
+  const isArabic = true
+  const lang     = 'ar'
+  const [sbProductImage, setSbProductImage] = useState<string>('')
+  const [sbDirection,    setSbDirection]    = useState<string>('')
+  const [sbShotCount,    setSbShotCount]    = useState<3|4|5>(4)
+  const [sbDuration,     setSbDuration]     = useState<5|8>(5)
+  const [sbFormat,       setSbFormat]       = useState<'9:16'|'16:9'|'1:1'>('9:16')
+  const [sbAudio,        setSbAudio]        = useState(true)
+  const [sbGenerating,   setSbGenerating]   = useState(false)
+  const [sbResult,       setSbResult]       = useState<any>(null)
+  const [sbMsg,          setSbMsg]          = useState<{text:string; ok:boolean}|null>(null)
+  const toast_ = (msg: string, ok = true) => setSbMsg({ text: msg, ok })
+
   // ── Init ──────────────────────────────────────────────────────
   useEffect(() => {
     setMounted(true)
@@ -345,19 +362,14 @@ function StudioArInner() {
     localStorage.removeItem('nexa_ready_platform')
   }, [searchParams])
 
-  // Read product image from Product Lab
+  // Read product image from Product Lab → open Storyboard
   useEffect(() => {
-    const refParam = searchParams.get('ref')
-    if (refParam !== 'product') return
-
     const refImage = localStorage.getItem('studio_reference_image')
     if (!refImage) return
-
-    setVImg(refImage)
-    setVMode('image')
-    setTab('video')
-    setProductLabRef(true)
-
+    const refParam = searchParams.get('ref')
+    if (refParam !== 'product') return
+    setSbProductImage(refImage)
+    setTab('storyboard')
     localStorage.removeItem('studio_reference_image')
     localStorage.removeItem('studio_reference_type')
   }, [searchParams])
@@ -576,6 +588,42 @@ function StudioArInner() {
     const reader = new FileReader()
     reader.onload = e => set(e.target?.result as string)
     reader.readAsDataURL(file)
+  }
+
+  // ── Storyboard functions ──────────────────────────────────────
+
+  async function handleSbUpload(file: File) {
+    if (!file.type.startsWith('image/') || !ws?.id) return
+    const path = `storyboard/${ws.id}/ref-${Date.now()}.${file.name.split('.').pop()}`
+    const { error } = await supabase.storage.from('brand-assets').upload(path, file)
+    if (error) { toast_('فشل الرفع', false); return }
+    const { data: { publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    setSbProductImage(publicUrl)
+  }
+
+  function getSbCreditCost() {
+    const costs: Record<number, number> = { 3: 155, 4: 206, 5: 258 }
+    return costs[sbShotCount] ?? 206
+  }
+
+  async function generateStoryboard() {
+    if (!sbProductImage || !ws?.id || sbGenerating) return
+    const cost = getSbCreditCost()
+    if (creditBalance < cost) { toast_(`رصيد غير كافٍ — تحتاج ${cost} كريديت`, false); return }
+    setSbGenerating(true); setSbResult(null); setSbMsg(null)
+    try {
+      const res = await fetch('/api/storyboard', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: ws.id, product_image_url: sbProductImage, story_direction: sbDirection.trim() || undefined, shot_count: sbShotCount, duration_per_shot: sbDuration, output_format: sbFormat, audio: sbAudio, lang }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast_(data.error || 'فشل التوليد', false); return }
+      setSbResult(data)
+      toast_('الإعلان جاهز')
+      const { data: cr } = await supabase.from('credits').select('balance').eq('workspace_id', ws.id).single()
+      if (cr?.balance !== undefined) setCreditBalance(cr.balance)
+    } catch { toast_('فشل التوليد', false) }
+    finally { setSbGenerating(false) }
   }
 
   const selFmt       = FORMATS.find(f=>f.id===fmt)!
@@ -1414,6 +1462,181 @@ function StudioArInner() {
               )}
             </div>
           )}
+
+          {/* ── STORYBOARD tab ─────────────────────────────────── */}
+          {tab === 'storyboard' && (
+            <div className="s-in">
+
+              {/* صورة المنتج */}
+              <div style={{ marginBottom:'24px' }}>
+                <Label>صورة المنتج</Label>
+                {sbProductImage ? (
+                  <div style={{ position:'relative', borderRadius:'10px', overflow:'hidden', border:'1px solid rgba(255,255,255,0.10)', marginBottom:'8px' }}>
+                    <img src={sbProductImage} alt="" style={{ width:'100%', height:'180px', objectFit:'contain', background:'#141414', display:'block' }}/>
+                    <button onClick={() => setSbProductImage('')}
+                      style={{ position:'absolute', top:8, left:8, padding:'4px 10px', borderRadius:'6px', fontSize:'11px', background:'rgba(0,0,0,0.70)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.60)', cursor:'pointer', fontFamily:F }}>
+                      تغيير
+                    </button>
+                  </div>
+                ) : (
+                  <div onClick={() => sbFileRef.current?.click()}
+                    style={{ borderRadius:'10px', border:'2px dashed rgba(255,255,255,0.12)', padding:'36px 20px', textAlign:'center', cursor:'pointer', transition:'border-color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.25)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.12)'}>
+                    <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.30)', lineHeight:1.6, fontFamily:F }}>
+                      ارفع صورة المنتج<br/>
+                      <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.18)' }}>PNG · JPG · WEBP</span>
+                    </div>
+                  </div>
+                )}
+                <input ref={sbFileRef} type="file" accept="image/*" style={{ display:'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if(f) handleSbUpload(f); e.target.value='' }}/>
+              </div>
+
+              {/* التوجيه الإبداعي */}
+              <div style={{ marginBottom:'24px' }}>
+                <Label>التوجيه الإبداعي</Label>
+                <div style={{ borderRadius:'10px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)' }}>
+                  <textarea value={sbDirection} onChange={e => setSbDirection(e.target.value)} rows={3}
+                    placeholder="مثال: فاخر، ليلي، مع إضاءة ذهبية..."
+                    style={{ width:'100%', padding:'14px 16px', fontSize:'13px', fontFamily:F, background:'transparent', border:'none', color:'rgba(255,255,255,0.88)', outline:'none', resize:'vertical', lineHeight:1.72, boxSizing:'border-box' as const, direction:'rtl' }}
+                  />
+                </div>
+              </div>
+
+              {/* عدد اللقطات */}
+              <div style={{ marginBottom:'20px' }}>
+                <Label>عدد اللقطات</Label>
+                <div style={{ display:'flex', gap:'8px' }}>
+                  {([3,4,5] as const).map(n => (
+                    <button key={n} onClick={() => setSbShotCount(n)}
+                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'12px', fontWeight:500, fontFamily:F, background: sbShotCount===n ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbShotCount===n?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbShotCount===n ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
+                      {n} لقطات
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* مدة كل لقطة */}
+              <div style={{ marginBottom:'20px' }}>
+                <Label>مدة كل لقطة</Label>
+                <div style={{ display:'flex', gap:'8px' }}>
+                  {([5,8] as const).map(d => (
+                    <button key={d} onClick={() => setSbDuration(d)}
+                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'12px', fontWeight:500, fontFamily:F, background: sbDuration===d ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbDuration===d?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbDuration===d ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
+                      {d}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* تنسيق الإخراج */}
+              <div style={{ marginBottom:'20px' }}>
+                <Label>تنسيق الإخراج</Label>
+                <div style={{ display:'flex', gap:'8px' }}>
+                  {([{ id:'9:16', label:'ستوري 9:16' },{ id:'16:9', label:'أفقي 16:9' },{ id:'1:1', label:'مربع 1:1' }] as const).map(f => (
+                    <button key={f.id} onClick={() => setSbFormat(f.id)}
+                      style={{ flex:1, padding:'9px', borderRadius:'8px', fontSize:'11px', fontWeight:500, fontFamily:F, background: sbFormat===f.id ? 'rgba(255,255,255,0.10)' : 'transparent', border:`1px solid ${sbFormat===f.id?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.08)'}`, color: sbFormat===f.id ? '#FFFFFF' : 'rgba(255,255,255,0.35)', cursor:'pointer', transition:'all 0.14s' }}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* توليد صوت */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'28px', padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px' }}>
+                <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.50)', fontFamily:F }}>توليد صوت</span>
+                <button onClick={() => setSbAudio(!sbAudio)}
+                  style={{ width:36, height:20, borderRadius:'100px', background: sbAudio ? '#00AAFF' : 'rgba(255,255,255,0.12)', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                  <div style={{ position:'absolute', top:3, right: sbAudio ? 18 : 3, width:14, height:14, borderRadius:'50%', background:'#FFFFFF', transition:'right 0.2s' }}/>
+                </button>
+              </div>
+
+              {/* الكريديت والزر */}
+              {(() => {
+                const cost = getSbCreditCost()
+                const totalDur = sbShotCount * sbDuration
+                const hasEnough = creditBalance >= cost
+                const canGenerate = !!sbProductImage && hasEnough
+                return (
+                  <>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+                      <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', fontFamily:F }}>
+                        {sbShotCount} لقطات · {totalDur}s إجمالاً · <span style={{ fontFamily:MONO }}>{cost} كريديت</span>
+                      </span>
+                      <span style={{ fontSize:'11px', color: hasEnough ? 'rgba(255,255,255,0.25)' : '#EF4444', fontWeight:500, fontFamily:F }}>
+                        {hasEnough ? `${creditBalance} متاح` : `تحتاج ${cost}`}
+                      </span>
+                    </div>
+                    <GenerateBtn active={canGenerate} loading={sbGenerating}
+                      label="وجّه هذا الإعلان ←"
+                      loadingLabel="Nexa تخرج الإعلان... (٣–٥ دقائق)"
+                      onClick={generateStoryboard}/>
+                  </>
+                )
+              })()}
+
+              {/* رسالة الحالة */}
+              {sbMsg && (
+                <div style={{ marginTop:'12px', padding:'10px 14px', borderRadius:'8px', fontSize:'12px', fontFamily:F, background: sbMsg.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border:`1px solid ${sbMsg.ok ? 'rgba(34,197,94,0.20)' : 'rgba(239,68,68,0.20)'}`, color: sbMsg.ok ? '#4ADE80' : '#F87171' }}>
+                  {sbMsg.text}
+                </div>
+              )}
+
+              {/* النتيجة */}
+              {sbResult && (
+                <div style={{ marginTop:'32px', animation:'studioUp 0.3s ease both' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                      <div style={{ width:6, height:6, borderRadius:'50%', background:'#00AAFF' }}/>
+                      <span style={{ fontSize:'11px', fontWeight:500, color:'rgba(255,255,255,0.35)', fontFamily:F }}>
+                        {sbResult.shot_count} لقطات · {sbResult.total_duration}s · {sbResult.credits_used} كريديت
+                      </span>
+                    </div>
+                    <a href={sbResult.video_url} download={'nexa-commercial-'+Date.now()+'.mp4'}
+                      style={{ display:'flex', alignItems:'center', gap:'5px', padding:'6px 11px', borderRadius:'7px', fontSize:'11px', fontWeight:500, background:'transparent', border:'1px solid rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.40)', textDecoration:'none', fontFamily:F }}>
+                      {Ic.dl} تحميل
+                    </a>
+                  </div>
+
+                  <div style={{ borderRadius:'10px', overflow:'hidden', background:'#000', marginBottom:'20px', border:'1px solid rgba(255,255,255,0.08)' }}>
+                    <video src={sbResult.video_url} controls style={{ width:'100%', display:'block', maxHeight:'360px' }}/>
+                  </div>
+
+                  {sbResult.plan?.shots && (
+                    <div>
+                      <div style={{ fontSize:'11px', fontWeight:600, color:'rgba(255,255,255,0.25)', letterSpacing:'0.07em', textTransform:'uppercase' as const, marginBottom:'12px', fontFamily:F }}>
+                        اللقطات
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                        {sbResult.plan.shots.map((shot: any, i: number) => (
+                          <div key={i} style={{ padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>
+                              <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'4px', background:'rgba(0,170,255,0.10)', color:'#00AAFF', letterSpacing:'0.04em', fontFamily:F }}>
+                                لقطة {i+1}
+                              </span>
+                              {shot.purpose && <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.20)', textTransform:'uppercase' as const, letterSpacing:'0.04em' }}>{shot.purpose}</span>}
+                            </div>
+                            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.40)', lineHeight:1.55, fontFamily:F }}>{shot.prompt}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {sbResult.plan.concept && (
+                        <div style={{ marginTop:'12px', padding:'10px 14px', background:'rgba(0,170,255,0.04)', border:'1px solid rgba(0,170,255,0.12)', borderRadius:'8px', fontSize:'11px', color:'rgba(0,170,255,0.65)', fontStyle:'italic', fontFamily:F }}>
+                          "{sbResult.plan.concept}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop:'16px', display:'flex', gap:'8px' }}>
+                    <ActionBtn icon={Ic.redo} label="إعادة التوجيه" onClick={generateStoryboard}/>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
