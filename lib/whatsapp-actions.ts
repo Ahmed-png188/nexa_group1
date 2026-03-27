@@ -1,7 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
-import { getBrandContext } from '@/lib/brand-context'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { getBrandContextService } from '@/lib/brand-context'
 import {
   waSendText,
   waSendMedia,
@@ -10,6 +8,15 @@ import {
 } from '@/lib/whatsapp'
 import { generateNexaReply } from '@/lib/whatsapp-intent'
 import type { IntentResult } from '@/lib/whatsapp-intent'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'
+
+function getServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 interface ActionContext {
   phone:        string
@@ -44,7 +51,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
 
   // ── CHECK CREDITS ────────────────────────────────────────────────────────
   if (intent.intent === 'check_credits') {
-    const supabase = createClient()
+    const supabase = getServiceClient()
     const { data: creds } = await supabase
       .from('credits')
       .select('balance')
@@ -62,9 +69,8 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
   // ── MORNING BRIEF ────────────────────────────────────────────────────────
   if (intent.intent === 'morning_brief') {
     try {
-      const supabase = createClient()
-      // Get brand context directly (avoid auth-gated API call)
-      const brandCtx = await getBrandContext(workspace_id)
+      const supabase = getServiceClient()
+      const brandCtx = await getBrandContextService(workspace_id)
       const { data: workspace } = await supabase
         .from('workspaces')
         .select('weekly_brief, weekly_brief_ar')
@@ -84,8 +90,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
         await waSendVoiceNote(phone, briefText, undefined, lang)
         await waUpdateContext(workspace_id, { last_brief_at: new Date().toISOString() })
       } else {
-        // Fallback: generate brief inline
-        const brandName_ = (brandCtx?.brandName) || 'your brand'
+        const brandName_ = brandCtx?.brandName || 'your brand'
         const fallback = lang === 'ar'
           ? `صباح الخير! اليوم يوم جديد لـ ${brandName_} 🌅\n\nلا يوجد ملخص محفوظ بعد. شغّل المساعدين من لوحة التحكم لتوليد ملخص يومي.`
           : `Good morning! New day for ${brandName_} 🌅\n\nNo brief cached yet. Run the agents from your dashboard to generate a daily brief.`
@@ -104,7 +109,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
     const topic       = intent.params.topic        || intent.summary
 
     try {
-      // Send acknowledgment immediately
       const ack = await generateNexaReply(
         lang === 'ar'
           ? `المستخدم طلب كتابة منشور عن: ${topic}. أخبره أنك تعمل عليه.`
@@ -113,7 +117,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       )
       await waSendText(phone, ack)
 
-      // Generate content via existing API
       const res = await fetch(`${APP_URL}/api/generate-content`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,7 +132,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       const content = (data.content || data.body || data.text) as string | undefined
 
       if (content) {
-        // Save pending action for approval
         await waUpdateContext(workspace_id, {
           pending_action: {
             type:       'approve_post',
@@ -203,7 +205,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
         : 'Got your photo 📸 Working on it, sending back professional shots in about a minute'
       await waSendText(phone, ack)
 
-      // Step 1: Detect product
       const detectRes = await fetch(`${APP_URL}/api/product-lab/detect`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,7 +212,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       })
       const detected = await detectRes.json() as Record<string, string>
 
-      // Step 2: Clean background
       const cleanRes = await fetch(`${APP_URL}/api/product-lab/clean`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -219,7 +219,6 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       })
       const cleaned = await cleanRes.json() as Record<string, string>
 
-      // Step 3: Generate studio shot (hero only for WhatsApp — keep it fast)
       const shotRes = await fetch(`${APP_URL}/api/product-lab/studio-shots`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -229,7 +228,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
           product_type:     detected.type     || 'general',
           product_material: detected.material || 'general',
           product_color:    detected.color    || 'neutral',
-          shot_styles:      ['hero'],  // just the hero shot for speed
+          shot_styles:      ['hero'],
         }),
       })
       const shots = await shotRes.json() as { shots?: Array<{ url: string }> }
@@ -238,8 +237,8 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
       if (heroUrl) {
         await waUpdateContext(workspace_id, {
           pending_action: {
-            type:      'product_photo_done',
-            image_url: heroUrl,
+            type:       'product_photo_done',
+            image_url:  heroUrl,
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           }
         })
@@ -294,7 +293,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
   if (intent.intent === 'brand_update') {
     const info = intent.params.brand_info || ctx.rawMessage
     try {
-      const supabase = createClient()
+      const supabase = getServiceClient()
       await supabase.from('brand_learnings').insert({
         workspace_id,
         content:  info,
@@ -319,7 +318,7 @@ export async function handleAction(ctx: ActionContext): Promise<void> {
   if (intent.intent === 'brand_question_answer') {
     const answer = intent.params.question_answer || ctx.rawMessage
     try {
-      const supabase = createClient()
+      const supabase = getServiceClient()
       await supabase.from('brand_learnings').insert({
         workspace_id,
         content:  answer,

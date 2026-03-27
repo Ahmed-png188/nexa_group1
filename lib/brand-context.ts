@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Fetches the brand intelligence profile for a workspace
@@ -97,6 +98,59 @@ Delivery style: ${profile.generation_instructions?.voice_prompt_prefix || 'clear
     workspaceId,
     brandVoice: workspace.brand_voice || '',
     brandTone: workspace.brand_tone || '',
+    brandAudience: workspace.brand_audience || '',
+  }
+}
+
+/**
+ * Service-role version of getBrandContext — safe to call from async background
+ * processing (webhook handlers, crons) where Next.js cookies() is unavailable.
+ * Always takes a workspaceId directly (never a userId).
+ */
+export async function getBrandContextService(workspaceId: string) {
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('brand_name, brand_tagline, brand_voice, brand_audience, brand_tone, brand_colors, name')
+    .eq('id', workspaceId)
+    .single()
+
+  const { data: profileAsset } = await supabase
+    .from('brand_assets')
+    .select('analysis')
+    .eq('workspace_id', workspaceId)
+    .eq('file_name', 'nexa_brand_intelligence.json')
+    .single()
+
+  const profile = profileAsset?.analysis as any
+
+  if (!workspace) return null
+
+  const brandName = workspace.brand_name || workspace.name || 'this brand'
+
+  const copyContext = profile ? `
+## Brand Intelligence for ${brandName}
+Voice: ${profile.voice?.primary_tone || workspace.brand_voice || 'professional and confident'}
+Audience: ${profile.audience?.primary || workspace.brand_audience || 'target audience'}
+Tone: ${profile.voice?.primary_tone || workspace.brand_tone || 'engaging'}
+` : `
+## Brand: ${brandName}
+Voice: ${workspace.brand_voice || 'professional and confident'}
+Audience: ${workspace.brand_audience || 'target audience'}
+`
+
+  return {
+    workspace,
+    profile,
+    copyContext:   copyContext.trim(),
+    brandName,
+    workspaceId,
+    brandVoice:    workspace.brand_voice    || '',
+    brandTone:     workspace.brand_tone     || '',
     brandAudience: workspace.brand_audience || '',
   }
 }

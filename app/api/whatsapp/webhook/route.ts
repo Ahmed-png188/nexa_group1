@@ -1,5 +1,8 @@
 export const dynamic = 'force-dynamic'
 
+// Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Get service role key from Supabase → Settings → API → service_role key
+
 import { NextRequest, NextResponse } from 'next/server'
 import {
   waResolveWorkspace,
@@ -9,7 +12,7 @@ import {
 } from '@/lib/whatsapp'
 import { classifyIntent } from '@/lib/whatsapp-intent'
 import { handleAction } from '@/lib/whatsapp-actions'
-import { getBrandContext } from '@/lib/brand-context'
+import { getBrandContextService } from '@/lib/brand-context'
 
 // GET: Twilio webhook verification
 export async function GET() {
@@ -105,9 +108,10 @@ async function processIncomingMessage(body: Record<string, string>) {
       processedText = transcribed
     }
 
-    // Get brand context and conversation context
+    // Get brand context (service role — safe for async background use)
+    // and conversation context in parallel
     const [brand, context] = await Promise.all([
-      getBrandContext(workspace_id),
+      getBrandContextService(workspace_id),
       waGetContext(workspace_id),
     ])
 
@@ -150,8 +154,10 @@ async function processIncomingMessage(body: Record<string, string>) {
     })
     console.log('[wa-webhook] action handled for intent:', intent.intent)
 
-  } catch (err) {
-    console.error('[wa-webhook] processIncomingMessage error:', err)
+  } catch (err: unknown) {
+    const e = err as Error | null
+    console.error('[wa-webhook] CRASH:', e?.message || err)
+    console.error('[wa-webhook] stack:', e?.stack?.slice(0, 500))
   }
 }
 
@@ -164,7 +170,6 @@ async function transcribeAudio(
   if (!OPENAI_KEY) return null
 
   try {
-    // Download the audio from Twilio (requires auth)
     const authHeader = 'Basic ' + Buffer.from(
       `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
     ).toString('base64')
@@ -177,7 +182,6 @@ async function transcribeAudio(
     const audioBuffer = await audioRes.arrayBuffer()
     const audioBlob   = new Blob([audioBuffer], { type: 'audio/ogg' })
 
-    // Send to Whisper
     const formData = new FormData()
     formData.append('file', audioBlob, 'audio.ogg')
     formData.append('model', 'whisper-1')

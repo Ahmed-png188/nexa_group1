@@ -1,8 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
+// Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Get service role key from Supabase → Settings → API → service_role key
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const TWILIO_ACCOUNT_SID   = process.env.TWILIO_ACCOUNT_SID!
 const TWILIO_AUTH_TOKEN    = process.env.TWILIO_AUTH_TOKEN!
 const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_NUMBER! // 'whatsapp:+14155238886'
+
+function getServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 // ── Send a text message ────────────────────────────────────────────────────
 export async function waSendText(
@@ -86,13 +95,11 @@ export async function waSendVoiceNote(
     return waSendText(to, text) // fallback to text
   }
 
-  // Use Arabic-optimized voice if lang is Arabic
   const finalVoiceId = lang === 'ar'
     ? (process.env.ELEVENLABS_AR_VOICE_ID || voiceId)
     : voiceId
 
   try {
-    // Generate audio via ElevenLabs
     const audioRes = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${finalVoiceId}`,
       {
@@ -111,12 +118,11 @@ export async function waSendVoiceNote(
 
     if (!audioRes.ok) {
       console.error('[wa] ElevenLabs failed:', await audioRes.text())
-      return waSendText(to, text) // fallback to text
+      return waSendText(to, text)
     }
 
-    // Upload audio to Supabase storage for a public URL
     const audioBuffer = await audioRes.arrayBuffer()
-    const supabase    = createClient()
+    const supabase    = getServiceClient()
     const fileName    = `whatsapp/voice/${Date.now()}.mp3`
 
     const { error: uploadErr } = await supabase.storage
@@ -132,12 +138,11 @@ export async function waSendVoiceNote(
       .from('brand-assets')
       .getPublicUrl(fileName)
 
-    // Send as media message (WhatsApp renders MP3 as voice note)
     return waSendMedia(to, '', publicUrl)
 
   } catch (err) {
     console.error('[wa] waSendVoiceNote failed:', err)
-    return waSendText(to, text) // always fallback
+    return waSendText(to, text)
   }
 }
 
@@ -155,7 +160,7 @@ export async function waLogMessage(params: {
   metadata?:     Record<string, unknown>
 }) {
   try {
-    const supabase = createClient()
+    const supabase = getServiceClient()
     await supabase.from('whatsapp_messages').insert({
       workspace_id: params.workspace_id,
       phone_number: params.phone_number,
@@ -179,9 +184,8 @@ export async function waResolveWorkspace(phone: string): Promise<{
   user_id:      string
   lang:         'en' | 'ar'
 } | null> {
-  const supabase = createClient()
+  const supabase = getServiceClient()
 
-  // Normalize phone: remove whatsapp: prefix, ensure + prefix
   const normalized = phone
     .replace('whatsapp:', '')
     .replace(/\s/g, '')
@@ -213,7 +217,7 @@ export async function waUpdateContext(
     metadata:             Record<string, unknown>
   }>
 ) {
-  const supabase = createClient()
+  const supabase = getServiceClient()
   await supabase
     .from('whatsapp_context')
     .upsert({
@@ -225,7 +229,7 @@ export async function waUpdateContext(
 
 // ── Get conversation context ───────────────────────────────────────────────
 export async function waGetContext(workspace_id: string) {
-  const supabase = createClient()
+  const supabase = getServiceClient()
   const { data } = await supabase
     .from('whatsapp_context')
     .select('*')
