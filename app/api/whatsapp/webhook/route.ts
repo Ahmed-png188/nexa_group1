@@ -1,221 +1,388 @@
 export const dynamic = 'force-dynamic'
 
-// Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// Get service role key from Supabase → Settings → API → service_role key
-
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  waResolveWorkspace,
-  waLogMessage,
-  waGetContext,
-  waSendText,
-} from '@/lib/whatsapp'
-import { classifyIntent } from '@/lib/whatsapp-intent'
-import { handleAction } from '@/lib/whatsapp-actions'
-import { getBrandContextService } from '@/lib/brand-context'
+import { createClient } from '@supabase/supabase-js'
 
-// GET: Twilio webhook verification
-export async function GET() {
-  return NextResponse.json({ status: 'Nexa WhatsApp webhook active' })
+function getDb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 }
 
-// POST: Incoming WhatsApp message from Twilio
-export async function POST(request: NextRequest) {
-  console.log('[wa-webhook] POST received at', new Date().toISOString())
+const TWILIO_SID   = process.env.TWILIO_ACCOUNT_SID!
+const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN!
+const TWILIO_FROM  = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'
+const APP_URL      = process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'
 
-  // Return 200 IMMEDIATELY — Twilio requires <5s response
-  // Process everything asynchronously
-
-  let body: Record<string, string> = {}
-
+// Send WhatsApp text via Twilio
+async function sendWA(to: string, body: string) {
+  const toWa = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
+  console.log('[wa] sending to:', toWa, '| body:', body.slice(0, 80))
+  const params = new URLSearchParams({ From: TWILIO_FROM, To: toWa, Body: body })
   try {
-    const formData = await request.formData()
-    Array.from(formData.entries()).forEach(([key, value]) => {
-      body[key] = value.toString()
-    })
-  } catch {
-    return NextResponse.json({ received: true })
-  }
-
-  console.log('[wa-webhook] received:', JSON.stringify(body))
-
-  // Process asynchronously without blocking the response
-  processIncomingMessage(body).catch(err => {
-    console.error('[wa-webhook] async processing error:', err)
-  })
-
-  // Return 200 immediately
-  return NextResponse.json({ received: true })
-}
-
-async function processIncomingMessage(body: Record<string, string>) {
-  try {
-    console.log('[wa-webhook] env check:', {
-      hasTwilioSid:   !!process.env.TWILIO_ACCOUNT_SID,
-      hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
-      hasTwilioFrom:  !!process.env.TWILIO_WHATSAPP_NUMBER,
-      hasServiceKey:  !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    })
-
-    const from      = body.From || ''  // 'whatsapp:+971501234567'
-    const msgBody   = body.Body || ''
-    const numMedia  = parseInt(body.NumMedia || '0')
-    const mediaUrl  = body.MediaUrl0 || ''
-    const mediaType = body.MediaContentType0 || ''
-    const twilioSid = body.MessageSid || ''
-
-    // Normalize phone number
-    const phone = from.replace('whatsapp:', '').trim()
-    if (!phone) return
-
-    // Determine message type
-    let messageType = 'text'
-    if (numMedia > 0) {
-      if (mediaType.startsWith('image/'))      messageType = 'image'
-      else if (mediaType.startsWith('audio/')) messageType = 'audio'
-      else if (mediaType.startsWith('video/')) messageType = 'video'
-      else                                     messageType = 'document'
-    }
-
-    // Resolve workspace from phone number
-    const connection = await waResolveWorkspace(phone)
-    console.log('[wa-webhook] connection:', connection ? 'found' : 'NOT FOUND for phone: ' + phone)
-
-    // Handle unregistered users
-    if (!connection) {
-      await handleUnregisteredUser(phone, msgBody)
-      return
-    }
-
-    const { workspace_id, user_id, lang } = connection
-
-    // Log inbound message
-    await waLogMessage({
-      workspace_id,
-      phone_number: phone,
-      direction:    'inbound',
-      message_type: messageType,
-      body:         msgBody,
-      media_url:    mediaUrl || undefined,
-      media_type:   mediaType || undefined,
-      twilio_sid:   twilioSid,
-    })
-
-    // Handle audio messages: transcribe first
-    let processedText = msgBody
-    if (messageType === 'audio' && mediaUrl) {
-      const transcribed = await transcribeAudio(mediaUrl, lang)
-      if (!transcribed) {
-        const ack = lang === 'ar'
-          ? 'ما قدرت أفهم الرسالة الصوتية، ممكن تكتب لي؟'
-          : "Couldn't understand the voice message, could you type it?"
-        await waSendText(from, ack)
-        return
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
       }
-      processedText = transcribed
-    }
-
-    // Get brand context (service role — safe for async background use)
-    // and conversation context in parallel
-    const [brand, context] = await Promise.all([
-      getBrandContextService(workspace_id),
-      waGetContext(workspace_id),
-    ])
-
-    const b = brand as Record<string, unknown> | null
-    const ws = b?.workspace as Record<string, unknown> | null
-    const brandName = (b?.brandName as string) || (ws?.brand_name as string) || 'your brand'
-
-    // Classify intent
-    const intent = await classifyIntent(
-      processedText || `[${messageType} message]`,
-      messageType,
-      context,
-      lang,
-      brandName,
     )
-    console.log('[wa-webhook] intent:', intent.intent, '|', intent.summary)
-
-    // Log intent
-    await waLogMessage({
-      workspace_id,
-      phone_number: phone,
-      direction:    'inbound',
-      message_type: 'intent',
-      body:         intent.intent,
-      intent:       intent.intent,
-      metadata:     { summary: intent.summary },
-    })
-
-    // Handle the action
-    await handleAction({
-      phone,
-      workspace_id,
-      user_id,
-      lang,
-      intent,
-      rawMessage: processedText || msgBody,
-      mediaUrl:   mediaUrl || undefined,
-      brand,
-      context,
-    })
-    console.log('[wa-webhook] action handled for intent:', intent.intent)
-
+    const data = await res.json() as { sid?: string; message?: string; code?: number }
+    console.log('[wa] twilio response:', res.status, data.sid || data.message || JSON.stringify(data).slice(0, 100))
+    return data.sid
   } catch (err: unknown) {
-    const e = err as Error | null
-    console.error('[wa-webhook] CRASH:', e?.message || err)
-    console.error('[wa-webhook] stack:', e?.stack?.slice(0, 500))
-  }
-}
-
-// Transcribe audio using Whisper via OpenAI
-async function transcribeAudio(
-  audioUrl: string,
-  lang:     'en' | 'ar'
-): Promise<string | null> {
-  const OPENAI_KEY = process.env.OPENAI_API_KEY
-  if (!OPENAI_KEY) return null
-
-  try {
-    const authHeader = 'Basic ' + Buffer.from(
-      `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-    ).toString('base64')
-
-    const audioRes = await fetch(audioUrl, {
-      headers: { Authorization: authHeader }
-    })
-    if (!audioRes.ok) return null
-
-    const audioBuffer = await audioRes.arrayBuffer()
-    const audioBlob   = new Blob([audioBuffer], { type: 'audio/ogg' })
-
-    const formData = new FormData()
-    formData.append('file', audioBlob, 'audio.ogg')
-    formData.append('model', 'whisper-1')
-    formData.append('language', lang === 'ar' ? 'ar' : 'en')
-
-    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-      body:    formData,
-    })
-
-    if (!whisperRes.ok) return null
-    const data = await whisperRes.json() as { text?: string }
-    return data.text?.trim() || null
-
-  } catch (err) {
-    console.error('[wa] transcribeAudio failed:', err)
+    console.error('[wa] sendWA error:', (err as Error).message)
     return null
   }
 }
 
-// Handle users who message but aren't connected to Nexa yet
-async function handleUnregisteredUser(phone: string, message: string) {
-  const isArabic = /[\u0600-\u06FF]/.test(message)
-  const welcome  = isArabic
-    ? `مرحباً! أنا Nexa، مساعدك الذكي للمحتوى والتسويق 🤖\n\nلربط رقمك بـ Nexa، افتح لوحة التحكم على nexaa.cc وفعّل WhatsApp من الإعدادات.\n\nبعد الربط تقدر تتحكم بكل شي من هنا مباشرة!`
-    : `Hey! I'm Nexa, your AI marketing assistant 🤖\n\nTo connect your number to Nexa, open your dashboard at nexaa.cc and activate WhatsApp in Settings.\n\nOnce connected, you can control everything from right here!`
-  await waSendText(phone, welcome)
+// Resolve phone to workspace
+async function resolveWorkspace(phone: string) {
+  const db = getDb()
+  const normalized = phone.replace('whatsapp:', '').trim()
+  console.log('[wa] resolving phone:', normalized)
+  const { data, error } = await db
+    .from('whatsapp_connections')
+    .select('workspace_id, user_id, lang')
+    .eq('phone_number', normalized)
+    .eq('is_active', true)
+    .limit(1)
+    .single()
+  if (error) console.error('[wa] resolve error:', error.message)
+  console.log('[wa] resolved:', data ? `workspace=${(data as Record<string, string>).workspace_id}` : 'NOT FOUND')
+  return data as { workspace_id: string; user_id: string; lang: string } | null
+}
+
+// Get brand name
+async function getBrandName(workspace_id: string): Promise<string> {
+  const db = getDb()
+  const { data } = await db
+    .from('workspaces')
+    .select('brand_name, name')
+    .eq('id', workspace_id)
+    .single()
+  return (data as Record<string, string> | null)?.brand_name || (data as Record<string, string> | null)?.name || 'your brand'
+}
+
+// Get credits
+async function getCredits(workspace_id: string): Promise<number> {
+  const db = getDb()
+  const { data } = await db
+    .from('credits')
+    .select('balance')
+    .eq('workspace_id', workspace_id)
+    .single()
+  return (data as Record<string, number> | null)?.balance ?? 0
+}
+
+// Simple intent detection without Claude (fast, reliable)
+function detectIntent(body: string): string {
+  const b = body.toLowerCase().trim()
+  if (!b || b.length < 2) return 'greeting'
+  if (/hi|hello|hey|مرحب|أهلا|هلا|صباح|مساء/.test(b)) return 'greeting'
+  if (/credit|رصيد|كريديت|balance|كم عندي/.test(b)) return 'credits'
+  if (/brief|ملخص|اليوم|today|صباح الخير/.test(b)) return 'brief'
+  if (/post|منشور|اكتب|write|caption|كابشن/.test(b)) return 'create_post'
+  if (/image|صورة|picture|photo(?!.*product)/.test(b)) return 'create_image'
+  if (/video|فيديو|reel|ريل/.test(b)) return 'create_video'
+  if (/yes|نعم|اوكي|ok|approve|موافق|انشر/.test(b)) return 'approval_yes'
+  if (/no|لا|cancel|إلغاء/.test(b)) return 'approval_no'
+  if (/ad|اعلان|إعلان|amplify|campaign/.test(b)) return 'check_ads'
+  return 'general'
+}
+
+// GET: health check
+export async function GET() {
+  return NextResponse.json({ status: 'Nexa WhatsApp webhook active' })
+}
+
+const XML_EMPTY = '<?xml version="1.0"?><Response></Response>'
+const XML_HEADERS = { 'Content-Type': 'text/xml' }
+
+// POST: incoming message from Twilio — process synchronously
+export async function POST(request: NextRequest) {
+  console.log('[wa-webhook] POST received at', new Date().toISOString())
+
+  let body: Record<string, string> = {}
+  try {
+    const formData = await request.formData()
+    formData.forEach((v, k) => { body[k] = v.toString() })
+  } catch (err: unknown) {
+    console.error('[wa-webhook] formData parse error:', (err as Error).message)
+    return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+  }
+
+  const from      = body.From || ''
+  const msgBody   = body.Body || ''
+  const numMedia  = parseInt(body.NumMedia || '0')
+  const mediaUrl  = body.MediaUrl0 || ''
+  const mediaType = body.MediaContentType0 || ''
+
+  console.log('[wa-webhook] from:', from, '| body:', msgBody.slice(0, 100), '| media:', numMedia)
+
+  const phone = from.replace('whatsapp:', '').trim()
+
+  // Handle unregistered user
+  const connection = await resolveWorkspace(phone)
+  if (!connection) {
+    console.log('[wa-webhook] unregistered user, sending signup message')
+    await sendWA(from,
+      `Hey! I'm Nexa 🤖\n\nTo connect your number, open nexaa.cc → Settings → WhatsApp and enter your number.\n\nOnce connected you can control everything from WhatsApp!`
+    )
+    return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+  }
+
+  const { workspace_id, lang } = connection
+  const isAr = lang === 'ar'
+
+  // Handle image — product photo
+  if (numMedia > 0 && mediaType.startsWith('image/')) {
+    console.log('[wa-webhook] image received, processing as product photo')
+    const ack = isAr
+      ? 'وصلتني الصورة 📸 أشتغل عليها...'
+      : 'Got your photo 📸 Processing it now...'
+    await sendWA(from, ack)
+    // Longer processing — fire in background after ack
+    processProductPhoto(from, workspace_id, mediaUrl, isAr).catch((e: Error) =>
+      console.error('[wa] product photo error:', e.message)
+    )
+    return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+  }
+
+  // Handle audio — transcribe
+  if (numMedia > 0 && mediaType.startsWith('audio/')) {
+    const transcribed = await transcribeAudio(mediaUrl)
+    const processText = transcribed || msgBody
+    console.log('[wa-webhook] audio transcribed to:', processText.slice(0, 100))
+    await handleTextIntent(from, workspace_id, processText, isAr, lang)
+    return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+  }
+
+  // Handle text
+  await handleTextIntent(from, workspace_id, msgBody, isAr, lang)
+
+  return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+}
+
+async function handleTextIntent(
+  from: string,
+  workspace_id: string,
+  text: string,
+  isAr: boolean,
+  lang: string
+) {
+  const intent = detectIntent(text)
+  console.log('[wa-webhook] intent:', intent, '| text:', text.slice(0, 60))
+
+  const brandName = await getBrandName(workspace_id)
+
+  switch (intent) {
+
+    case 'greeting': {
+      const reply = isAr
+        ? `أهلاً! أنا Nexa لـ ${brandName} 🎯\n\nكلّمني وقت ما تبي. تقدر تقول:\n• "اكتب لي منشور"\n• "كم رصيدي؟"\n• "ملخص اليوم"\n• أو أرسل صورة منتجك`
+        : `Hey! I'm Nexa for ${brandName} 🎯\n\nMessage me anytime. Try:\n• "Write me a post"\n• "How many credits do I have?"\n• "Today's brief"\n• Or send a product photo`
+      await sendWA(from, reply)
+      break
+    }
+
+    case 'credits': {
+      const balance = await getCredits(workspace_id)
+      const reply = isAr
+        ? `رصيدك الحالي: *${balance.toLocaleString()} كريديت* 💳\n${balance < 50 ? '⚠️ الرصيد منخفض — شحّن من nexaa.cc' : '✅ كافٍ للعمل'}`
+        : `Your balance: *${balance.toLocaleString()} credits* 💳\n${balance < 50 ? '⚠️ Running low — top up at nexaa.cc' : '✅ Good to go'}`
+      await sendWA(from, reply)
+      break
+    }
+
+    case 'brief': {
+      await sendWA(from, isAr ? 'سأجلب ملخص اليوم... ⏳' : 'Fetching today\'s brief... ⏳')
+      try {
+        const res = await fetch(`${APP_URL}/api/morning-brief`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace_id, lang }),
+        })
+        const data = await res.json() as { brief?: { headline: string; todays_priority: string; one_thing: string } }
+        const brief = data.brief
+        if (brief) {
+          await sendWA(from, `*${brief.headline}*\n\n${brief.todays_priority}\n\n💡 ${brief.one_thing}`)
+        } else {
+          await sendWA(from, isAr ? 'ما قدرت أجلب الملخص الآن' : "Couldn't load the brief right now")
+        }
+      } catch (e: unknown) {
+        console.error('[wa] brief error:', (e as Error).message)
+        await sendWA(from, isAr ? 'صار خطأ في جلب الملخص' : 'Error fetching brief')
+      }
+      break
+    }
+
+    case 'create_post': {
+      await sendWA(from, isAr ? 'يكتب... ✍️' : 'Writing your post... ✍️')
+      try {
+        const res = await fetch(`${APP_URL}/api/generate-content`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspace_id,
+            type: 'post',
+            platform: 'instagram',
+            prompt: text,
+            lang,
+          }),
+        })
+        const data = await res.json() as Record<string, unknown>
+        const content = (data.content || data.body || data.text) as string | undefined
+        if (content) {
+          const msg = isAr
+            ? `هذا منشورك 👇\n\n${content}\n\n———\nرد بـ *نعم* للحفظ أو أخبرني ما تبي تغيّره`
+            : `Here's your post 👇\n\n${content}\n\n———\nReply *yes* to save or tell me what to change`
+          await sendWA(from, msg)
+        } else {
+          await sendWA(from, isAr ? 'ما قدرت أكتب المنشور' : "Couldn't generate the post")
+        }
+      } catch (e: unknown) {
+        console.error('[wa] create_post error:', (e as Error).message)
+        await sendWA(from, isAr ? 'صار خطأ' : 'Something went wrong')
+      }
+      break
+    }
+
+    case 'approval_yes': {
+      await sendWA(from, isAr ? 'تم الحفظ ✓' : 'Saved ✓')
+      break
+    }
+
+    case 'approval_no': {
+      await sendWA(from, isAr ? 'تم الإلغاء ✓' : 'Cancelled ✓')
+      break
+    }
+
+    case 'check_ads': {
+      await sendWA(from, isAr
+        ? 'لمراجعة الإعلانات، افتح قسم Amplify في لوحة nexaa.cc'
+        : 'To review your ads, open the Amplify section at nexaa.cc'
+      )
+      break
+    }
+
+    default: {
+      // General question — use Claude for a smart reply
+      try {
+        const Anthropic = (await import('@anthropic-ai/sdk')).default
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+        const system = isAr
+          ? `أنت Nexa، مساعد تسويق ذكي لـ${brandName}. رد بالعربية الخليجية، قصير ومفيد، ٣ جمل كحد أقصى.`
+          : `You are Nexa, the AI marketing assistant for ${brandName}. Reply naturally, be helpful and brief, max 3 sentences.`
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          system,
+          messages: [{ role: 'user', content: text }],
+        })
+        const reply = ((response.content[0] as { type: string; text: string }).text)?.trim()
+        await sendWA(from, reply || (isAr ? 'كيف أقدر أساعدك؟' : 'How can I help?'))
+      } catch (e: unknown) {
+        console.error('[wa] claude error:', (e as Error).message)
+        await sendWA(from, isAr ? 'كيف أقدر أساعدك؟' : 'How can I help?')
+      }
+      break
+    }
+  }
+}
+
+async function processProductPhoto(
+  from: string,
+  workspace_id: string,
+  mediaUrl: string,
+  isAr: boolean
+) {
+  try {
+    const cleanRes = await fetch(`${APP_URL}/api/product-lab/clean`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_url: mediaUrl, workspace_id }),
+    })
+    const cleanData = await cleanRes.json() as { cleaned_url?: string }
+    const cleanedUrl = cleanData.cleaned_url || mediaUrl
+
+    const shotRes = await fetch(`${APP_URL}/api/product-lab/studio-shots`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workspace_id,
+        cleaned_url: cleanedUrl,
+        product_type: 'general',
+        product_material: 'general',
+        product_color: 'neutral',
+        shot_styles: ['hero'],
+      }),
+    })
+    const shotData = await shotRes.json() as { shots?: Array<{ url: string }> }
+    const heroUrl = shotData.shots?.[0]?.url
+
+    if (heroUrl) {
+      await sendWAMedia(from, heroUrl,
+        isAr
+          ? 'صورة منتجك الاحترافية 👆\n\nرد بـ *فيديو* لتحويلها لريل، أو *نشر* لنشرها على إنستقرام'
+          : 'Your professional product photo 👆\n\nReply *video* to make a reel, or *post* to share on Instagram'
+      )
+    } else {
+      await sendWA(from, isAr ? 'ما قدرت أعالج الصورة' : "Couldn't process the photo")
+    }
+  } catch (e: unknown) {
+    console.error('[wa] processProductPhoto error:', (e as Error).message)
+    await sendWA(from, isAr ? 'ما قدرت أعالج الصورة' : "Couldn't process the photo")
+  }
+}
+
+async function sendWAMedia(to: string, mediaUrl: string, body: string) {
+  const toWa = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
+  const params = new URLSearchParams({ From: TWILIO_FROM, To: toWa, Body: body, MediaUrl: mediaUrl })
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      }
+    )
+    const data = await res.json() as { sid?: string; message?: string }
+    console.log('[wa] sendWAMedia response:', res.status, data.sid || data.message)
+  } catch (e: unknown) {
+    console.error('[wa] sendWAMedia error:', (e as Error).message)
+  }
+}
+
+async function transcribeAudio(audioUrl: string): Promise<string | null> {
+  const OPENAI_KEY = process.env.OPENAI_API_KEY
+  if (!OPENAI_KEY) return null
+  try {
+    const audioRes = await fetch(audioUrl, {
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64')
+      }
+    })
+    if (!audioRes.ok) return null
+    const audioBuffer = await audioRes.arrayBuffer()
+    const formData = new FormData()
+    formData.append('file', new Blob([audioBuffer], { type: 'audio/ogg' }), 'audio.ogg')
+    formData.append('model', 'whisper-1')
+    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_KEY}` },
+      body: formData,
+    })
+    const data = await res.json() as { text?: string }
+    return data.text?.trim() || null
+  } catch { return null }
 }
