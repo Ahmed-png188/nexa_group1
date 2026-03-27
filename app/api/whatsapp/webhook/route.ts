@@ -91,6 +91,43 @@ async function sendLongContent(to: string, content: string, footer: string): Pro
   await sendWA(to, footer)
 }
 
+// ── Conversation history ──────────────────────────────────────
+type ChatMessage = { role: 'user' | 'assistant'; content: string }
+
+async function getConversationHistory(workspace_id: string): Promise<ChatMessage[]> {
+  const db = getDb()
+  const { data } = await db
+    .from('whatsapp_messages')
+    .select('direction, body, created_at')
+    .eq('workspace_id', workspace_id)
+    .in('direction', ['inbound', 'outbound'])
+    .not('body', 'is', null)
+    .not('body', 'eq', '')
+    .order('created_at', { ascending: false })
+    .limit(16)
+
+  if (!data?.length) return []
+
+  return (data as Array<{ direction: string; body: string }>)
+    .reverse()
+    .map(m => ({
+      role:    (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: m.body?.slice(0, 500) || '',
+    }))
+    .filter(m => m.content.length > 0)
+}
+
+async function logOutbound(workspace_id: string, phone: string, body: string) {
+  const db = getDb()
+  await db.from('whatsapp_messages').insert({
+    workspace_id,
+    phone_number: phone,
+    direction:    'outbound',
+    message_type: 'text',
+    body:         body.slice(0, 1000),
+  }).then(() => {}, (e: Error) => console.error('[wa] log outbound error:', e.message))
+}
+
 // ── Types ─────────────────────────────────────────────────────
 type WorkspaceData = {
   brand_name?:    string
@@ -246,61 +283,6 @@ async function clearPendingAction(workspace_id: string) {
   await db.from('whatsapp_context')
     .update({ pending_action: null, updated_at: new Date().toISOString() })
     .eq('workspace_id', workspace_id)
-}
-
-// ── Smart intent classifier ───────────────────────────────────
-type Intent = 'greeting' | 'credits' | 'brief' | 'create_post' | 'create_image'
-  | 'create_video' | 'product_photo' | 'approval_yes' | 'approval_no'
-  | 'approval_edit' | 'check_ads' | 'check_schedule' | 'schedule_post'
-  | 'brand_update' | 'general'
-
-function quickIntent(b: string): Intent | null {
-  const t = b.toLowerCase().trim()
-  if (!t || t.length < 2) return 'greeting'
-  if (/^(hi|hello|hey|مرحب|أهلا|هلا|السلام|صباح|مساء|كيف حالك)/.test(t)) return 'greeting'
-  if (/^(yes|نعم|اوكي|ok|okay|اي|ايوه|تمام|وافق|انشر|نشر|publish|approve|موافق)$/.test(t)) return 'approval_yes'
-  if (/^(no|لا|cancel|إلغاء|الغِ|لأ|ما ابي)$/.test(t)) return 'approval_no'
-  if (/^(redo|أعد|اعد|أعيد|غيّر|اكتب ثاني)/.test(t)) return 'create_post'
-  if (/credit|رصيد|كريديت|balance|كم عندي|كم رصيد/.test(t)) return 'credits'
-  if (/schedule|جدول|متى ينشر|مواعيد/.test(t)) return 'check_schedule'
-  return null
-}
-
-async function classifyIntent(text: string, hasPending: boolean, isAr: boolean): Promise<{ intent: Intent; params: Record<string, string> }> {
-  const quick = quickIntent(text)
-  if (quick) return { intent: quick, params: {} }
-
-  try {
-    const response = await anthropic.messages.create({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 200,
-      system: `Classify the intent of this WhatsApp message to a marketing AI assistant.
-${hasPending ? 'IMPORTANT: There is a pending approval waiting. Check if this is approving, rejecting, or editing it.' : ''}
-
-IMPORTANT RULES:
-- If the user asks ABOUT their brand (what's my brand, tell me about my brand, who am i, what do you know about me) — classify as "general" so Claude can answer from brand context. Do NOT classify as brand_update.
-- brand_update is ONLY for when the user is sharing NEW information about their brand (new product, price change, new service, etc.)
-
-Respond with JSON only:
-{
-  "intent": "greeting|credits|brief|create_post|create_image|create_video|product_photo|approval_yes|approval_no|approval_edit|check_ads|check_schedule|schedule_post|brand_update|general",
-  "params": {
-    "topic": "what to create about (if creation intent)",
-    "platform": "instagram|linkedin|tiktok (if mentioned)",
-    "edit_instruction": "what to change (if approval_edit)",
-    "brand_info": "new brand information (if brand_update)",
-    "schedule_time": "when to post (if schedule_post)"
-  }
-}`,
-      messages: [{ role: 'user', content: text }],
-    })
-    const raw   = ((response.content[0] as { type: string; text: string }).text)?.trim()
-    const match = raw?.match(/\{[\s\S]*\}/)
-    if (match) return JSON.parse(match[0]) as { intent: Intent; params: Record<string, string> }
-  } catch (e: unknown) {
-    console.error('[wa] intent classify error:', (e as Error).message)
-  }
-  return { intent: 'general', params: {} }
 }
 
 // ── Audio transcription ───────────────────────────────────────
@@ -788,6 +770,190 @@ async function handleBrandUpdate(
   await sendWA(from, replyText || (isAr ? 'تم التسجيل ✓' : 'Noted ✓'))
 }
 
+// ── XML response helper ───────────────────────────────────────
+function xmlResponse() {
+  return new NextResponse('<?xml version="1.0"?><Response></Response>', {
+    headers: { 'Content-Type': 'text/xml' }
+  })
+}
+
+// ── Nexa conversational brain ─────────────────────────────────
+async function nexaBrain(
+  from:        string,
+  workspace_id: string,
+  user_id:     string,
+  userMessage: string,
+  history:     ChatMessage[],
+  ws:          WorkspaceData | null,
+  pending:     Record<string, unknown> | null,
+  isAr:        boolean,
+  lang:        string,
+): Promise<void> {
+  const brandName = (ws?.brand_name as string) || (ws?.name as string) || 'the brand'
+  const credits   = await getCredits(workspace_id)
+  const phone     = from.replace('whatsapp:', '')
+
+  const systemPrompt = isAr ? `
+أنت Nexa — المساعد الذكي لعلامة ${brandName}. أنت لست بوتاً — أنت زميل ذكي يفهم التسويق ويعرف هذه العلامة جيداً.
+
+معلومات العلامة التجارية:
+${ws?.brandContext || `العلامة: ${brandName}`}
+
+رصيد الكريديت الحالي: ${credits} كريديت
+
+قدراتك — يمكنك فعل هذه الأشياء فعلياً:
+- كتابة منشورات سوشيال ميديا (3 كريديت)
+- توليد صور احترافية (5 كريديت)
+- توليد فيديوهات وريلز (103 كريديت)
+- معالجة صور المنتجات وإزالة الخلفية (7 كريديت)
+- عرض ملخص اليوم التسويقي
+- عرض الجدول والمنشورات المجدولة
+- الإجابة على أسئلة التسويق والاستراتيجية
+
+${pending ? `يوجد إجراء معلق ينتظر موافقتك: ${JSON.stringify(pending)}` : ''}
+
+قواعد المحادثة:
+- تحدث بالعربية الخليجية الطبيعية — لا فصحى جافة
+- اسأل سؤالاً واحداً فقط إذا احتجت توضيحاً
+- إذا كان الطلب واضحاً — اعمل مباشرة بدون أسئلة
+- الردود قصيرة: ٢-٣ جمل للمحادثة العادية
+- لا تقل "أنا ذكاء اصطناعي" أو "لا أستطيع"
+- أنت تعرف هذه العلامة جيداً — تصرف من هذا المنطلق
+
+عندما تريد تنفيذ إجراء، أضف في نهاية ردك سطراً خاصاً:
+ACTION:create_post:الموضوع هنا
+ACTION:create_image:الموضوع هنا
+ACTION:create_video:الموضوع هنا
+ACTION:show_brief
+ACTION:show_credits
+ACTION:show_schedule
+ACTION:approve_pending
+ACTION:cancel_pending
+ACTION:edit_pending:تعليمات التعديل
+
+سطر ACTION غير مرئي للمستخدم — يشغّل وظائف Nexa الحقيقية.
+إذا لم يكن هناك إجراء، رد بشكل طبيعي فقط بدون سطر ACTION.
+` : `
+You are Nexa — the AI team member for ${brandName}. You are NOT a bot — you are a smart colleague who deeply understands marketing and knows this brand inside out.
+
+Brand Intelligence:
+${ws?.brandContext || `Brand: ${brandName}`}
+
+Current credit balance: ${credits} credits
+
+Your real capabilities — you can actually DO these things:
+- Write social media posts (3 credits)
+- Generate professional images (5 credits)
+- Generate videos and reels (103 credits)
+- Process product photos, remove backgrounds (7 credits)
+- Show today's marketing brief
+- Show scheduled content calendar
+- Answer marketing and strategy questions
+
+${pending ? `There is a PENDING ACTION awaiting approval: ${JSON.stringify(pending)}` : ''}
+
+Conversation rules:
+- Sound like a smart friend who knows marketing — not a corporate bot
+- Ask ONE clarifying question only if truly needed
+- If the request is clear — act immediately without asking
+- Keep conversational replies SHORT: 2-3 sentences max
+- Never say "I'm an AI" or "I cannot"
+- You KNOW this brand — speak from that knowledge
+- Use *bold* sparingly for emphasis in WhatsApp
+
+When you want to take an action, add a special line at the END of your reply:
+ACTION:create_post:topic here
+ACTION:create_image:topic here
+ACTION:create_video:topic here
+ACTION:show_brief
+ACTION:show_credits
+ACTION:show_schedule
+ACTION:approve_pending
+ACTION:cancel_pending
+ACTION:edit_pending:edit instructions here
+
+The ACTION line is invisible to the user — it triggers real Nexa functions.
+If no action needed, just reply naturally without any ACTION line.
+`
+
+  const messages: ChatMessage[] = [
+    ...history,
+    { role: 'user', content: userMessage },
+  ]
+
+  try {
+    const response = await anthropic.messages.create({
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      system:     systemPrompt,
+      messages,
+    })
+
+    const fullReply   = ((response.content[0] as { type: string; text: string }).text)?.trim() || ''
+    const actionMatch = fullReply.match(/\nACTION:([^\n]+)/)
+    const cleanReply  = fullReply.replace(/\nACTION:[^\n]+/g, '').trim()
+
+    // Send conversational reply first
+    if (cleanReply) {
+      await sendWA(from, cleanReply)
+      await logOutbound(workspace_id, phone, cleanReply)
+    }
+
+    // Then execute action if present
+    if (actionMatch) {
+      const actionFull  = actionMatch[1]?.trim() || ''
+      const colonIdx    = actionFull.indexOf(':')
+      const actionType  = colonIdx === -1 ? actionFull : actionFull.slice(0, colonIdx)
+      const actionParam = colonIdx === -1 ? '' : actionFull.slice(colonIdx + 1).trim()
+
+      console.log('[wa] nexaBrain action:', actionType, '|', actionParam)
+      await new Promise(r => setTimeout(r, 800))
+
+      switch (actionType) {
+        case 'create_post':
+          await handleCreatePost(from, workspace_id, user_id, isAr, actionParam || userMessage, 'instagram')
+          break
+        case 'create_image':
+          await handleCreateImage(from, workspace_id, user_id, isAr, actionParam || userMessage)
+          break
+        case 'create_video':
+          await handleCreateVideo(from, workspace_id, user_id, isAr, actionParam || userMessage)
+          break
+        case 'show_brief':
+          await handleBrief(from, workspace_id, isAr)
+          break
+        case 'show_credits': {
+          const bal = await getCredits(workspace_id)
+          const msg = isAr
+            ? `رصيدك: *${bal.toLocaleString()} كريديت* 💳\n${bal < 50 ? '⚠️ منخفض' : '✅ كافٍ'}`
+            : `Balance: *${bal.toLocaleString()} credits* 💳\n${bal < 50 ? '⚠️ Running low' : '✅ Good to go'}`
+          await sendWA(from, msg)
+          await logOutbound(workspace_id, phone, msg)
+          break
+        }
+        case 'show_schedule':
+          await handleCheckSchedule(from, workspace_id, isAr)
+          break
+        case 'approve_pending':
+          if (pending) await handleApprovalYes(from, workspace_id, isAr, pending)
+          break
+        case 'cancel_pending':
+          await clearPendingAction(workspace_id)
+          break
+        case 'edit_pending':
+          if (pending) await handleApprovalEdit(from, workspace_id, user_id, isAr, pending, actionParam, userMessage)
+          break
+      }
+    }
+
+  } catch (e: unknown) {
+    console.error('[wa] nexaBrain error:', (e as Error).message)
+    const fallback = isAr ? 'صار خطأ ما، حاول مرة ثانية' : 'Something went wrong, try again'
+    await sendWA(from, fallback)
+    await logOutbound(workspace_id, phone, fallback)
+  }
+}
+
 // ── GET handler ───────────────────────────────────────────────
 export async function GET() {
   return NextResponse.json({ status: 'Nexa WhatsApp active' })
@@ -826,16 +992,13 @@ export async function POST(request: NextRequest) {
   const { workspace_id, user_id, lang } = conn
   const isAr = lang === 'ar'
 
-  const pending = await getPendingAction(workspace_id)
-  console.log('[wa-webhook] pending:', pending?.type || 'none')
-
-  // Handle image — product photo
+  // Handle image — product photo (direct, no conversation needed)
   if (numMedia > 0 && mediaType.startsWith('image/')) {
     await handleProductPhoto(from, workspace_id, user_id, isAr, mediaUrl)
-    return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+    return xmlResponse()
   }
 
-  // Handle audio — transcribe first
+  // Handle audio — transcribe then treat as text
   let processText = msgBody
   if (numMedia > 0 && mediaType.startsWith('audio/')) {
     const transcribed = await transcribeAudio(mediaUrl)
@@ -843,141 +1006,35 @@ export async function POST(request: NextRequest) {
       processText = transcribed
       console.log('[wa-webhook] audio→text:', processText.slice(0, 80))
     } else {
-      await sendWA(from, isAr
-        ? 'ما قدرت أفهم الرسالة الصوتية، ممكن تكتب لي؟'
-        : "Couldn't understand the voice message, could you type it?")
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+      const msg = isAr
+        ? 'ما قدرت أفهم الرسالة الصوتية، ممكن تكتب؟'
+        : "Couldn't understand the voice message, could you type it?"
+      await sendWA(from, msg)
+      return xmlResponse()
     }
   }
 
-  // Classify intent
-  const { intent, params } = await classifyIntent(processText, !!pending, isAr)
-  console.log('[wa-webhook] intent:', intent, '| params:', JSON.stringify(params))
+  // Log inbound message
+  const db = getDb()
+  await db.from('whatsapp_messages').insert({
+    workspace_id,
+    phone_number:  phone,
+    direction:     'inbound',
+    message_type:  numMedia > 0 ? (mediaType.startsWith('image') ? 'image' : 'audio') : 'text',
+    body:          processText?.slice(0, 1000) || msgBody?.slice(0, 1000),
+  }).then(() => {}, () => {})
 
-  // Handle pending approval
-  if (pending) {
-    if (intent === 'approval_yes') {
-      await handleApprovalYes(from, workspace_id, isAr, pending)
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-    if (intent === 'approval_no') {
-      await clearPendingAction(workspace_id)
-      await sendWA(from, isAr ? 'تم الإلغاء ✓' : 'Cancelled ✓')
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-    if (intent === 'approval_edit'
-      || processText.toLowerCase().startsWith('edit')
-      || /^تعديل|^عدّل/.test(processText)) {
-      await handleApprovalEdit(from, workspace_id, user_id, isAr, pending, params.edit_instruction || processText, processText)
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-  }
+  // Fetch history, workspace data, pending action in parallel
+  const [history, ws, pending] = await Promise.all([
+    getConversationHistory(workspace_id),
+    getWorkspace(workspace_id),
+    getPendingAction(workspace_id),
+  ])
 
-  // Product photo follow-up
-  if (pending?.type === 'product_photo') {
-    const t = processText.toLowerCase()
-    if (/more|المزيد|زيادة/.test(t)) {
-      await sendWA(from, isAr ? 'يولّد المزيد من الزوايا...' : 'Generating more angles...')
-      try {
-        const sideResult = await fal.subscribe('fal-ai/flux-pro/kontext', {
-          input: {
-            prompt:           'Place this exact product on a pure white background showing exact side profile at 90 degrees. Professional studio lighting. Remove all original background.',
-            image_url:        pending.cleaned_url as string || pending.image_url as string,
-            output_format:    'png',
-            safety_tolerance: '5',
-          },
-          logs: false, onQueueUpdate: () => {},
-        })
-        const sideUrl = ((sideResult as unknown) as { data: { images: Array<{ url: string }> } }).data?.images?.[0]?.url
-        if (sideUrl) await sendWAMedia(from, sideUrl, isAr ? 'الصورة الجانبية 👆' : 'Side profile 👆')
-      } catch (e: unknown) { console.error('[wa] side shot error:', (e as Error).message) }
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-    if (/video|فيديو|reel|ريل/.test(t)) {
-      await handleCreateVideo(from, workspace_id, user_id, isAr, `professional product video for ${pending.product_name || 'this product'}`)
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-    if (/post|منشور/.test(t)) {
-      await handleCreatePost(from, workspace_id, user_id, isAr, `product showcase post for ${pending.product_name || 'this product'}`, 'instagram')
-      return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
-    }
-  }
+  console.log('[wa-webhook] history length:', history.length, '| pending:', pending?.type || 'none')
 
-  // Main intent routing
-  switch (intent) {
+  // Run the conversational brain — handles everything
+  await nexaBrain(from, workspace_id, user_id, processText, history, ws, pending, isAr, lang)
 
-    case 'greeting': {
-      const wsG = await getWorkspace(workspace_id)
-      const brandName = (wsG?.brand_name as string) || (wsG?.name as string) || 'your brand'
-      await sendWA(from, isAr
-        ? `أهلاً! أنا Nexa لـ *${brandName}* 🎯\n\nقولي:\n• "اكتب منشور"\n• "كم رصيدي"\n• "ملخص اليوم"\n• "ولّد صورة"\n• "ولّد فيديو"\n\nأو أرسل صورة منتجك 📸`
-        : `Hey! I'm Nexa for *${brandName}* 🎯\n\nTry:\n• "Write a post"\n• "Credits?"\n• "Today's brief"\n• "Generate image"\n• "Generate video"\n\nOr send a product photo 📸`)
-      break
-    }
-
-    case 'credits': {
-      const balance = await getCredits(workspace_id)
-      await sendWA(from, isAr
-        ? `رصيدك: *${balance.toLocaleString()} كريديت* 💳\n${balance < 50 ? '⚠️ منخفض — شحّن من nexaa.cc' : '✅ كافٍ'}`
-        : `Balance: *${balance.toLocaleString()} credits* 💳\n${balance < 50 ? '⚠️ Low — top up at nexaa.cc' : '✅ Good to go'}`)
-      break
-    }
-
-    case 'brief':
-      await handleBrief(from, workspace_id, isAr)
-      break
-
-    case 'create_post':
-      await handleCreatePost(from, workspace_id, user_id, isAr,
-        params.topic || processText, params.platform || 'instagram')
-      break
-
-    case 'create_image':
-      await handleCreateImage(from, workspace_id, user_id, isAr,
-        params.topic || processText)
-      break
-
-    case 'create_video':
-      await handleCreateVideo(from, workspace_id, user_id, isAr,
-        params.topic || processText)
-      break
-
-    case 'check_schedule':
-      await handleCheckSchedule(from, workspace_id, isAr)
-      break
-
-    case 'brand_update':
-      await handleBrandUpdate(from, workspace_id, isAr,
-        params.brand_info || processText)
-      break
-
-    case 'check_ads':
-      await sendWA(from, isAr
-        ? "لمراجعة الإعلانات وأداءها، افتح قسم Amplify في nexaa.cc\n\nقريباً ستتمكن من مراقبة الإعلانات مباشرة من هنا!"
-        : "To review your ads performance, open the Amplify section at nexaa.cc\n\nSoon you'll be able to monitor and control ads directly from here!")
-      break
-
-    default: {
-      try {
-        const ws = await getWorkspace(workspace_id)
-        const bn = (ws?.brand_name as string) || (ws?.name as string) || 'the brand'
-        const response = await anthropic.messages.create({
-          model:      'claude-sonnet-4-20250514',
-          max_tokens: 300,
-          system: isAr
-            ? `أنت Nexa، مساعد تسويق ذكي لـ${bn}. إليك كل ما تعرفه عن هذه العلامة:\n${ws?.brandContext}\n\nرد بالعربية الخليجية الطبيعية. ٣ جمل كحد أقصى. لا قوائم إلا إذا طُلبت. فكرة واحدة لكل رسالة.`
-            : `You are Nexa, the AI marketing assistant for ${bn}. Here is everything you know about this brand:\n${ws?.brandContext}\n\nBe helpful, direct, and brief. Max 3 sentences. No lists unless asked. One idea per message. Speak from brand knowledge.`,
-          messages: [{ role: 'user', content: processText }],
-        })
-        const reply = ((response.content[0] as { type: string; text: string }).text)?.trim()
-        await sendWA(from, reply || (isAr ? 'كيف أقدر أساعدك؟' : 'How can I help?'))
-      } catch (e: unknown) {
-        console.error('[wa] general reply error:', (e as Error).message)
-        await sendWA(from, isAr ? 'كيف أقدر أساعدك؟' : 'How can I help?')
-      }
-      break
-    }
-  }
-
-  return new NextResponse(XML_EMPTY, { headers: XML_HEADERS })
+  return xmlResponse()
 }
