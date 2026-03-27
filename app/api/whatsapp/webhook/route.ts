@@ -70,6 +70,20 @@ async function sendWAMedia(to: string, mediaUrl: string, body: string): Promise<
   }
 }
 
+// ── Types ─────────────────────────────────────────────────────
+type WorkspaceData = {
+  brand_name?:    string
+  brand_voice?:   string
+  brand_audience?: string
+  brand_tone?:    string
+  name?:          string
+  weekly_brief?:  unknown
+  weekly_brief_ar?: unknown
+  profile:        Record<string, unknown> | null
+  brandContext:   string
+  [key: string]:  unknown
+}
+
 // ── Workspace helpers ─────────────────────────────────────────
 async function resolveWorkspace(phone: string) {
   const db = getDb()
@@ -86,19 +100,55 @@ async function resolveWorkspace(phone: string) {
   return data as { workspace_id: string; user_id: string; lang: string } | null
 }
 
-async function getWorkspace(workspace_id: string) {
+async function getWorkspace(workspace_id: string): Promise<WorkspaceData | null> {
   const db = getDb()
-  const { data } = await db
+  const { data: ws, error } = await db
     .from('workspaces')
     .select('brand_name, brand_voice, brand_audience, brand_tone, name, weekly_brief, weekly_brief_ar')
     .eq('id', workspace_id)
     .single()
-  return data as Record<string, unknown> | null
+  console.log('[wa] getWorkspace:', (ws as Record<string,string> | null)?.brand_name, 'error:', error?.message)
+
+  const { data: profileAsset } = await db
+    .from('brand_assets')
+    .select('analysis')
+    .eq('workspace_id', workspace_id)
+    .eq('file_name', 'nexa_brand_intelligence.json')
+    .single()
+
+  const profile = (profileAsset as Record<string, unknown> | null)?.analysis as Record<string, unknown> | null
+  const w = ws as Record<string, unknown> | null
+
+  const brandContext = profile ? `
+Brand: ${w?.brand_name || w?.name}
+Voice: ${(profile.voice as Record<string,string>)?.primary_tone || w?.brand_voice}
+Writing style: ${(profile.voice as Record<string,string>)?.writing_style || 'clear and direct'}
+Audience: ${(profile.audience as Record<string,string>)?.primary || w?.brand_audience}
+Audience psychology: ${(profile.audience as Record<string,string>)?.psychology || ''}
+Pain points: ${(profile.audience as Record<string,string[]>)?.pain_points?.join(', ') || ''}
+Brand positioning: ${(profile.positioning as Record<string,string>)?.unique_angle || ''}
+Visual aesthetic: ${(profile.visual as Record<string,string>)?.aesthetic || ''}
+Content formats: ${(profile.content as Record<string,string[]>)?.formats?.join(', ') || ''}
+Hook style: ${(profile.content as Record<string,string[]>)?.hooks?.join(', ') || ''}
+` : `
+Brand: ${w?.brand_name || w?.name}
+Voice: ${w?.brand_voice || 'professional'}
+Audience: ${w?.brand_audience || 'customers'}
+Tone: ${w?.brand_tone || 'confident'}
+`
+
+  return { ...(w as WorkspaceData), profile, brandContext: brandContext.trim() }
 }
 
 async function getBrandName(workspace_id: string): Promise<string> {
-  const ws = await getWorkspace(workspace_id)
-  return (ws?.brand_name as string) || (ws?.name as string) || 'your brand'
+  const db = getDb()
+  const { data, error } = await db
+    .from('workspaces')
+    .select('brand_name, name')
+    .eq('id', workspace_id)
+    .single()
+  console.log('[wa] getBrandName result:', JSON.stringify(data), 'error:', error?.message)
+  return (data as Record<string,string> | null)?.brand_name || (data as Record<string,string> | null)?.name || 'your brand'
 }
 
 async function getCredits(workspace_id: string): Promise<number> {
@@ -205,6 +255,10 @@ async function classifyIntent(text: string, hasPending: boolean, isAr: boolean):
       max_tokens: 200,
       system: `Classify the intent of this WhatsApp message to a marketing AI assistant.
 ${hasPending ? 'IMPORTANT: There is a pending approval waiting. Check if this is approving, rejecting, or editing it.' : ''}
+
+IMPORTANT RULES:
+- If the user asks ABOUT their brand (what's my brand, tell me about my brand, who am i, what do you know about me) — classify as "general" so Claude can answer from brand context. Do NOT classify as brand_update.
+- brand_update is ONLY for when the user is sharing NEW information about their brand (new product, price change, new service, etc.)
 
 Respond with JSON only:
 {
@@ -361,13 +415,13 @@ async function handleCreatePost(
     model:      'claude-sonnet-4-20250514',
     max_tokens: 600,
     system: isAr
-      ? `أنت كاتب محتوى احترافي لـ${brandName}. الصوت: ${ws?.brand_voice || 'مهني وجذاب'}. الجمهور: ${ws?.brand_audience || 'العملاء المحتملون'}. النبرة: ${ws?.brand_tone || 'واثق'}. اكتب بالعربية الخليجية الطبيعية. المنشور يجب أن يبدأ بهوك قوي.`
-      : `You are a professional content writer for ${brandName}. Voice: ${ws?.brand_voice || 'professional, engaging'}. Audience: ${ws?.brand_audience || 'target customers'}. Tone: ${ws?.brand_tone || 'confident'}. Start with a strong hook. End with a call to action. Hashtags at the end only.`,
+      ? `أنت كاتب محتوى احترافي. إليك كل ما تحتاجه عن هذه العلامة:\n${ws?.brandContext}\n\nاكتب بالعربية الخليجية الطبيعية. المنشور يجب أن يبدأ بهوك قوي يوقف التمرير. ثم القيمة. ثم الدعوة للفعل. الهاشتاقات في النهاية فقط.`
+      : `You are a professional content writer. Here is everything about this brand:\n${ws?.brandContext}\n\nWrite in the EXACT brand voice described above. Start with a scroll-stopping hook. Then value. Then CTA. Hashtags last only.`,
     messages: [{
       role:    'user',
       content: isAr
-        ? `اكتب منشور ${platform} احترافي عن: ${topic || 'العلامة التجارية وقيمتها'}`
-        : `Write a professional ${platform} post about: ${topic || 'the brand and its value'}`
+        ? `اكتب منشور ${platform} احترافي عن: ${topic || 'العلامة التجارية'}`
+        : `Write a professional ${platform} post about: ${topic || 'the brand'}`
     }]
   })
 
@@ -625,15 +679,14 @@ async function handleBrief(from: string, workspace_id: string, isAr: boolean) {
       return
     }
 
-    const brandName = (ws?.brand_name as string) || (ws?.name as string) || 'your brand'
     const response = await anthropic.messages.create({
       model:      'claude-sonnet-4-20250514',
       max_tokens: 400,
       messages: [{
         role:    'user',
         content: isAr
-          ? `أنت مستشار تسويق لـ${brandName} (${ws?.brand_voice || 'مهني'}). الجمهور: ${ws?.brand_audience || 'عملاء'}. اكتب ملخصاً يومياً تسويقياً. أخرج JSON فقط: {"headline":"عنوان مشوّق","todays_priority":"الأولوية اليوم — جملة واحدة قوية","one_thing":"الشيء الواحد الذي يجب فعله اليوم"}`
-          : `You are a marketing advisor for ${brandName} (${ws?.brand_voice || 'professional'}). Audience: ${ws?.brand_audience}. Write a daily marketing brief. JSON only: {"headline":"catchy headline","todays_priority":"today's priority — one strong sentence","one_thing":"the one thing to do today"}`
+          ? `أنت مستشار تسويق خبير. إليك معلومات العلامة التجارية:\n${ws?.brandContext || ''}\n\nاكتب ملخصاً يومياً تسويقياً مخصصاً لهذه العلامة. أخرج JSON فقط:\n{"headline":"عنوان مشوّق ومرتبط بالعلامة","todays_priority":"الأولوية اليوم بناءً على هذه العلامة — جملة واحدة قوية","one_thing":"الشيء الواحد الأهم الذي يجب فعله اليوم"}`
+          : `You are an expert marketing advisor. Here is the brand:\n${ws?.brandContext || ''}\n\nWrite a personalized daily marketing brief for this specific brand. JSON only:\n{"headline":"catchy headline relevant to this brand","todays_priority":"today's priority based on this brand — one powerful sentence","one_thing":"the single most important thing to do today for this brand"}`
       }]
     })
     const raw   = ((response.content[0] as { type: string; text: string }).text)?.trim()
@@ -829,10 +882,11 @@ export async function POST(request: NextRequest) {
   switch (intent) {
 
     case 'greeting': {
-      const brandName = await getBrandName(workspace_id)
+      const wsG = await getWorkspace(workspace_id)
+      const brandName = (wsG?.brand_name as string) || (wsG?.name as string) || 'your brand'
       await sendWA(from, isAr
-        ? `أهلاً! أنا Nexa لـ ${brandName} 🎯\n\nكلّمني وقت ما تبي:\n• "اكتب لي منشور"\n• "كم رصيدي؟"\n• "ملخص اليوم"\n• "ولّد صورة"\n• "ولّد فيديو"\n• أو أرسل صورة منتجك`
-        : `Hey! I'm Nexa for ${brandName} 🎯\n\nTell me anytime:\n• "Write me a post"\n• "How many credits?"\n• "Today's brief"\n• "Generate an image"\n• "Generate a video"\n• Or send a product photo`)
+        ? `أهلاً! أنا Nexa لـ *${brandName}* 🎯\n\nكلّمني وقت ما تبي:\n• "اكتب لي منشور"\n• "كم رصيدي؟"\n• "ملخص اليوم"\n• "ولّد صورة"\n• "ولّد فيديو"\n• أو أرسل صورة منتجك`
+        : `Hey! I'm Nexa for *${brandName}* 🎯\n\nTell me anytime:\n• "Write me a post"\n• "How many credits?"\n• "Today's brief"\n• "Generate an image"\n• "Generate a video"\n• Or send a product photo`)
       break
     }
 
@@ -886,8 +940,8 @@ export async function POST(request: NextRequest) {
           model:      'claude-sonnet-4-20250514',
           max_tokens: 300,
           system: isAr
-            ? `أنت Nexa، مساعد تسويق ذكي لـ${bn}. الصوت: ${ws?.brand_voice || 'مهني'}. رد بالعربية الخليجية الطبيعية، مفيد ومختصر، ٣ جمل كحد أقصى. إذا طلب المستخدم شيئاً تستطيع فعله (منشور، صورة، فيديو) — أخبره كيف يطلبه بشكل أوضح.`
-            : `You are Nexa, AI marketing assistant for ${bn}. Voice: ${ws?.brand_voice || 'professional'}. Be helpful and brief, max 3 sentences. If the user wants something you can do (post, image, video) — tell them how to ask more clearly.`,
+            ? `أنت Nexa، مساعد تسويق ذكي لـ${bn}. إليك كل ما تعرفه عن هذه العلامة:\n${ws?.brandContext}\n\nرد بالعربية الخليجية الطبيعية، مفيد ومختصر، ٣ جمل كحد أقصى.`
+            : `You are Nexa, the AI marketing assistant for ${bn}. Here is everything you know about this brand:\n${ws?.brandContext}\n\nBe helpful, direct, and brief. Max 3 sentences. You KNOW this brand — speak from that knowledge.`,
           messages: [{ role: 'user', content: processText }],
         })
         const reply = ((response.content[0] as { type: string; text: string }).text)?.trim()
