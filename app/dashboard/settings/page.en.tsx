@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TOPUP_PACKS_BY_PLAN, PLAN_CREDITS } from '@/lib/plan-constants'
 
-type Tab = 'profile'|'workspace'|'billing'|'password'
+type Tab = 'profile'|'workspace'|'billing'|'password'|'whatsapp'
 
 const PLANS = [
   {
@@ -117,6 +117,7 @@ const Ic = {
   bolt:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
   check:   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
   warn:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  wa:      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
 }
 
 const NAV_EN = [
@@ -124,12 +125,14 @@ const NAV_EN = [
   { id:'workspace' as Tab, label:'Workspace',      icon:Ic.ws,   desc:'Brand voice, audience, niche' },
   { id:'billing'   as Tab, label:'Billing',        icon:Ic.card, desc:'Plan, credits, upgrades' },
   { id:'password'  as Tab, label:'Security',       icon:Ic.lock, desc:'Change your password' },
+  { id:'whatsapp'  as Tab, label:'WhatsApp',       icon:Ic.wa,   desc:'Control Nexa from WhatsApp' },
 ]
 const NAV_AR = [
   { id:'profile'   as Tab, label:'الحساب',         icon:Ic.user, desc:'اسمك وإيميلك' },
   { id:'workspace' as Tab, label:'مساحة العمل',    icon:Ic.ws,   desc:'صوت البراند والجمهور' },
   { id:'billing'   as Tab, label:'الفوترة',        icon:Ic.card, desc:'الخطة والرصيد' },
   { id:'password'  as Tab, label:'الأمان',         icon:Ic.lock, desc:'غيّر كلمة سرك' },
+  { id:'whatsapp'  as Tab, label:'واتساب',         icon:Ic.wa,   desc:'تحكم في Nexa من واتساب' },
 ]
 
 /* ─── Field components ─── */
@@ -225,6 +228,207 @@ function SaveBtn({ onClick, saving, saved, disabled }: any) {
         ? <><span style={{ display:'flex' }}>{Ic.check}</span>{isArabic?'تم':'Saved'}</>
         : <><span style={{ display:'flex' }}>{Ic.bolt}</span>{isArabic ? 'احفظ التغييرات' : 'Save changes'}</>}
     </button>
+  )
+}
+
+// ─── WhatsApp Tab ─────────────────────────────────────────────────────────
+function WhatsAppTab({ workspaceId, lang }: { workspaceId: string; lang: string }) {
+  const isAr = lang === 'ar'
+  const F = isAr ? "'Tajawal', system-ui, sans-serif" : "'Geist', -apple-system, sans-serif"
+  const supabase = createClient()
+
+  const [loading, setLoading] = useState(true)
+  const [connected, setConnected] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [inputPhone, setInputPhone] = useState('')
+  const [inputLang, setInputLang] = useState<'en'|'ar'>(isAr ? 'ar' : 'en')
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const NEXA_WA = process.env.NEXT_PUBLIC_TWILIO_WHATSAPP_NUMBER?.replace('whatsapp:','') || '+14155238886'
+
+  useEffect(() => {
+    if (!workspaceId) return
+    supabase
+      .from('whatsapp_connections')
+      .select('phone_number, lang')
+      .eq('workspace_id', workspaceId)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) { setConnected(true); setPhone(data.phone_number) }
+        setLoading(false)
+      })
+  }, [workspaceId])
+
+  async function connect() {
+    if (!inputPhone.trim()) { setError(isAr ? 'أدخل رقم هاتفك' : 'Enter your phone number'); return }
+    setConnecting(true); setError('')
+    const res = await fetch('/api/whatsapp/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspace_id: workspaceId, phone_number: inputPhone.trim(), lang: inputLang }),
+    })
+    const data = await res.json()
+    setConnecting(false)
+    if (res.ok) { setConnected(true); setPhone(inputPhone.trim()); setSuccess(isAr ? 'تم الربط! تحقق من واتساب' : 'Connected! Check WhatsApp') }
+    else { setError(data.error || (isAr ? 'فشل الاتصال' : 'Connection failed')) }
+  }
+
+  async function disconnect() {
+    setDisconnecting(true)
+    await fetch('/api/whatsapp/connect', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspace_id: workspaceId }),
+    })
+    setDisconnecting(false); setConnected(false); setPhone(''); setSuccess('')
+  }
+
+  const inp = {
+    width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)',
+    background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: 13, fontFamily: F, outline: 'none', boxSizing: 'border-box' as const,
+  }
+  const btn = {
+    padding: '10px 20px', borderRadius: 10, fontWeight: 600, fontSize: 13, fontFamily: F, cursor: 'pointer', border: 'none',
+    background: 'rgba(37,211,102,0.12)', color: '#25D366', transition: 'all 0.15s',
+  }
+
+  const COMMANDS_EN = [
+    { cmd: '"Write a post about..."', desc: 'Instant branded content' },
+    { cmd: '"Generate an image"', desc: 'AI visual in your brand style' },
+    { cmd: '"Generate a video"', desc: 'Cinematic short-form video' },
+    { cmd: '"Today\'s brief"', desc: 'Your morning strategy brief' },
+    { cmd: '"How many credits?"', desc: 'Check your balance' },
+    { cmd: '"Check my ads"', desc: 'Ad performance summary' },
+    { cmd: '"Schedule post"', desc: 'Queue content for later' },
+    { cmd: 'Send a photo', desc: 'Train brand or generate content from it' },
+  ]
+  const COMMANDS_AR = [
+    { cmd: '"اكتب منشور عن..."', desc: 'محتوى براند فوري' },
+    { cmd: '"ولّد صورة"', desc: 'صورة AI بأسلوب براندك' },
+    { cmd: '"ولّد فيديو"', desc: 'فيديو سينمائي قصير' },
+    { cmd: '"ملخص اليوم"', desc: 'موجزك الصباحي الاستراتيجي' },
+    { cmd: '"كم رصيدي؟"', desc: 'تحقق من رصيدك' },
+    { cmd: '"شوف إعلاناتي"', desc: 'ملخص أداء الإعلانات' },
+    { cmd: '"جدول المنشور"', desc: 'ضع المحتوى في قائمة الانتظار' },
+    { cmd: 'أرسل صورة', desc: 'درّب البراند أو أنشئ محتوى منها' },
+  ]
+  const CMDS = isAr ? COMMANDS_AR : COMMANDS_EN
+
+  if (loading) return <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: 13, fontFamily: F }}>{isAr ? 'يحمّل...' : 'Loading...'}</div>
+
+  return (
+    <div style={{ maxWidth: 480, animation: 'pageUp 0.35s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#FFFFFF', marginBottom: 5, fontFamily: F }}>
+          {isAr ? 'واتساب' : 'WhatsApp'}
+        </h2>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>
+          {isAr ? 'تحكم في Nexa مباشرة من واتساب — إنشاء محتوى، جدولة، إعلانات وأكثر' : 'Control Nexa directly from WhatsApp — content, scheduling, ads and more'}
+        </p>
+      </div>
+
+      {connected ? (
+        <div>
+          {/* Connected card */}
+          <div style={{ padding: '16px 18px', borderRadius: 12, background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.18)', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#25D366' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#25D366', fontFamily: F }}>{isAr ? 'متصل' : 'Connected'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>{isAr ? 'رقمك' : 'Your number'}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: "'Geist Mono', monospace" }}>{phone}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontFamily: F }}>{isAr ? 'رقم Nexa' : 'Nexa number'}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: "'Geist Mono', monospace" }}>{NEXA_WA}</span>
+            </div>
+          </div>
+
+          {/* Commands reference */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: F, marginBottom: 10 }}>
+              {isAr ? 'الأوامر المتاحة' : 'Available commands'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {CMDS.map(({ cmd, desc }) => (
+                <div key={cmd} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span style={{ fontSize: 12, color: '#fff', fontFamily: "'Geist Mono', monospace" }}>{cmd}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', fontFamily: F, marginLeft: 12 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={disconnect}
+            disabled={disconnecting}
+            style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: F, cursor: disconnecting ? 'not-allowed' : 'pointer', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', color: '#EF4444', opacity: disconnecting ? 0.5 : 1, transition: 'all 0.15s' }}
+          >
+            {disconnecting ? (isAr ? 'يفصل...' : 'Disconnecting...') : (isAr ? 'فصل الاتصال' : 'Disconnect')}
+          </button>
+        </div>
+      ) : (
+        <div>
+          {/* Step 1 */}
+          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 8, fontFamily: F }}>
+              {isAr ? 'الخطوة ١ — احفظ رقم Nexa في واتساب' : 'Step 1 — Save Nexa\'s number in WhatsApp'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <code style={{ fontFamily: "'Geist Mono', monospace", fontSize: 14, fontWeight: 700, color: '#25D366' }}>{NEXA_WA}</code>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: F }}>
+                {isAr ? 'احفظه كـ "Nexa AI"' : 'Save it as "Nexa AI"'}
+              </span>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 8, fontFamily: F }}>
+              {isAr ? 'الخطوة ٢ — رقم هاتفك (مع رمز الدولة)' : 'Step 2 — Your phone number (with country code)'}
+            </div>
+            <input
+              value={inputPhone}
+              onChange={e => setInputPhone(e.target.value)}
+              placeholder={isAr ? '+966501234567' : '+1 555 123 4567'}
+              style={inp}
+              dir="ltr"
+            />
+          </div>
+
+          {/* Step 3 */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 8, fontFamily: F }}>
+              {isAr ? 'الخطوة ٣ — لغة المحادثة' : 'Step 3 — Conversation language'}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['en','ar'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setInputLang(l)}
+                  style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: F, cursor: 'pointer', transition: 'all 0.15s', border: inputLang === l ? '1px solid rgba(0,170,255,0.4)' : '1px solid rgba(255,255,255,0.10)', background: inputLang === l ? 'rgba(0,170,255,0.10)' : 'rgba(255,255,255,0.03)', color: inputLang === l ? '#00AAFF' : 'rgba(255,255,255,0.5)' }}
+                >
+                  {l === 'en' ? '🇬🇧 English' : '🇸🇦 عربي'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontFamily: F }}>{error}</div>}
+          {success && <div style={{ fontSize: 12, color: '#22C55E', marginBottom: 12, fontFamily: F }}>{success}</div>}
+
+          <button onClick={connect} disabled={connecting} style={{ ...btn, opacity: connecting ? 0.5 : 1, cursor: connecting ? 'not-allowed' : 'pointer' }}>
+            {connecting ? (isAr ? 'يتصل...' : 'Connecting...') : (isAr ? 'ربط واتساب' : 'Connect WhatsApp')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -891,6 +1095,11 @@ function SettingsInner() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* ════ WHATSAPP ════ */}
+          {tab === 'whatsapp' && ws?.id && (
+            <WhatsAppTab workspaceId={ws.id} lang={isArabic ? 'ar' : 'en'} />
           )}
         </div>
       </div>
