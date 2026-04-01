@@ -234,6 +234,202 @@ function shouldUseVoice(
   return sometimesVoice
 }
 
+async function handleDocumentTraining(
+  from: string,
+  workspace_id: string,
+  user_id: string,
+  mediaUrl: string,
+  mediaType: string,
+  isAr: boolean
+): Promise<void> {
+  console.log('[wa] brand doc training, type:', mediaType, 'url:', mediaUrl.slice(0, 60))
+
+  const ack = isAr
+    ? 'وصلني الملف 📄 أقرأه وأدرّب Brand Brain عليه... (دقيقة)'
+    : 'Got your document 📄 Reading it and training Brand Brain... (a minute)'
+  await sendWA(from, ack)
+
+  try {
+    const db = getDb()
+
+    // Download the document from Twilio
+    const docRes = await fetch(mediaUrl, {
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(
+          `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+        ).toString('base64'),
+      }
+    })
+
+    if (!docRes.ok) {
+      await sendWA(from, isAr ? 'ما قدرت أقرأ الملف' : "Couldn't read the document")
+      return
+    }
+
+    const docBuffer = await docRes.arrayBuffer()
+    const isPDF  = mediaType.includes('pdf')
+    const isImage = mediaType.startsWith('image/')
+
+    let extractedText = ''
+
+    if (isImage) {
+      const base64 = Buffer.from(docBuffer).toString('base64')
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 }
+            },
+            {
+              type: 'text',
+              text: 'Extract all text and key brand information from this image. Include: brand name, products, taglines, values, target audience, pricing, any other brand details visible.'
+            }
+          ]
+        }]
+      })
+      extractedText = ((response.content[0] as { type: string; text: string }).text)?.trim() || ''
+    } else if (isPDF) {
+      const base64 = Buffer.from(docBuffer).toString('base64')
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+            } as unknown as { type: 'text'; text: string },
+            {
+              type: 'text',
+              text: 'Extract all brand information from this document. Include: brand name, products/services, pricing, target audience, brand voice/tone, values, mission, any marketing copy or taglines. Be thorough.'
+            }
+          ]
+        }]
+      })
+      extractedText = ((response.content[0] as { type: string; text: string }).text)?.trim() || ''
+    } else {
+      extractedText = new TextDecoder().decode(docBuffer).slice(0, 3000)
+    }
+
+    if (!extractedText || extractedText.length < 50) {
+      await sendWA(from, isAr ? 'ما قدرت أستخرج معلومات من الملف' : "Couldn't extract information from this document")
+      return
+    }
+
+    console.log('[wa] extracted text length:', extractedText.length)
+
+    const { data: ws } = await db
+      .from('workspaces')
+      .select('brand_name, name, brand_voice, brand_audience')
+      .eq('id', workspace_id)
+      .single()
+
+    const brandName = (ws as Record<string, string> | null)?.brand_name || (ws as Record<string, string> | null)?.name || 'the brand'
+
+    const analysisResponse = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: 'You are a brand intelligence analyst. Extract structured brand insights from documents. Always output valid JSON only. No preamble. No explanation.',
+      messages: [{
+        role: 'user',
+        content: `Analyze this document for brand ${brandName} and extract brand intelligence.
+
+Document content:
+${extractedText.slice(0, 2000)}
+
+Output JSON with any fields you can identify:
+{
+  "brand_name": "if found",
+  "products": ["list of products/services if mentioned"],
+  "pricing": "pricing info if found",
+  "target_audience": "who they target",
+  "brand_voice": "tone and communication style evident in the document",
+  "brand_values": ["core values if mentioned"],
+  "taglines": ["any taglines or slogans"],
+  "unique_selling_points": ["what makes them different"],
+  "key_insights": ["3-5 key things learned about this brand from this document"]
+}`
+      }]
+    })
+
+    const analysisRaw = ((analysisResponse.content[0] as { type: string; text: string }).text)?.trim()
+    let insights: Record<string, unknown> = {}
+    try {
+      const match = analysisRaw?.match(/\{[\s\S]*\}/)
+      if (match) insights = JSON.parse(match[0])
+    } catch {
+      insights = { key_insights: [extractedText.slice(0, 200)] }
+    }
+
+    // Save to brand_assets
+    await db.from('brand_assets').insert({
+      workspace_id,
+      type: 'brand_doc',
+      file_url: mediaUrl,
+      file_name: `whatsapp_doc_${Date.now()}.${isPDF ? 'pdf' : 'img'}`,
+      ai_analyzed: true,
+      analysis: insights,
+    }).then(() => {}, (e: Error) => console.error('[wa] brand_assets insert error:', e.message))
+
+    // Save key insights to brand_learnings
+    const learnings = (insights.key_insights as string[]) || []
+    if (learnings.length > 0) {
+      await db.from('brand_learnings').insert(
+        learnings.map((insight: string) => ({
+          workspace_id,
+          insight_type: 'content',
+          content: insight,
+          source: 'whatsapp_document',
+          metadata: { doc_type: isPDF ? 'pdf' : 'image', user_id },
+        }))
+      ).then(() => {}, (e: Error) => console.error('[wa] brand_learnings insert error:', e.message))
+    }
+
+    // Update workspace brand fields if missing
+    const updates: Record<string, string> = {}
+    if (insights.target_audience && !(ws as Record<string, string> | null)?.brand_audience) {
+      updates.brand_audience = insights.target_audience as string
+    }
+    if (insights.brand_voice && !(ws as Record<string, string> | null)?.brand_voice) {
+      updates.brand_voice = insights.brand_voice as string
+    }
+    if (insights.brand_name && !(ws as Record<string, string> | null)?.brand_name) {
+      updates.brand_name = insights.brand_name as string
+    }
+    if (Object.keys(updates).length > 0) {
+      await db.from('workspaces').update(updates).eq('id', workspace_id)
+        .then(() => {}, (e: Error) => console.error('[wa] workspace update error:', e.message))
+    }
+
+    // Build confirmation
+    const learned: string[] = []
+    const insProducts = insights.products as string[] | undefined
+    const insAudience = insights.target_audience as string | undefined
+    const insVoice    = insights.brand_voice as string | undefined
+    const insUSPs     = insights.unique_selling_points as string[] | undefined
+
+    if (insProducts?.length) learned.push(isAr ? `المنتجات: ${insProducts.slice(0, 3).join('، ')}` : `Products: ${insProducts.slice(0, 3).join(', ')}`)
+    if (insAudience)         learned.push(isAr ? `الجمهور: ${insAudience.slice(0, 80)}` : `Audience: ${insAudience.slice(0, 80)}`)
+    if (insVoice)            learned.push(isAr ? `الصوت: ${insVoice.slice(0, 80)}` : `Voice: ${insVoice.slice(0, 80)}`)
+    if (insUSPs?.length)     learned.push(isAr ? `التميز: ${insUSPs[0].slice(0, 80)}` : `USP: ${insUSPs[0].slice(0, 80)}`)
+
+    const confirmation = isAr
+      ? `✅ تم تدريب Brand Brain على هذا الملف!\n\nتعلّمت:\n${learned.map(l => `• ${l}`).join('\n')}\n\nكل المحتوى القادم سيعكس هذه المعلومات تلقائياً 🧠`
+      : `✅ Brand Brain trained on this document!\n\nLearned:\n${learned.map(l => `• ${l}`).join('\n')}\n\nAll future content will reflect this automatically 🧠`
+
+    await sendWA(from, confirmation)
+
+  } catch (e: unknown) {
+    console.error('[wa] brand doc training error:', (e as Error).message)
+    await sendWA(from, isAr ? 'ما قدرت أدرّب Brand Brain على الملف' : "Couldn't train Brand Brain on this document")
+  }
+}
+
 // Visual button simulation (real buttons need Twilio Content API + approved sender)
 async function sendWAButtons(
   to: string,
@@ -915,6 +1111,104 @@ async function handleCheckSchedule(from: string, workspace_id: string, isAr: boo
     : `Your upcoming scheduled posts:\n\n${lines}`)
 }
 
+async function handleCheckAds(
+  from: string,
+  workspace_id: string,
+  isAr: boolean
+): Promise<void> {
+  const db = getDb()
+
+  try {
+    const { data: campaigns } = await db
+      .from('amplify_campaigns')
+      .select('id, name, status, daily_budget, objective, created_at')
+      .eq('workspace_id', workspace_id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (!campaigns?.length) {
+      const msg = isAr
+        ? 'ما عندك حملات إعلانية نشطة حالياً.\n\nلبدء حملة، افتح قسم Amplify في nexaa.cc'
+        : "You don't have any active ad campaigns right now.\n\nTo launch a campaign, open Amplify at nexaa.cc"
+      await sendWA(from, msg)
+      return
+    }
+
+    const campaignSummaries = await Promise.all(
+      (campaigns as any[]).slice(0, 3).map(async (camp: any) => {
+        const { data: insights } = await db
+          .from('amplify_insights')
+          .select('spend, reach, clicks, cpc, ctr, recorded_at')
+          .eq('campaign_id', camp.id)
+          .order('recorded_at', { ascending: false })
+          .limit(1)
+        return { camp, latest: insights?.[0] }
+      })
+    )
+
+    const lines = campaignSummaries.map(({ camp, latest }: any) => {
+      const statusEmoji = camp.status === 'ACTIVE' ? '🟢' : camp.status === 'PAUSED' ? '⏸️' : '🔴'
+      if (!latest) {
+        return isAr
+          ? `${statusEmoji} *${camp.name}*\nميزانية: $${camp.daily_budget}/يوم — لا بيانات بعد`
+          : `${statusEmoji} *${camp.name}*\nBudget: $${camp.daily_budget}/day — no data yet`
+      }
+      return isAr
+        ? `${statusEmoji} *${camp.name}*\nالإنفاق: $${latest.spend || 0} | الوصول: ${(latest.reach || 0).toLocaleString()} | النقرات: ${latest.clicks || 0}\nتكلفة النقرة: $${(latest.cpc || 0).toFixed(2)} | CTR: ${(latest.ctr || 0).toFixed(1)}%`
+        : `${statusEmoji} *${camp.name}*\nSpend: $${latest.spend || 0} | Reach: ${(latest.reach || 0).toLocaleString()} | Clicks: ${latest.clicks || 0}\nCPC: $${(latest.cpc || 0).toFixed(2)} | CTR: ${(latest.ctr || 0).toFixed(1)}%`
+    }).join('\n\n')
+
+    const header = isAr ? '📊 *أداء إعلاناتك*\n\n' : '📊 *Your Ads Performance*\n\n'
+    const footer = isAr
+      ? '\n\nقل *وقّف الإعلانات* لإيقافها، أو *زيادة الميزانية* للرفع'
+      : '\n\nSay *pause ads* to pause, or *increase budget* to raise it'
+
+    await sendWA(from, header + lines + footer)
+
+  } catch (e: unknown) {
+    console.error('[wa] check ads error:', (e as Error).message)
+    await sendWA(from, isAr
+      ? 'ما قدرت أجلب بيانات الإعلانات، جرّب من nexaa.cc/dashboard/amplify'
+      : "Couldn't fetch ad data, try at nexaa.cc/dashboard/amplify")
+  }
+}
+
+async function handlePauseAds(
+  from: string,
+  workspace_id: string,
+  isAr: boolean
+): Promise<void> {
+  const db = getDb()
+  try {
+    const { data: campaigns } = await db
+      .from('amplify_campaigns')
+      .select('id, name')
+      .eq('workspace_id', workspace_id)
+      .eq('status', 'ACTIVE')
+
+    if (!campaigns?.length) {
+      await sendWA(from, isAr ? 'ما في حملات نشطة الآن' : 'No active campaigns right now')
+      return
+    }
+
+    await db
+      .from('amplify_campaigns')
+      .update({ status: 'PAUSED' })
+      .eq('workspace_id', workspace_id)
+      .eq('status', 'ACTIVE')
+
+    const names = (campaigns as any[]).map((c: any) => c.name).join('، ')
+    const msg = isAr
+      ? `✅ تم إيقاف ${campaigns.length} حملة: ${names}\n\nقل *شغّل الإعلانات* لاستئنافها`
+      : `✅ Paused ${campaigns.length} campaign(s): ${names}\n\nSay *resume ads* to restart`
+    await sendWA(from, msg)
+
+  } catch (e: unknown) {
+    console.error('[wa] pause ads error:', (e as Error).message)
+    await sendWA(from, isAr ? 'ما قدرت أوقف الإعلانات' : "Couldn't pause the ads")
+  }
+}
+
 async function handleBrandUpdate(
   from: string, workspace_id: string,
   isAr: boolean, info: string
@@ -980,6 +1274,9 @@ ${ws?.brandContext || `العلامة: ${brandName}`}
 - معالجة صور المنتجات وإزالة الخلفية (7 كريديت)
 - عرض ملخص اليوم التسويقي
 - عرض الجدول والمنشورات المجدولة
+- التحقق من أداء الإعلانات (check_ads)
+- إيقاف الحملات الإعلانية (pause_ads)
+- استئناف الحملات الموقوفة (resume_ads)
 - الإجابة على أسئلة التسويق والاستراتيجية
 
 ${pending ? `يوجد إجراء معلق ينتظر موافقتك: ${JSON.stringify(pending)}` : ''}
@@ -1002,6 +1299,9 @@ ACTION:show_schedule
 ACTION:approve_pending
 ACTION:cancel_pending
 ACTION:edit_pending:تعليمات التعديل
+ACTION:check_ads
+ACTION:pause_ads
+ACTION:resume_ads
 
 سطر ACTION غير مرئي للمستخدم — يشغّل وظائف Nexa الحقيقية.
 إذا لم يكن هناك إجراء، رد بشكل طبيعي فقط بدون سطر ACTION.
@@ -1020,6 +1320,9 @@ Your real capabilities — you can actually DO these things:
 - Process product photos, remove backgrounds (7 credits)
 - Show today's marketing brief
 - Show scheduled content calendar
+- Check ad performance and results (check_ads)
+- Pause running ad campaigns (pause_ads)
+- Resume paused ad campaigns (resume_ads)
 - Answer marketing and strategy questions
 
 ${pending ? `There is a PENDING ACTION awaiting approval: ${JSON.stringify(pending)}` : ''}
@@ -1043,6 +1346,9 @@ ACTION:show_schedule
 ACTION:approve_pending
 ACTION:cancel_pending
 ACTION:edit_pending:edit instructions here
+ACTION:check_ads
+ACTION:pause_ads
+ACTION:resume_ads
 
 The ACTION line is invisible to the user — it triggers real Nexa functions.
 If no action needed, just reply naturally without any ACTION line.
@@ -1131,6 +1437,25 @@ If no action needed, just reply naturally without any ACTION line.
         case 'edit_pending':
           if (pending) await handleApprovalEdit(from, workspace_id, user_id, isAr, pending, actionParam, userMessage)
           break
+        case 'check_ads':
+          await handleCheckAds(from, workspace_id, isAr)
+          break
+        case 'pause_ads':
+          await handlePauseAds(from, workspace_id, isAr)
+          break
+        case 'resume_ads': {
+          const dbAds = getDb()
+          await dbAds
+            .from('amplify_campaigns')
+            .update({ status: 'ACTIVE' })
+            .eq('workspace_id', workspace_id)
+            .eq('status', 'PAUSED')
+          await sendWA(from, isAr ? '✅ تم تشغيل الحملات مرة ثانية' : '✅ Campaigns resumed')
+          break
+        }
+        case 'brand_doc':
+          // Handled at top of POST handler for media
+          break
       }
     }
 
@@ -1180,24 +1505,41 @@ export async function POST(request: NextRequest) {
   const { workspace_id, user_id, lang } = conn
   const isAr = lang === 'ar'
 
-  // Handle image — product photo (direct, no conversation needed)
-  if (numMedia > 0 && mediaType.startsWith('image/')) {
-    await handleProductPhoto(from, workspace_id, user_id, isAr, mediaUrl)
-    return xmlResponse()
-  }
-
-  // Handle audio — transcribe then treat as text
+  // Handle all media types
   let processText = msgBody
-  if (numMedia > 0 && mediaType.startsWith('audio/')) {
-    const transcribed = await transcribeAudio(mediaUrl)
-    if (transcribed) {
-      processText = transcribed
-      console.log('[wa-webhook] audio→text:', processText.slice(0, 80))
-    } else {
-      const msg = isAr
-        ? 'ما قدرت أفهم الرسالة الصوتية، ممكن تكتب؟'
-        : "Couldn't understand the voice message, could you type it?"
-      await sendWA(from, msg)
+  if (numMedia > 0) {
+    const isPDF   = mediaType.includes('pdf')
+    const isDoc   = mediaType.includes('msword') ||
+                    mediaType.includes('document') ||
+                    mediaType.includes('text/plain') ||
+                    isPDF
+    const isImage = mediaType.startsWith('image/')
+    const isAudio = mediaType.startsWith('audio/')
+
+    if (isAudio) {
+      const transcribed = await transcribeAudio(mediaUrl)
+      if (transcribed) {
+        processText = transcribed
+        console.log('[wa-webhook] audio→text:', processText.slice(0, 80))
+      } else {
+        const msg = isAr
+          ? 'ما قدرت أفهم الرسالة الصوتية، ممكن تكتب؟'
+          : "Couldn't understand the voice message, could you type it?"
+        await sendWA(from, msg)
+        return xmlResponse()
+      }
+    } else if (isDoc || isPDF) {
+      await handleDocumentTraining(from, workspace_id, user_id, mediaUrl, mediaType, isAr)
+      return xmlResponse()
+    } else if (isImage) {
+      // Check message body for context — brand-related = training, else = product photo
+      const bodyLower = (msgBody || '').toLowerCase()
+      const isBrandDoc = /brand|logo|document|catalogue|catalog|كتالوج|وثيقة|شعار/.test(bodyLower)
+      if (isBrandDoc) {
+        await handleDocumentTraining(from, workspace_id, user_id, mediaUrl, mediaType, isAr)
+      } else {
+        await handleProductPhoto(from, workspace_id, user_id, isAr, mediaUrl)
+      }
       return xmlResponse()
     }
   }
