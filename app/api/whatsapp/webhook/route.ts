@@ -1209,6 +1209,200 @@ async function handlePauseAds(
   }
 }
 
+// ── Billing plan data ─────────────────────────────────────────
+const PLANS_INFO: Record<string, { label: string; price: number; credits: number; features: string[] }> = {
+  trial: { label: 'Trial',  price: 0,   credits: 200,   features: ['Brand Brain', 'Studio', 'Strategy', '200 credits'] },
+  spark: { label: 'Spark',  price: 49,  credits: 1000,  features: ['Everything in Trial', '1,000 credits/month', 'Schedule & publish', 'Email sequences'] },
+  grow:  { label: 'Grow',   price: 89,  credits: 3000,  features: ['Everything in Spark', '3,000 credits/month', 'Competitor analysis', 'Performance learning'] },
+  scale: { label: 'Scale',  price: 169, credits: 7000,  features: ['Everything in Grow', '7,000 credits/month', 'Agency tools', 'Priority support'] },
+  agency:{ label: 'Agency', price: 349, credits: 20000, features: ['Everything in Scale', '20,000 credits/month', 'Multi-workspace', 'White label'] },
+}
+
+// Prices in dollars, aligned with lib/plan-constants.ts (which stores in cents)
+const TOPUP_PACKS_WA: Record<string, Array<{ credits: number; price: number }>> = {
+  trial: [
+    { credits: 200,  price: 10 },
+    { credits: 500,  price: 25 },
+    { credits: 1000, price: 45 },
+    { credits: 2500, price: 99 },
+  ],
+  spark: [
+    { credits: 200,  price: 10 },
+    { credits: 500,  price: 25 },
+    { credits: 1000, price: 45 },
+    { credits: 2500, price: 99 },
+  ],
+  grow: [
+    { credits: 500,  price: 15 },
+    { credits: 1500, price: 45 },
+    { credits: 3000, price: 89 },
+    { credits: 7500, price: 199 },
+  ],
+  scale: [
+    { credits: 1000,  price: 24  },
+    { credits: 3500,  price: 84  },
+    { credits: 7000,  price: 169 },
+    { credits: 15000, price: 329 },
+  ],
+  agency: [
+    { credits: 2500,  price: 43  },
+    { credits: 7500,  price: 130 },
+    { credits: 20000, price: 349 },
+    { credits: 50000, price: 799 },
+  ],
+}
+
+async function handleBilling(
+  from: string,
+  workspace_id: string,
+  isAr: boolean,
+  subIntent: 'overview' | 'topup' | 'upgrade' | 'topup_confirm',
+  param?: string
+): Promise<void> {
+  const db = getDb()
+
+  try {
+    const { data: ws } = await db
+      .from('workspaces')
+      .select('plan, plan_status, stripe_subscription_id, trial_ends_at, name, brand_name')
+      .eq('id', workspace_id)
+      .single()
+
+    const { data: credits } = await db
+      .from('credits')
+      .select('balance, lifetime_used')
+      .eq('workspace_id', workspace_id)
+      .single()
+
+    const plan         = (ws as Record<string, string> | null)?.plan || 'trial'
+    const planStatus   = (ws as Record<string, string> | null)?.plan_status || 'active'
+    const balance      = (credits as Record<string, number> | null)?.balance ?? 0
+    const lifetimeUsed = (credits as Record<string, number> | null)?.lifetime_used ?? 0
+    const trialEndsAt  = (ws as Record<string, string> | null)?.trial_ends_at
+    const planInfo     = PLANS_INFO[plan] || PLANS_INFO.trial
+    const APP_URL      = process.env.NEXT_PUBLIC_APP_URL || 'https://nexaa.cc'
+
+    let daysRemaining: number | null = null
+    if (trialEndsAt) {
+      const diff = new Date(trialEndsAt).getTime() - Date.now()
+      daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+    }
+
+    // ── OVERVIEW ────────────────────────────────────────────
+    if (subIntent === 'overview') {
+      const statusLine = planStatus === 'active'
+        ? (isAr ? '✅ نشط' : '✅ Active')
+        : planStatus === 'trialing'
+        ? (isAr ? '🔶 تجريبي' : '🔶 Trial')
+        : (isAr ? '⚠️ منتهي' : '⚠️ Expired')
+
+      const trialLine = daysRemaining !== null
+        ? (isAr
+          ? `\n⏳ ${daysRemaining} ${daysRemaining === 1 ? 'يوم' : 'أيام'} متبقية في التجربة`
+          : `\n⏳ ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left in trial`)
+        : ''
+
+      const urgentLine = daysRemaining !== null && daysRemaining <= 3
+        ? (isAr
+          ? `\n\n⚠️ تجربتك تنتهي قريباً! اشترك الآن لتحافظ على عملك`
+          : `\n\n⚠️ Trial ending soon! Subscribe now to keep your work`)
+        : ''
+
+      const lowCredLine = balance < 50
+        ? (isAr ? `\n⚠️ رصيد منخفض — شحّن الآن` : `\n⚠️ Low credits — top up now`)
+        : ''
+
+      const msg = isAr
+        ? `💳 *معلومات اشتراكك*\n\nالخطة: *${planInfo.label}*  ${statusLine}${trialLine}\nرصيدك: *${balance.toLocaleString()} كريديت*${lowCredLine}\nالمستخدم إجمالاً: ${lifetimeUsed.toLocaleString()} كريديت${urgentLine}\n\nقل:\n• *"شحن كريديت"* — لشراء حزمة كريديت\n• *"ترقية الخطة"* — لرؤية خطط أفضل`
+        : `💳 *Your Subscription*\n\nPlan: *${planInfo.label}*  ${statusLine}${trialLine}\nBalance: *${balance.toLocaleString()} credits*${lowCredLine}\nLifetime used: ${lifetimeUsed.toLocaleString()} credits${urgentLine}\n\nSay:\n• *"top up credits"* — to buy a credit pack\n• *"upgrade plan"* — to see better plans`
+
+      await sendWA(from, msg)
+      return
+    }
+
+    // ── TOP-UP OPTIONS ──────────────────────────────────────
+    if (subIntent === 'topup') {
+      const packs = TOPUP_PACKS_WA[plan] || TOPUP_PACKS_WA.spark
+      const packLines = packs.map((p, i) =>
+        isAr
+          ? `${i + 1}. *${p.credits.toLocaleString()} كريديت* — $${p.price}`
+          : `${i + 1}. *${p.credits.toLocaleString()} credits* — $${p.price}`
+      ).join('\n')
+
+      const msg = isAr
+        ? `⚡ *شحن كريديت*\n\nرصيدك الحالي: ${balance.toLocaleString()} كريديت\n\nالحزم المتاحة:\n${packLines}\n\nقل رقم الحزمة لتحصل على رابط الدفع\nمثال: *"١"* أو *"حزمة ١"`
+        : `⚡ *Top Up Credits*\n\nCurrent balance: ${balance.toLocaleString()} credits\n\nAvailable packs:\n${packLines}\n\nReply with the pack number to get a payment link\nExample: *"1"* or *"pack 1"*`
+
+      await sendWA(from, msg)
+      return
+    }
+
+    // ── TOP-UP CONFIRM — send billing link ──────────────────
+    if (subIntent === 'topup_confirm' && param) {
+      const packs       = TOPUP_PACKS_WA[plan] || TOPUP_PACKS_WA.spark
+      const packIndex   = parseInt(param) - 1
+      const selectedPack = packs[packIndex]
+
+      if (!selectedPack) {
+        const msg = isAr
+          ? 'رقم الحزمة غير صحيح، قل *"شحن كريديت"* مرة ثانية لرؤية الخيارات'
+          : 'Invalid pack number, say *"top up credits"* again to see options'
+        await sendWA(from, msg)
+        return
+      }
+
+      const checkoutUrl = `${APP_URL}/dashboard/settings?tab=billing&topup=${selectedPack.credits}&workspace=${workspace_id}`
+
+      const msg = isAr
+        ? `💳 *${selectedPack.credits.toLocaleString()} كريديت — $${selectedPack.price}*\n\nاضغط الرابط لإتمام الدفع:\n${checkoutUrl}\n\nبعد الدفع يُضاف الرصيد فوراً تلقائياً ✅`
+        : `💳 *${selectedPack.credits.toLocaleString()} credits — $${selectedPack.price}*\n\nTap the link to complete payment:\n${checkoutUrl}\n\nCredits are added instantly after payment ✅`
+
+      await sendWA(from, msg)
+      return
+    }
+
+    // ── UPGRADE OPTIONS ─────────────────────────────────────
+    if (subIntent === 'upgrade') {
+      const planOrder    = ['trial', 'spark', 'grow', 'scale', 'agency']
+      const currentIndex = Math.max(0, planOrder.indexOf(plan))
+      const upgradePlans = planOrder.slice(currentIndex + 1)
+
+      if (!upgradePlans.length) {
+        const msg = isAr
+          ? '🏆 أنت على أعلى خطة متاحة — Agency!\nشكراً لثقتك بـ Nexa'
+          : "🏆 You're on the highest plan — Agency!\nThank you for trusting Nexa"
+        await sendWA(from, msg)
+        return
+      }
+
+      const upgradeLines = upgradePlans.map(p => {
+        const info = PLANS_INFO[p]
+        return isAr
+          ? `• *${info.label}* — $${info.price}/شهر — ${info.credits.toLocaleString()} كريديت`
+          : `• *${info.label}* — $${info.price}/mo — ${info.credits.toLocaleString()} credits`
+      }).join('\n')
+
+      const nextPlan  = upgradePlans[0]
+      const nextInfo  = PLANS_INFO[nextPlan]
+      const upgradeUrl = `${APP_URL}/dashboard/settings?tab=billing&upgrade=${nextPlan}&workspace=${workspace_id}`
+
+      const msg = isAr
+        ? `🚀 *ترقية خطتك*\n\nخطتك الحالية: *${planInfo.label}* ($${planInfo.price}/شهر)\n\nالخيارات المتاحة:\n${upgradeLines}\n\nللترقية لـ *${nextInfo.label}*:\n${upgradeUrl}`
+        : `🚀 *Upgrade Your Plan*\n\nCurrent plan: *${planInfo.label}* ($${planInfo.price}/mo)\n\nAvailable upgrades:\n${upgradeLines}\n\nTo upgrade to *${nextInfo.label}*:\n${upgradeUrl}`
+
+      await sendWA(from, msg)
+      return
+    }
+
+  } catch (e: unknown) {
+    console.error('[wa] handleBilling error:', (e as Error).message)
+    const msg = isAr
+      ? 'ما قدرت أجلب معلومات الاشتراك، جرّب من nexaa.cc/dashboard/settings'
+      : "Couldn't load subscription info, try at nexaa.cc/dashboard/settings"
+    await sendWA(from, msg)
+  }
+}
+
 async function handleBrandUpdate(
   from: string, workspace_id: string,
   isAr: boolean, info: string
@@ -1259,6 +1453,19 @@ async function nexaBrain(
   const credits   = await getCredits(workspace_id)
   const phone     = from.replace('whatsapp:', '')
 
+  // Handle top-up pack selection (user replied with a number after seeing topup options)
+  if (pending?.type === 'topup_selection') {
+    const num = userMessage.trim().match(/^[١٢٣٤1234]/)
+    if (num) {
+      const packNum = num[0]
+        .replace('١', '1').replace('٢', '2')
+        .replace('٣', '3').replace('٤', '4')
+      await clearPendingAction(workspace_id)
+      await handleBilling(from, workspace_id, isAr, 'topup_confirm', packNum)
+      return
+    }
+  }
+
   const systemPrompt = isAr ? `
 أنت Nexa — المساعد الذكي لعلامة ${brandName}. أنت لست بوتاً — أنت زميل ذكي يفهم التسويق ويعرف هذه العلامة جيداً.
 
@@ -1274,6 +1481,9 @@ ${ws?.brandContext || `العلامة: ${brandName}`}
 - معالجة صور المنتجات وإزالة الخلفية (7 كريديت)
 - عرض ملخص اليوم التسويقي
 - عرض الجدول والمنشورات المجدولة
+- التحقق من الاشتراك والرصيد والخطة (show_billing)
+- عرض خيارات شحن الكريديت (show_topup)
+- عرض خيارات الترقية (show_upgrade)
 - التحقق من أداء الإعلانات (check_ads)
 - إيقاف الحملات الإعلانية (pause_ads)
 - استئناف الحملات الموقوفة (resume_ads)
@@ -1294,7 +1504,10 @@ ACTION:create_post:الموضوع هنا
 ACTION:create_image:الموضوع هنا
 ACTION:create_video:الموضوع هنا
 ACTION:show_brief
-ACTION:show_credits
+ACTION:show_billing        ← نظرة عامة على الاشتراك والخطة والرصيد
+ACTION:show_topup          ← خيارات شحن الكريديت
+ACTION:show_upgrade        ← خيارات ترقية الخطة
+ACTION:show_credits        ← رصيد الكريديت السريع فقط
 ACTION:show_schedule
 ACTION:approve_pending
 ACTION:cancel_pending
@@ -1302,6 +1515,8 @@ ACTION:edit_pending:تعليمات التعديل
 ACTION:check_ads
 ACTION:pause_ads
 ACTION:resume_ads
+
+أمثلة: "اشتراكي" / "خطتي" / "كم باقي" → ACTION:show_billing | "شحن" / "أضف كريديت" → ACTION:show_topup | "ترقية" / "خطة أفضل" → ACTION:show_upgrade | "رصيد" / "كريديت" → ACTION:show_credits
 
 سطر ACTION غير مرئي للمستخدم — يشغّل وظائف Nexa الحقيقية.
 إذا لم يكن هناك إجراء، رد بشكل طبيعي فقط بدون سطر ACTION.
@@ -1320,6 +1535,9 @@ Your real capabilities — you can actually DO these things:
 - Process product photos, remove backgrounds (7 credits)
 - Show today's marketing brief
 - Show scheduled content calendar
+- Check credit balance and subscription details (show_billing)
+- Show top-up credit pack options (show_topup)
+- Show upgrade plan options (show_upgrade)
 - Check ad performance and results (check_ads)
 - Pause running ad campaigns (pause_ads)
 - Resume paused ad campaigns (resume_ads)
@@ -1341,7 +1559,10 @@ ACTION:create_post:topic here
 ACTION:create_image:topic here
 ACTION:create_video:topic here
 ACTION:show_brief
-ACTION:show_credits
+ACTION:show_billing        ← full subscription overview (plan, status, days left, lifetime usage)
+ACTION:show_topup          ← credit top-up options with pack list
+ACTION:show_upgrade        ← plan upgrade options with pricing
+ACTION:show_credits        ← quick credit balance only
 ACTION:show_schedule
 ACTION:approve_pending
 ACTION:cancel_pending
@@ -1349,6 +1570,8 @@ ACTION:edit_pending:edit instructions here
 ACTION:check_ads
 ACTION:pause_ads
 ACTION:resume_ads
+
+Examples: "what plan am i on?" / "subscription info" / "days left" → ACTION:show_billing | "top up" / "buy credits" / "recharge" → ACTION:show_topup | "upgrade" / "change plan" / "better plan" → ACTION:show_upgrade | "credits" / "balance" → ACTION:show_credits
 
 The ACTION line is invisible to the user — it triggers real Nexa functions.
 If no action needed, just reply naturally without any ACTION line.
@@ -1415,11 +1638,27 @@ If no action needed, just reply naturally without any ACTION line.
         case 'show_brief':
           await handleBrief(from, workspace_id, isAr)
           break
+        case 'show_billing':
+          await handleBilling(from, workspace_id, isAr, 'overview')
+          break
+
+        case 'show_topup':
+          await handleBilling(from, workspace_id, isAr, 'topup')
+          await setPendingAction(workspace_id, {
+            type: 'topup_selection',
+            expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          })
+          break
+
+        case 'show_upgrade':
+          await handleBilling(from, workspace_id, isAr, 'upgrade')
+          break
+
         case 'show_credits': {
           const bal = await getCredits(workspace_id)
           const credMsg = isAr
-            ? `رصيدك: *${bal.toLocaleString()} كريديت* 💳\n${bal < 50 ? '⚠️ منخفض — شحّن من nexaa.cc' : '✅ كافٍ للعمل'}`
-            : `Balance: *${bal.toLocaleString()} credits* 💳\n${bal < 50 ? '⚠️ Running low — top up at nexaa.cc' : '✅ Good to go'}`
+            ? `رصيدك: *${bal.toLocaleString()} كريديت* 💳\n${bal < 50 ? '⚠️ منخفض — قل "شحن كريديت"' : '✅ كافٍ للعمل'}`
+            : `Balance: *${bal.toLocaleString()} credits* 💳\n${bal < 50 ? '⚠️ Running low — say "top up credits"' : '✅ Good to go'}`
           await sendWA(from, credMsg)
           await logOutbound(workspace_id, phone, credMsg)
           break

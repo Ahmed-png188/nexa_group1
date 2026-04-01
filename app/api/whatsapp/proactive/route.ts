@@ -271,6 +271,32 @@ export async function GET(request: NextRequest) {
         continue
       }
 
+      // ── Trial expiry alert ──────────────────────────────
+      const { data: wsData } = await db
+        .from('workspaces')
+        .select('plan, plan_status, trial_ends_at, brand_name, name')
+        .eq('id', workspace_id)
+        .single()
+
+      const trialEndsAt = (wsData as any)?.trial_ends_at
+      const plan        = (wsData as any)?.plan || 'trial'
+      const brandName   = (wsData as any)?.brand_name || (wsData as any)?.name || 'your brand'
+
+      if (trialEndsAt && plan === 'trial') {
+        const daysLeft = Math.ceil(
+          (new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        )
+
+        if (daysLeft === 3 || daysLeft === 1) {
+          const urgentMsg = isAr
+            ? `⚠️ *تنبيه مهم لـ ${brandName}*\n\nتجربتك المجانية تنتهي خلال *${daysLeft} ${daysLeft === 1 ? 'يوم' : 'أيام'}*\n\nلا تفقد كل ما بنيته — اشترك الآن:\nnexaa.cc/dashboard/settings\n\nأو قل *"ترقية الخطة"* لأريك الخيارات`
+            : `⚠️ *Important for ${brandName}*\n\nYour free trial ends in *${daysLeft} day${daysLeft !== 1 ? 's' : ''}*\n\nDon't lose everything you've built — subscribe now:\nnexaa.cc/dashboard/settings\n\nOr say *"upgrade plan"* to see options`
+
+          await sendWA(phone_number, urgentMsg)
+          await new Promise(r => setTimeout(r, 1000))
+        }
+      }
+
       // Generate brief
       const briefText = await generateBrief(workspace_id, lang as 'en' | 'ar')
       if (!briefText) {
