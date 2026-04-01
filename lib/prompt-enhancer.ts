@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { CREATIVE_DIRECTOR_PROMPT } from './prompts'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -18,6 +19,10 @@ export async function enhanceImagePrompt(
   const industry    = brandContext?.profile?.business?.industry || 'professional services'
   const customPfx   = brandContext?.profile?.generation_instructions?.image_prompt_prefix || ''
 
+  const teamBriefing = brandContext?.unifiedBriefing
+    ? (lang === 'ar' ? `\nموجز الفريق:\n${brandContext.unifiedBriefing}` : `\nTeam Briefing:\n${brandContext.unifiedBriefing}`)
+    : ''
+
   const prompt = lang === 'ar'
     ? `أنت مصور تجاري ومدير فني على مستوى عالمي. حوّل هذا الوصف البسيط إلى موجّه احترافي ينتج صورة لا تُميَّز من التصوير الحقيقي.
 
@@ -31,7 +36,7 @@ export async function enhanceImagePrompt(
 - دائماً حدد درجة الألوان أو مرجع فيلم
 - دائماً حدد أسلوب التكوين
 
-العلامة: ${brand} | الجماليات: ${visual} | الألوان: ${colors} | التصوير: ${photoStyle} | التكوين: ${composition} | القطاع: ${industry}${customPfx ? ' | ' + customPfx : ''}
+العلامة: ${brand} | الجماليات: ${visual} | الألوان: ${colors} | التصوير: ${photoStyle} | التكوين: ${composition} | القطاع: ${industry}${customPfx ? ' | ' + customPfx : ''}${teamBriefing}
 
 أخرج الموجّه المحسَّن فقط. ١٤٠ كلمة كحد أقصى. بلا تفسير.
 الوصف البسيط: "${userPrompt}"`
@@ -47,7 +52,7 @@ CRITICAL RULES — non-negotiable:
 - Always include a specific color grade or film stock reference
 - Always include composition technique (rule of thirds, leading lines, negative space, etc.)
 
-Brand: ${brand} | Aesthetic: ${visual} | Colors: ${colors} | Photography: ${photoStyle} | Composition: ${composition} | Industry: ${industry}${customPfx ? ' | ' + customPfx : ''}
+Brand: ${brand} | Aesthetic: ${visual} | Colors: ${colors} | Photography: ${photoStyle} | Composition: ${composition} | Industry: ${industry}${customPfx ? ' | ' + customPfx : ''}${teamBriefing}
 
 Output ONLY the enhanced prompt. Maximum 140 words. No explanation. No preamble.
 Basic prompt to enhance: "${userPrompt}"`
@@ -100,11 +105,15 @@ export async function enhanceVideoPrompt(
         customPfx ? `Custom brand direction: ${customPfx}` : '',
       ].filter(Boolean).join('\n')
 
+  const videoBriefing = brandContext?.unifiedBriefing
+    ? (lang === 'ar' ? `\nموجز الفريق:\n${brandContext.unifiedBriefing}` : `\nTeam Briefing:\n${brandContext.unifiedBriefing}`)
+    : ''
+
   const prompt = lang === 'ar'
     ? `أنت مدير إبداعي صوّر حملات لـ Nike وApple وChanel وRolex. لا تصنع فيديوهات جميلة فحسب — تصنع فيديوهات لا تُخطئ هوية العلامة.
 
 هوية العلامة البصرية (كل قرار إبداعي يخدم هذا):
-${brandDNA}
+${brandDNA}${videoBriefing}
 
 قواعد غير قابلة للتفاوض:
 - يجب أن يبدو الإنتاج حقيقياً، لا مُولَّداً بذكاء اصطناعي
@@ -120,7 +129,7 @@ ${brandDNA}
     : `You are a creative director who has shot campaigns for Nike, Apple, Chanel and Rolex. You don't just make beautiful videos — you make videos that feel unmistakably like a specific brand.
 
 BRAND DNA (every creative decision must serve this):
-${brandDNA}
+${brandDNA}${videoBriefing}
 
 CRITICAL RULES — non-negotiable:
 - Output must look like a REAL film production, not AI-generated
@@ -138,6 +147,7 @@ Basic prompt: "${userPrompt}"`
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 350,
+    system: CREATIVE_DIRECTOR_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   })
 

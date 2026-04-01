@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getBrandContext } from '@/lib/brand-context'
 import { guardWorkspace } from '@/lib/workspace-guard'
 import { checkPlanAccess } from '@/lib/plan-gate'
+import { buildBrandSystemPrompt } from '@/lib/prompts'
 
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { workspace_id, agent_type, comments: bodyComments } = await request.json()
+    const { workspace_id, agent_type, comments: bodyComments, lang = 'en' } = await request.json()
 
     const deny = await guardWorkspace(supabase, workspace_id, user.id)
     if (deny) return deny
@@ -69,6 +70,7 @@ Return ONLY a JSON array:
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
+        system: buildBrandSystemPrompt(brand, lang, 'strategy'),
         messages: [{ role: 'user', content: prompt }],
       })
 
@@ -132,6 +134,7 @@ Return ONLY JSON:
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
+        system: buildBrandSystemPrompt(brand, lang, 'strategy'),
         messages: [{ role: 'user', content: prompt }],
       })
 
@@ -175,6 +178,7 @@ Return ONLY JSON:
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
+        system: buildBrandSystemPrompt(brand, lang, 'marketing'),
         messages: [{ role: 'user', content: prompt }],
       })
 

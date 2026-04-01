@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       ? `${brand.brandName} — ${brand.brandVoice ?? ''} — ${brand.brandAudience ?? ''}`
       : ''
 
-    const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang)
+    const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang, 'strategy')
     const userPrompt = strategyPrompt(goal, audience ?? '', timeline, brandContext, lang)
 
     const response = await anthropic.messages.create({

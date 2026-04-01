@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getBrandContext } from '@/lib/brand-context'
 import Anthropic from '@anthropic-ai/sdk'
-import { ARABIC_VOICE_SYSTEM_PROMPT, ENGLISH_VOICE_SYSTEM_PROMPT, morningBriefPrompt } from '@/lib/prompts'
+import { buildBrandSystemPrompt, morningBriefPrompt } from '@/lib/prompts'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -52,7 +52,7 @@ async function generateBrief(workspaceIdFromBody: string | null, lang: 'en' | 'a
   // Cache check per language — reject stale format briefs
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('brief_generated_at, weekly_brief, weekly_brief_ar, top_angle, name, brand_voice, brand_audience, brand_tone, brand_name')
+    .select('brief_generated_at, weekly_brief, weekly_brief_ar, top_angle, name, brand_voice, brand_audience, brand_tone, brand_name, weekly_priorities, weekly_priorities_ar')
     .eq('id', workspaceId)
     .single()
 
@@ -99,13 +99,21 @@ async function generateBrief(workspaceIdFromBody: string | null, lang: 'en' | 'a
     ?.map(l => `[${l.insight_type}] ${l.insight}`)
     .join('\n') || (lang === 'ar' ? 'لا رؤى بعد' : 'No insights yet')
 
-  // Build system prompt directly — don't use buildBrandSystemPrompt (wrong shape)
-  const baseVoice = lang === 'ar' ? ARABIC_VOICE_SYSTEM_PROMPT : ENGLISH_VOICE_SYSTEM_PROMPT
-  const systemPrompt = brandVoice
-    ? `${baseVoice}\n\n${lang === 'ar' ? `--- سياق العلامة ---\nالاسم: ${brandName}\nالصوت: ${brandVoice}\n${brandAudience ? `الجمهور: ${brandAudience}` : ''}` : `--- Brand Context ---\nName: ${brandName}\nVoice: ${brandVoice}\n${brandAudience ? `Audience: ${brandAudience}` : ''}`}`
-    : baseVoice
+  // Build system prompt with CEO intelligence + unified briefing
+  const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang, 'strategy')
 
-  const userPrompt = morningBriefPrompt(brandContextStr, recentContentStr, insightsStr, lang)
+  // Get weekly priorities from intelligence engine
+  const weeklyPriorities = lang === 'ar'
+    ? (workspace as any)?.weekly_priorities_ar
+    : (workspace as any)?.weekly_priorities
+
+  const prioritiesContext = weeklyPriorities?.priorities?.length
+    ? (lang === 'ar'
+      ? `\nأولويات هذا الأسبوع من المدير التنفيذي:\n${weeklyPriorities.priorities.map((p: any) => `• ${p.title}: ${p.action}`).join('\n')}\nالعائق الرئيسي: ${weeklyPriorities.main_constraint || ''}`
+      : `\nThis week's CEO priorities:\n${weeklyPriorities.priorities.map((p: any) => `• ${p.title}: ${p.action}`).join('\n')}\nMain constraint: ${weeklyPriorities.main_constraint || ''}`)
+    : ''
+
+  const userPrompt = morningBriefPrompt(brandContextStr, recentContentStr, insightsStr + prioritiesContext, lang)
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',

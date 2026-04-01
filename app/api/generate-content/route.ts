@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Get brand context
     const brand = await getBrandContext(user.id)
-    const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang)
+    const systemPrompt = buildBrandSystemPrompt(brand ?? {}, lang, 'copy')
 
     // Build the user prompt based on type and language
     let userPrompt = ''

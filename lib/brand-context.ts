@@ -1,5 +1,50 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { GROWTH_STAGES, buildUnifiedBriefing } from './prompts'
+
+async function detectClientStage(
+  supabase: any,
+  workspaceId: string
+): Promise<string> {
+  try {
+    const { data: ws } = await supabase
+      .from('workspaces')
+      .select('client_stage')
+      .eq('id', workspaceId)
+      .single()
+
+    if ((ws as any)?.client_stage) return (ws as any).client_stage
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString()
+
+    const [contentResult, adsResult] = await Promise.all([
+      supabase
+        .from('content')
+        .select('id, performance_score')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'published')
+        .gte('created_at', thirtyDaysAgo),
+      supabase
+        .from('amplify_campaigns')
+        .select('id, status')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'ACTIVE'),
+    ])
+
+    const publishedCount = contentResult.data?.length || 0
+    const hasActiveAds = (adsResult.data?.length || 0) > 0
+    const avgPerformance = publishedCount > 0
+      ? (contentResult.data || []).reduce((s: number, c: any) => s + (c.performance_score || 50), 0) / publishedCount
+      : 0
+
+    if (hasActiveAds && avgPerformance > 60) return 'amplify'
+    if (publishedCount >= 20 && avgPerformance > 50) return 'momentum'
+    if (publishedCount >= 5) return 'foundation'
+    return 'foundation'
+  } catch {
+    return 'foundation'
+  }
+}
 
 /**
  * Fetches the brand intelligence profile for a workspace
@@ -42,6 +87,23 @@ export async function getBrandContext(userIdOrWorkspaceId: string) {
   if (!workspace) return null
 
   const brandName = workspace.brand_name || workspace.name || 'this brand'
+
+  // Fetch recent brand learnings
+  const { data: learnings } = await supabase
+    .from('brand_learnings')
+    .select('insight_type, insight, source, confidence')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  // Detect client stage
+  const clientStage = await detectClientStage(supabase, workspaceId)
+  const stageInfo = GROWTH_STAGES[clientStage as keyof typeof GROWTH_STAGES] || GROWTH_STAGES.foundation
+
+  // Build learnings context string
+  const learningsContext = (learnings as any[])?.length
+    ? (learnings as any[]).map((l: any) => `[${l.insight_type}] ${l.insight}`).join('\n')
+    : ''
 
   // Build context for copy generation
   const copyContext = profile ? `
@@ -87,6 +149,12 @@ Brand voice: ${profile.voice?.primary_tone || workspace.brand_voice || 'confiden
 Delivery style: ${profile.generation_instructions?.voice_prompt_prefix || 'clear, confident, professional'}
 ` : `Brand voice: ${workspace.brand_voice || 'professional'}`
 
+  // Build unified briefing
+  const unifiedBriefing = buildUnifiedBriefing(
+    { profile, workspace, brandName },
+    clientStage
+  )
+
   return {
     workspace,
     profile,
@@ -99,6 +167,11 @@ Delivery style: ${profile.generation_instructions?.voice_prompt_prefix || 'clear
     brandVoice: workspace.brand_voice || '',
     brandTone: workspace.brand_tone || '',
     brandAudience: workspace.brand_audience || '',
+    learnings: (learnings as any[]) || [],
+    learningsContext,
+    clientStage,
+    stageInfo,
+    unifiedBriefing,
   }
 }
 
@@ -132,6 +205,22 @@ export async function getBrandContextService(workspaceId: string) {
 
   const brandName = workspace.brand_name || workspace.name || 'this brand'
 
+  // Fetch recent brand learnings
+  const { data: learningsService } = await supabase
+    .from('brand_learnings')
+    .select('insight_type, insight, source, confidence')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  // Detect client stage
+  const clientStageService = await detectClientStage(supabase, workspaceId)
+  const stageInfoService = GROWTH_STAGES[clientStageService as keyof typeof GROWTH_STAGES] || GROWTH_STAGES.foundation
+
+  const learningsContextService = (learningsService as any[])?.length
+    ? (learningsService as any[]).map((l: any) => `[${l.insight_type}] ${l.insight}`).join('\n')
+    : ''
+
   const copyContext = profile ? `
 ## Brand Intelligence for ${brandName}
 Voice: ${profile.voice?.primary_tone || workspace.brand_voice || 'professional and confident'}
@@ -143,15 +232,25 @@ Voice: ${workspace.brand_voice || 'professional and confident'}
 Audience: ${workspace.brand_audience || 'target audience'}
 `
 
+  const unifiedBriefingService = buildUnifiedBriefing(
+    { profile, workspace, brandName },
+    clientStageService
+  )
+
   return {
     workspace,
     profile,
-    copyContext:   copyContext.trim(),
+    copyContext:      copyContext.trim(),
     brandName,
     workspaceId,
-    brandVoice:    workspace.brand_voice    || '',
-    brandTone:     workspace.brand_tone     || '',
-    brandAudience: workspace.brand_audience || '',
+    brandVoice:       workspace.brand_voice    || '',
+    brandTone:        workspace.brand_tone     || '',
+    brandAudience:    workspace.brand_audience || '',
+    learnings:        (learningsService as any[]) || [],
+    learningsContext: learningsContextService,
+    clientStage:      clientStageService,
+    stageInfo:        stageInfoService,
+    unifiedBriefing:  unifiedBriefingService,
   }
 }
 

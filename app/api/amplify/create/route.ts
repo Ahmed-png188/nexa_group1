@@ -7,6 +7,7 @@ import { guardWorkspace } from '@/lib/workspace-guard'
 import { checkPlanAccess } from '@/lib/plan-gate'
 import { getBrandContext } from '@/lib/brand-context'
 import Anthropic from '@anthropic-ai/sdk'
+import { CMO_INTELLIGENCE_PROMPT } from '@/lib/prompts'
 import {
 
   createMetaCampaign,
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       const aiRes = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 400,
-        system: `You are a world-class Meta Ads copywriter for ${brandName}.\nBrand voice: ${brandVoice}\nAudience: ${audience}\n${positioning ? `Positioning: ${positioning}` : ''}\n\nWrite ad copy that stops the scroll, speaks directly to the audience's desires, and drives action. Never sound like an ad. Sound like a person who genuinely loves this brand.`,
+        system: `${CMO_INTELLIGENCE_PROMPT}\n\nYou are a world-class Meta Ads copywriter for ${brandName}.\nBrand voice: ${brandVoice}\nAudience: ${audience}\n${positioning ? `Positioning: ${positioning}` : ''}\n\nWrite ad copy that stops the scroll, speaks directly to the audience's desires, and drives action. Never sound like an ad. Sound like a person who genuinely loves this brand.`,
         messages: [{
           role: 'user',
           content: `Write Meta ad copy${sourceText ? ` based on: "${sourceText.slice(0, 500)}"` : ` for ${brandName}`}\n\nReturn ONLY valid JSON:\n{\n  "headline": "Max 40 chars — punchy, benefit or curiosity driven",\n  "primary_text": "Max 125 chars — first line is the hook. Speaks directly to ${audience}.",\n  "description": "Max 30 chars — supporting line"\n}`,
