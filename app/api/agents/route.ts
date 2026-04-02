@@ -11,6 +11,9 @@ import {
   CMO_INTELLIGENCE_PROMPT,
   CREATIVE_DIRECTOR_PROMPT,
   buildBrandSystemPrompt,
+  getBrandTypeContext,
+  BRAND_TYPES,
+  type BrandType,
 } from '@/lib/prompts'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -83,6 +86,10 @@ export async function POST(request: NextRequest) {
     const stageInfo        = b.stageInfo        as any
     const unifiedBriefing  = (b.unifiedBriefing  as string) || ''
     const clientStage      = (b.clientStage      as string) || 'foundation'
+    const brandTypeCtx     = getBrandTypeContext(
+      (b.workspace as any)?.segment || 'physical_product',
+      lang as 'en' | 'ar'
+    )
 
     // ── Performance data helpers ───────────────────────────────────────
     const winningLearnings = (learnings || [])
@@ -143,6 +150,9 @@ Today your CEO, CMO, and Creative Director are aligned
 on the same briefing before you write a single word.
 
 ${unifiedBriefing}
+
+BRAND TYPE CONTEXT:
+${brandTypeCtx}
 
 PERFORMANCE DATA — what's working:
 ${winningLearnings}
@@ -282,6 +292,7 @@ Location/timezone: ${b.profile?.audience?.geography || 'Gulf region — UTC+3'}
 CURRENT POSTING BEHAVIOR:
 ${postingHistory}
 
+BRAND TYPE: ${BRAND_TYPES[(b.workspace as any)?.segment as BrandType]?.label || 'Product Brand'}
 STAGE: ${clientStage} — ${stageInfo?.cmo_focus || ''}
 PLATFORMS ACTIVE: ${activePlatforms}
 
@@ -454,6 +465,9 @@ This is not a summary. This is the honest assessment a great CMO
 would give after reviewing the last 30 days.
 
 ${unifiedBriefing}
+
+BRAND TYPE CONTEXT:
+${brandTypeCtx}
 
 PERFORMANCE DATA (last 30 days):
 High performers:

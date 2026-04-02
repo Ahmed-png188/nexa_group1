@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 type Step = 'segment' | 'username' | 'workspace' | 'voice' | 'upload' | 'analyzing' | 'reveal' | 'done'
-type Segment = 'creator' | 'freelancer' | 'business' | 'agency'
+type BrandType = 'physical_product' | 'digital_product' | 'food_beverage' | 'fashion_lifestyle' | 'beauty_wellness' | 'home_living'
 
 interface BrandAnalysis {
   brand_voice: string; brand_audience: string; brand_tone: string
@@ -16,17 +16,21 @@ interface BrandAnalysis {
   voice_score?: number; first_post_hook: string; first_post_body: string
 }
 
-const SEGMENTS_EN = [
-  { id:'creator'    as Segment, label:'Creator',    sub:'Content, audience, influence', icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
-  { id:'freelancer' as Segment, label:'Freelancer', sub:'Services, clients, rates',     icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-  { id:'business'   as Segment, label:'Business',   sub:'Products, revenue, growth',    icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-  { id:'agency'     as Segment, label:'Agency',     sub:'Team, clients, scale',         icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+const BRAND_TYPES_EN = [
+  { id:'physical_product'  as BrandType, icon:'📦', label:'Physical Product',   sub:'Supplements, skincare, clothing, accessories' },
+  { id:'digital_product'   as BrandType, icon:'💻', label:'Digital Product',    sub:'Courses, templates, ebooks, memberships'      },
+  { id:'food_beverage'     as BrandType, icon:'🍽️', label:'Food & Beverage',    sub:'Restaurants, cafes, packaged foods, drinks'   },
+  { id:'fashion_lifestyle' as BrandType, icon:'✨', label:'Fashion & Lifestyle', sub:'Clothing, jewelry, watches, luxury goods'     },
+  { id:'beauty_wellness'   as BrandType, icon:'🌿', label:'Beauty & Wellness',  sub:'Skincare, makeup, haircare, wellness'         },
+  { id:'home_living'       as BrandType, icon:'🏡', label:'Home & Living',      sub:'Furniture, decor, kitchenware, bedding'       },
 ]
-const SEGMENTS_AR = [
-  { id:'creator'    as Segment, label:'كريتور',     sub:'محتوى، جمهور، تأثير',          icon:SEGMENTS_EN[0].icon },
-  { id:'freelancer' as Segment, label:'فريلانسر',   sub:'خدمات، عملاء، أسعار',          icon:SEGMENTS_EN[1].icon },
-  { id:'business'   as Segment, label:'بيزنس',      sub:'منتجات، إيراد، نمو',           icon:SEGMENTS_EN[2].icon },
-  { id:'agency'     as Segment, label:'وكالة',      sub:'فريق، عملاء، تمدّد',           icon:SEGMENTS_EN[3].icon },
+const BRAND_TYPES_AR = [
+  { id:'physical_product'  as BrandType, icon:'📦', label:'منتج مادي',          sub:'مكملات، عناية بالبشرة، ملابس، إكسسوارات' },
+  { id:'digital_product'   as BrandType, icon:'💻', label:'منتج رقمي',          sub:'كورسات، قوالب، كتب، عضويات'              },
+  { id:'food_beverage'     as BrandType, icon:'🍽️', label:'أغذية ومشروبات',     sub:'مطاعم، كافيهات، أغذية معبأة، مشروبات'    },
+  { id:'fashion_lifestyle' as BrandType, icon:'✨', label:'أزياء وأسلوب حياة',  sub:'ملابس، مجوهرات، ساعات، منتجات فاخرة'    },
+  { id:'beauty_wellness'   as BrandType, icon:'🌿', label:'جمال وعافية',        sub:'عناية بالبشرة، مكياج، مكملات، صحة'       },
+  { id:'home_living'       as BrandType, icon:'🏡', label:'منزل وأثاث',         sub:'أثاث، ديكور، أواني مطبخ، مفروشات'       },
 ]
 
 function AnalyzingSteps({ isArabic = false }: { isArabic?: boolean }) {
@@ -53,7 +57,7 @@ function AnalyzingSteps({ isArabic = false }: { isArabic?: boolean }) {
 
 export default function OnboardingPage() {
   const [step,setStep]                   = useState<Step>('segment')
-  const [segment,setSegment]             = useState<Segment|null>(null)
+  const [brandType,setBrandType]         = useState<BrandType|null>(null)
   const [workspaceName,setWorkspaceName] = useState('')
   const [brandName,setBrandName]         = useState('')
   const [brandWebsite,setBrandWebsite]   = useState('')
@@ -77,7 +81,7 @@ export default function OnboardingPage() {
   const AR = "'Tajawal', system-ui, sans-serif"
   const EN = "'Geist', -apple-system, sans-serif"
   const font = isArabic ? AR : EN
-  const SEGMENTS = isArabic ? SEGMENTS_AR : SEGMENTS_EN
+  const BRAND_TYPES_LIST = isArabic ? BRAND_TYPES_AR : BRAND_TYPES_EN
 
   useEffect(() => {
     try {
@@ -113,7 +117,7 @@ export default function OnboardingPage() {
     const data = await res.json()
     if (!res.ok) { setError('Something went wrong. Please try again.'); return }
     const wsId = data.workspace.id; setWorkspaceId(wsId)
-    if (segment) await supabase.from('workspaces').update({segment}).eq('id',wsId)
+    if (brandType) await supabase.from('workspaces').update({ segment: brandType }).eq('id', wsId)
     if (usernameSlug&&slugAvailable) await supabase.from('workspaces').update({slug:usernameSlug}).eq('id',wsId)
     setStep('voice')
   }
@@ -230,22 +234,33 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* SEGMENT */}
+          {/* SEGMENT — Brand Type Selector */}
           {step==='segment'&&(
             <div className="ob-card card" style={{padding:'32px 28px',position:'relative',overflow:'hidden'}}>
               {topLine}
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6}}>What best describes you?</h1>
-              <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24}}>Nexa tailors everything to your business type.</p>
+              <h1 style={{fontSize:21,fontWeight:700,letterSpacing:isArabic?0:'-0.03em',color:'var(--text-1)',textAlign:'center',marginBottom:6,fontFamily:font}}>
+                {isArabic ? 'ما نوع العلامة التجارية التي تبنيها؟' : 'What kind of brand are you building?'}
+              </h1>
+              <p style={{fontSize:13,color:'var(--text-3)',textAlign:'center',lineHeight:1.6,marginBottom:24,fontFamily:font}}>
+                {isArabic
+                  ? 'هذا يساعد Nexa على إنتاج المحتوى المناسب لسوقك.'
+                  : 'This helps Nexa produce the right type of content for your market.'}
+              </p>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:24}}>
-                {SEGMENTS.map(s=>{const sel=segment===s.id;return(
-                  <button key={s.id} onClick={()=>setSegment(s.id)} style={{padding:'18px 16px',borderRadius:'var(--r)',background:sel?'var(--cyan-dim)':'rgba(255,255,255,0.03)',border:`1px solid ${sel?'var(--cyan-border)':'var(--border)'}`,cursor:'pointer',textAlign:'left',transition:'all 0.15s',outline:'none'}}>
-                    <div style={{color:sel?'var(--cyan)':'var(--text-3)',display:'flex',marginBottom:10}}>{s.icon}</div>
-                    <div style={{fontSize:14,fontWeight:600,color:sel?'var(--text-1)':'var(--text-2)',marginBottom:3,letterSpacing:isArabic?0:'-0.01em'}}>{s.label}</div>
-                    <div style={{fontSize:11,color:sel?'var(--cyan)':'var(--text-3)',lineHeight:1.4}}>{s.sub}</div>
+                {BRAND_TYPES_LIST.map(bt=>{const sel=brandType===bt.id;return(
+                  <button key={bt.id} onClick={()=>setBrandType(bt.id)} style={{
+                    padding:'16px 14px',borderRadius:'var(--r)',
+                    background:sel?'var(--cyan-dim)':'rgba(255,255,255,0.03)',
+                    border:`1px solid ${sel?'var(--cyan-border)':'var(--border)'}`,
+                    cursor:'pointer',textAlign:isArabic?'right':'left',transition:'all 0.15s',outline:'none',
+                  }}>
+                    <div style={{fontSize:22,marginBottom:8,lineHeight:1}}>{bt.icon}</div>
+                    <div style={{fontSize:13,fontWeight:600,color:sel?'var(--text-1)':'var(--text-2)',marginBottom:3,letterSpacing:isArabic?0:'-0.01em',fontFamily:font}}>{bt.label}</div>
+                    <div style={{fontSize:10,color:sel?'var(--cyan)':'var(--text-4)',lineHeight:1.45,fontFamily:font}}>{bt.sub}</div>
                   </button>
                 )})}
               </div>
-              <button onClick={()=>{if(segment)setStep('username')}} className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13,opacity:segment?1:0.4,fontFamily:font}}>
+              <button onClick={()=>{if(brandType)setStep('username')}} className="btn-primary" style={{width:'100%',padding:'11px',fontSize:13,opacity:brandType?1:0.4,fontFamily:font}}>
                 {isArabic ? 'تابع ←' : 'Continue →'}
               </button>
             </div>

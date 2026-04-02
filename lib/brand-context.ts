@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { GROWTH_STAGES, buildUnifiedBriefing } from './prompts'
+import { GROWTH_STAGES, buildUnifiedBriefing, getBrandTypeContext } from './prompts'
 
 async function detectClientStage(
   supabase: any,
@@ -70,7 +70,7 @@ export async function getBrandContext(userIdOrWorkspaceId: string) {
   // Get workspace basic brand info
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('brand_name, brand_tagline, brand_voice, brand_audience, brand_tone, brand_colors, name')
+    .select('brand_name, brand_tagline, brand_voice, brand_audience, brand_tone, brand_colors, name, segment, client_stage, weekly_priorities, weekly_priorities_ar')
     .eq('id', workspaceId)
     .single()
 
@@ -104,6 +104,9 @@ export async function getBrandContext(userIdOrWorkspaceId: string) {
   const learningsContext = (learnings as any[])?.length
     ? (learnings as any[]).map((l: any) => `[${l.insight_type}] ${l.insight}`).join('\n')
     : ''
+
+  // Build brand type context
+  const brandTypeCtx = getBrandTypeContext((workspace as any).segment || 'physical_product')
 
   // Build context for copy generation
   const copyContext = profile ? `
@@ -172,6 +175,8 @@ Delivery style: ${profile.generation_instructions?.voice_prompt_prefix || 'clear
     clientStage,
     stageInfo,
     unifiedBriefing,
+    brandTypeContext: brandTypeCtx,
+    brandType: (workspace as any).segment || 'physical_product',
   }
 }
 
@@ -188,7 +193,7 @@ export async function getBrandContextService(workspaceId: string) {
 
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('brand_name, brand_tagline, brand_voice, brand_audience, brand_tone, brand_colors, name')
+    .select('brand_name, brand_tagline, brand_voice, brand_audience, brand_tone, brand_colors, name, segment, client_stage, weekly_priorities, weekly_priorities_ar')
     .eq('id', workspaceId)
     .single()
 
@@ -204,6 +209,9 @@ export async function getBrandContextService(workspaceId: string) {
   if (!workspace) return null
 
   const brandName = workspace.brand_name || workspace.name || 'this brand'
+
+  // Build brand type context
+  const brandTypeCtxService = getBrandTypeContext((workspace as any).segment || 'physical_product')
 
   // Fetch recent brand learnings
   const { data: learningsService } = await supabase
@@ -247,10 +255,12 @@ Audience: ${workspace.brand_audience || 'target audience'}
     brandTone:        workspace.brand_tone     || '',
     brandAudience:    workspace.brand_audience || '',
     learnings:        (learningsService as any[]) || [],
-    learningsContext: learningsContextService,
-    clientStage:      clientStageService,
-    stageInfo:        stageInfoService,
-    unifiedBriefing:  unifiedBriefingService,
+    learningsContext:  learningsContextService,
+    clientStage:       clientStageService,
+    stageInfo:         stageInfoService,
+    unifiedBriefing:   unifiedBriefingService,
+    brandTypeContext:  brandTypeCtxService,
+    brandType:         (workspace as any).segment || 'physical_product',
   }
 }
 

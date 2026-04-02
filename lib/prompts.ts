@@ -251,6 +251,114 @@ export const GROWTH_STAGES = {
   },
 }
 
+// ── BRAND TYPE SYSTEM ─────────────────────────────────────────
+// Replaces the generic segment picker — tells every prompt
+// what KIND of brand this is and what content actually works.
+export const BRAND_TYPES = {
+  physical_product: {
+    label:    'Physical Product Brand',
+    labelAr:  'علامة منتج مادي',
+    icon:     '📦',
+    examples: 'Supplements, skincare, clothing, accessories, homewares',
+    examplesAr: 'مكملات، عناية بالبشرة، ملابس، إكسسوارات، منتجات منزلية',
+    content_focus: 'Product storytelling, transformation content, lifestyle photography, unboxing, behind-the-scenes production',
+    content_focusAr: 'قصص المنتج، المحتوى التحويلي، التصوير الإبداعي، جلسات التصوير',
+    content_formats: ['product showcase', 'before/after', 'lifestyle integration', 'founder story', 'customer result'],
+    ad_objective: 'Purchase intent, product discovery, direct conversion',
+    creative_direction: 'Product is hero. Real-life context. Tactile quality. Aspirational lifestyle.',
+    cmo_note: "Every post should make the product more desirable. Show it in the customer's life, not on a white background.",
+  },
+  digital_product: {
+    label:    'Digital Product / Online Store',
+    labelAr:  'منتج رقمي أو متجر إلكتروني',
+    icon:     '💻',
+    examples: 'Courses, templates, presets, ebooks, memberships',
+    examplesAr: 'كورسات، قوالب، برامج تعليمية، عضويات',
+    content_focus: 'Results and transformation, expertise demonstration, testimonials, process reveals',
+    content_focusAr: 'النتائج والتحولات، إثبات الخبرة، شهادات العملاء، كشف العملية',
+    content_formats: ['result showcase', 'expertise clip', 'testimonial', 'process reveal', 'value education'],
+    ad_objective: 'Lead generation, course enrollment, digital purchase',
+    creative_direction: 'The outcome is the product. Show the transformation, not the curriculum.',
+    cmo_note: 'Sell the destination, not the vehicle. What does their life look like after they buy?',
+  },
+  food_beverage: {
+    label:    'Food & Beverage Brand',
+    labelAr:  'علامة أغذية ومشروبات',
+    icon:     '🍽️',
+    examples: 'Restaurants, cafes, packaged foods, beverages, specialty ingredients',
+    examplesAr: 'مطاعم، كافيهات، أغذية معبأة، مشروبات، مكونات متخصصة',
+    content_focus: 'Appetite photography, origin stories, preparation process, occasion and mood, cultural context',
+    content_focusAr: 'تصوير الطعام، قصص المنشأ، العملية التحضيرية، اللحظات الثقافية',
+    content_formats: ['appetite shot', 'recipe/prep', 'occasion content', 'origin story', 'cultural moment'],
+    ad_objective: 'Foot traffic, online orders, brand awareness and trial',
+    creative_direction: 'Food must look edible. Lighting is everything. Show the steam, the texture, the moment.',
+    cmo_note: 'People eat with their eyes first. Every post should make them hungry or thirsty right now.',
+  },
+  fashion_lifestyle: {
+    label:    'Fashion & Lifestyle Brand',
+    labelAr:  'علامة أزياء وأسلوب حياة',
+    icon:     '✨',
+    examples: 'Clothing, jewelry, watches, bags, luxury goods',
+    examplesAr: 'ملابس، مجوهرات، ساعات، حقائب، منتجات فاخرة',
+    content_focus: 'Identity and self-expression, styling and outfit curation, seasonal moments, aesthetic world-building',
+    content_focusAr: 'الهوية والتعبير، تنسيق الإطلالات، اللحظات الموسمية، بناء عالم جمالي',
+    content_formats: ['outfit styling', 'product detail', 'lifestyle moment', 'seasonal lookbook', 'identity statement'],
+    ad_objective: 'Brand desire, consideration, purchase',
+    creative_direction: 'The brand is a world. Every image is an invitation to live in that world.',
+    cmo_note: "Fashion is identity. Who does the customer become when they wear this? That's what you're selling.",
+  },
+  beauty_wellness: {
+    label:    'Beauty & Wellness Brand',
+    labelAr:  'علامة جمال وعافية',
+    icon:     '🌿',
+    examples: 'Skincare, makeup, haircare, supplements, wellness products',
+    examplesAr: 'عناية بالبشرة، مكياج، عناية بالشعر، مكملات، منتجات صحية',
+    content_focus: 'Transformation and glow-up, ingredient education, ritual and routine, skin/hair/body results',
+    content_focusAr: 'التحولات، تعليم المكونات، الروتين والطقوس، نتائج البشرة والشعر',
+    content_formats: ['before/after', 'routine content', 'ingredient spotlight', 'skin/hair result', 'ritual video'],
+    ad_objective: 'Trial, repeat purchase, subscription',
+    creative_direction: 'Skin looks real. Hair moves. Products feel luxurious and effective. Results are undeniable.',
+    cmo_note: 'Beauty content lives or dies on authenticity. Real skin, real results, real people.',
+  },
+  home_living: {
+    label:    'Home & Living Brand',
+    labelAr:  'علامة منزل وأثاث',
+    icon:     '🏡',
+    examples: 'Furniture, decor, kitchenware, bedding, home fragrance',
+    examplesAr: 'أثاث، ديكور، أواني مطبخ، مفروشات، عطور منزلية',
+    content_focus: 'Space transformation, lifestyle aspiration, product in context, home styling and curation',
+    content_focusAr: 'تحويل المساحات، التطلع لأسلوب حياة، المنتج في سياقه، تصميم المنزل',
+    content_formats: ['styled space', 'before/after room', 'product detail', 'home tour', 'styling tip'],
+    ad_objective: 'Inspiration, consideration, purchase',
+    creative_direction: 'Show the home people want to live in. The product is what makes it possible.',
+    cmo_note: 'Home is identity at scale. What does owning this product say about who you are?',
+  },
+}
+
+export type BrandType = keyof typeof BRAND_TYPES
+
+/** Inject into every prompt so the AI knows what kind of brand it's working with. */
+export function getBrandTypeContext(brandType: string, lang: 'en' | 'ar' = 'en'): string {
+  const bt = BRAND_TYPES[brandType as BrandType]
+  if (!bt) return ''
+  if (lang === 'ar') {
+    return `
+نوع العلامة: ${bt.labelAr}
+تركيز المحتوى: ${bt.content_focusAr || bt.content_focus}
+التوجيه الإبداعي: ${bt.creative_direction}
+ملاحظة التسويق: ${bt.cmo_note}
+أنواع المحتوى المناسبة: ${bt.content_formats.join('، ')}
+`.trim()
+  }
+  return `
+Brand Type: ${bt.label}
+Content Focus: ${bt.content_focus}
+Creative Direction: ${bt.creative_direction}
+Marketing Note: ${bt.cmo_note}
+Content Formats: ${bt.content_formats.join(', ')}
+`.trim()
+}
+
 // ── UNIFIED BRAND BRIEFING ────────────────────────────────────
 // This is the shared document all "team members" read
 // before executing any work
@@ -337,6 +445,7 @@ export function buildBrandSystemPrompt(
     unifiedBriefing?: string
     clientStage?: string
     learningsContext?: string
+    brandTypeContext?: string
   },
   lang: 'en' | 'ar' = 'en',
   role: 'copy' | 'strategy' | 'creative' | 'marketing' = 'copy'
@@ -366,6 +475,13 @@ ${brand.brandTone ? `Tone: ${brand.brandTone}` : ''}
 ${brand.brandAudience ? `Audience: ${brand.brandAudience}` : ''}
 ${brand.copyContext ? `Additional context: ${brand.copyContext}` : ''}`)
 
+  // Add brand type context if available
+  const brandTypeSection = brand.brandTypeContext
+    ? (lang === 'ar'
+      ? `\nنوع العلامة التجارية:\n${brand.brandTypeContext}`
+      : `\nBrand Type Context:\n${brand.brandTypeContext}`)
+    : ''
+
   // Add learnings if available
   const learningsSection = brand.learningsContext
     ? (lang === 'ar'
@@ -377,7 +493,7 @@ ${brand.copyContext ? `Additional context: ${brand.copyContext}` : ''}`)
     ? `\nأنت تكتب نيابةً عن ${brand.brandName}. كل كلمة تعكس هذه العلامة.`
     : `\nYou are executing on behalf of ${brand.brandName}. Every word must be unmistakably this brand.`
 
-  return [base, roleIntelligence, briefing, learningsSection, writingInstruction]
+  return [base, roleIntelligence, briefing, brandTypeSection, learningsSection, writingInstruction]
     .filter(Boolean)
     .join('\n\n')
     .trim()
