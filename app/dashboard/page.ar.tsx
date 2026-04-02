@@ -370,6 +370,52 @@ export default function HomePageAr() {
       {/* PAGE CONTENT */}
       <div style={{padding:'0 40px 48px'}}>
 
+        {/* STAGE WIDGET */}
+        {workspace?.client_stage && workspace?.weekly_priorities_ar?.priorities?.length > 0 && (
+          <div className="anim-2" style={{
+            marginBottom:22, padding:'16px 22px',
+            background:'#141414', border:'1px solid rgba(255,255,255,0.10)',
+            borderRight:'3px solid rgba(0,170,255,0.50)',
+            borderRadius:'10px 0 0 10px',
+            display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap',
+            direction:'rtl',
+          }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <span style={{
+                  fontSize:10, fontWeight:700, letterSpacing:'0.04em',
+                  color:'#00AAFF', background:'rgba(0,170,255,0.12)', border:'1px solid rgba(0,170,255,0.25)',
+                  borderRadius:5, padding:'2px 9px',
+                }}>
+                  خارطة الطريق
+                </span>
+                <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                  {({ foundation:'التأسيس', momentum:'الزخم', amplify:'التضخيم', operate:'التشغيل', dominate:'الهيمنة' } as Record<string,string>)[workspace.client_stage] || workspace.client_stage} · هذا الأسبوع
+                </span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {(workspace.weekly_priorities_ar.priorities as any[]).slice(0, 2).map((p: any, i: number) => (
+                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                    <span style={{ fontSize:12, color:'rgba(255,255,255,0.75)', lineHeight:1.5, fontFamily:"'Tajawal', system-ui, sans-serif" }}>{p.action || p.title}</span>
+                    <span style={{
+                      fontSize:11, fontWeight:700, color:'rgba(0,170,255,0.70)',
+                      background:'rgba(0,170,255,0.10)', borderRadius:'50%',
+                      width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                    }}>{i + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <a href="/dashboard/roadmap" style={{
+              fontSize:12, fontWeight:600, color:'#00AAFF',
+              background:'rgba(0,170,255,0.10)', border:'1px solid rgba(0,170,255,0.22)',
+              borderRadius:8, padding:'8px 14px', textDecoration:'none', flexShrink:0, whiteSpace:'nowrap',
+            }}>
+              عرض الكامل ←
+            </a>
+          </div>
+        )}
+
         {/* MORNING BRIEF */}
         {brief && (
           <div className="anim-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px',marginBottom:'28px'}}>

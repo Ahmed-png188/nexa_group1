@@ -42,6 +42,7 @@ const NAV_ICONS: Record<string, JSX.Element> = {
   agency:       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   leadpage:     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
   lab:          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+  roadmap:      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>,
   settings:     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
 }
 
@@ -63,6 +64,7 @@ const NAV = [
   { id:'studio',       href:'/dashboard/studio',       icon:'studio',       label:'الاستوديو',    desc:'اكتب بصوتك'            },
   { id:'brand',        href:'/dashboard/brand',        icon:'brand',        label:'Brand Brain',  desc:'هوية براندك'           },
   { id:'strategy',     href:'/dashboard/strategy',     icon:'strategy',     label:'الاستراتيجية', desc:'خطة 30 يوم'            },
+  { id:'roadmap',      href:'/dashboard/roadmap',      icon:'roadmap',      label:'خارطة الطريق', desc:'رحلة نموك'             },
   { id:'schedule',     href:'/dashboard/schedule',     icon:'schedule',     label:'الجدول',       desc:'انشر في كل مكان'       },
   { id:'automate',     href:'/dashboard/automate',     icon:'automate',     label:'الأتمتة',      desc:'تسلسلات وتدفقات'       },
   { id:'amplify',      href:'/dashboard/amplify',      icon:'amplify',      label:'Amplify',      desc:'إعلانات Meta'          },
@@ -78,6 +80,7 @@ const SEARCH_PAGES = [
   { label:'الاستوديو',    href:'/dashboard/studio',       desc:'اكتب بصوتك'         },
   { label:'Brand Brain',  href:'/dashboard/brand',        desc:'هوية براندك'        },
   { label:'الاستراتيجية', href:'/dashboard/strategy',     desc:'خطة 30 يوم'         },
+  { label:'خارطة الطريق', href:'/dashboard/roadmap',      desc:'رحلة نموك'          },
   { label:'الجدول',       href:'/dashboard/schedule',     desc:'انشر في كل مكان'    },
   { label:'الأتمتة',      href:'/dashboard/automate',     desc:'تسلسلات وتدفقات'    },
   { label:'Amplify',      href:'/dashboard/amplify',      desc:'إعلانات Meta'       },
