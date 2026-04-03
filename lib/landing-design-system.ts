@@ -172,11 +172,20 @@ export function selectDesignSystem(
 
 export function resolveAccent(
   brandColors: any,
+  brandProfile: any,
   designSystem: DesignSystemDef,
   aiAccent?: string
 ): string {
-  if (aiAccent && /^#[0-9A-Fa-f]{6}$/.test(aiAccent)) return aiAccent
+  // Priority 1: Brand's actual primary color from brand_colors column
   if (brandColors?.primary && /^#[0-9A-Fa-f]{6}$/.test(brandColors.primary))
     return brandColors.primary
+  // Priority 2: Visual accent from brand intelligence profile
+  if (brandProfile?.visual?.accent_color &&
+      /^#[0-9A-Fa-f]{6}$/.test(brandProfile.visual.accent_color))
+    return brandProfile.visual.accent_color
+  // Priority 3: AI suggestion from copywriter output
+  if (aiAccent && /^#[0-9A-Fa-f]{6}$/.test(aiAccent))
+    return aiAccent
+  // Priority 4: Design system default
   return designSystem.palette.accent
 }

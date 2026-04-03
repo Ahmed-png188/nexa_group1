@@ -77,6 +77,37 @@ export async function POST(req: NextRequest) {
     const brandVoice  = brand.brandVoice || ''
     const brandColors = (brand.workspace as any)?.brand_colors
 
+    // ── Brand completeness gate ──────────────────────────────────────────────
+    const hasBrandBrain     = !!brand.profile
+    const hasBrandVoice     = !!(brand.brandVoice || brand.profile?.voice?.primary_tone)
+
+    // Critical gate: no brand context at all → ask for info instead of generating generic output
+    if (!hasBrandBrain && !hasBrandVoice) {
+      return NextResponse.json({
+        success:      false,
+        needs_info:   true,
+        nexa_message: lang === 'ar'
+          ? `لم أجد Brand Brain لهذه العلامة بعد.\n\nلو تريد صفحة هبوط تعكس علامتك الحقيقية، أحتاج أعرف أكثر. أخبرني:\n١. ماذا تبيع؟ (جملة واحدة)\n٢. من هو عميلك المثالي؟\n٣. ما الذي يجعلك مختلفاً عن المنافسين؟\n\nأو يمكنك رفع محتوى علامتك من لوحة الإعدادات وسأتعلم منه مباشرة.`
+          : `I don't see a Brand Brain set up for this workspace yet.\n\nTo build a landing page that actually reflects your brand — not a generic template — I need to understand a few things first:\n\n1. What do you sell? (one sentence)\n2. Who is your ideal customer?\n3. What makes you different from everyone else selling the same thing?\n\nOr you can upload your brand content from Settings → Brand Brain and I'll learn directly from that.`,
+      })
+    }
+
+    // Non-critical warnings passed to the AI
+    const completenessWarnings: string[] = []
+    if (!hasBrandBrain) completenessWarnings.push(
+      'No Brand Brain detected — generating from basic workspace info only. Results will be generic.'
+    )
+    if (!(brandAssets || []).some((a: any) => a.type === 'logo')) completenessWarnings.push(
+      'No logo uploaded — will use brand name as text in the nav and footer.'
+    )
+    if (productImages.length === 0) completenessWarnings.push(
+      'No product photos from Product Lab — will use brand initial as placeholder.'
+    )
+    if (!hasBrandVoice) completenessWarnings.push(
+      'No brand voice defined — will infer from brand name and type.'
+    )
+    // ────────────────────────────────────────────────────────────────────────
+
     // Select design system
     const dsKey = selectDesignSystem(
       brandType,
@@ -92,10 +123,14 @@ export async function POST(req: NextRequest) {
         ).join('\n')}\n\nLatest request: ${conversation}`
       : conversation
 
+    const warningsBlock = completenessWarnings.length > 0
+      ? `\n\nBRAND DATA LIMITATIONS:\n${completenessWarnings.join('\n')}\nDespite these limitations, generate the best possible page. Flag in copywriter_notes what was assumed vs what was known.`
+      : ''
+
     const prompt = buildCopywriterPrompt({
       brand,
       designSystem: ds,
-      conversation:   conversationContext,
+      conversation:   conversationContext + warningsBlock,
       existingConfig: existing?.config,
       lang:           lang as 'en' | 'ar',
     })
@@ -122,7 +157,7 @@ Output JSON only — no preamble, no explanation outside the JSON.`,
       ? generated.design_system as DesignSystem
       : dsKey
     const finalDs = DESIGN_SYSTEMS[finalDsKey]
-    const accent  = resolveAccent(brandColors, finalDs, generated.accent)
+    const accent  = resolveAccent(brandColors, brand.profile, finalDs, generated.accent)
 
     const copywriterNotes: string = generated.copywriter_notes || ''
     delete generated.copywriter_notes

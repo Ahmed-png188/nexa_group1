@@ -1,3 +1,4 @@
+-- !! RUN THIS IN SUPABASE SQL EDITOR BEFORE USING LANDING PAGE BUILDER !!
 -- ── Landing Page Migration v2 ─────────────────────────────────────────────────
 -- Drops previous version and creates with design_system, conversation, published_at
 -- Run in: Supabase → SQL Editor → New Query → Run
