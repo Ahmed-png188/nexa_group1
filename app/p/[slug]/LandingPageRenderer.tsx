@@ -72,6 +72,117 @@ function Img({ src, alt, style }: { src?: string; alt?: string; style?: React.CS
   return <img src={src} alt={alt || ''} style={{ display:'block', width:'100%', height:'100%', objectFit:'cover', ...style }} />
 }
 
+// ── Click logging ─────────────────────────────────────────────
+function logClick(workspaceId: string, productName: string, actionType: string, pageSlug: string) {
+  if (!workspaceId) return
+  fetch('/api/landing-page/log-click', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      product_name: productName,
+      action_type:  actionType,
+      page_slug:    pageSlug,
+      referrer:     typeof document !== 'undefined' ? document.referrer : '',
+    }),
+  }).catch(() => {})
+}
+
+// ── Product modal ─────────────────────────────────────────────
+interface SelectedProduct { item: any; itemIndex: number }
+
+function ProductModal({
+  sel, imgs, accent, workspaceId, slug, onClose,
+}: {
+  sel:         SelectedProduct
+  imgs:        string[]
+  accent:      string
+  workspaceId: string
+  slug:        string
+  onClose:     () => void
+}) {
+  const { item, itemIndex } = sel
+  const photos: string[] = (item.photos?.length ? item.photos : [imgs[itemIndex]]).filter(Boolean)
+  const [photoIdx, setPhotoIdx] = useState(0)
+
+  const actionType  = item.action_type  || 'lead_form'
+  const actionValue = item.action_value || ''
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  function handleAction() {
+    logClick(workspaceId, item.name, actionType, slug)
+    if (actionType === 'whatsapp') {
+      const msg = encodeURIComponent(item.whatsapp_text || `Hi, I'm interested in ${item.name}`)
+      const num = actionValue.replace(/\D/g, '')
+      window.open(`https://wa.me/${num}?text=${msg}`, '_blank')
+    } else if (actionType === 'stripe' || actionType === 'external') {
+      window.open(actionValue, '_blank')
+    } else {
+      onClose()
+      setTimeout(() => document.getElementById('form')?.scrollIntoView({ behavior: 'smooth' }), 120)
+    }
+  }
+
+  const btnLabel =
+    actionType === 'whatsapp' ? '💬 WhatsApp' :
+    actionType === 'stripe'   ? '🔒 Buy Now' :
+    actionType === 'external' ? '→ Learn More' :
+    'Get Access →'
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,0.78)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background:'#FAFAF8', borderRadius:4, overflow:'hidden', maxWidth:860, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', maxHeight:'90vh', boxShadow:'0 32px 80px rgba(0,0,0,0.4)' }}
+      >
+        {/* Left — photo carousel */}
+        <div style={{ background:'#F0EDE8', position:'relative', overflow:'hidden', minHeight:380 }}>
+          {photos.length > 0 ? (
+            <>
+              <img src={photos[photoIdx]} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', minHeight:380 }} />
+              {photos.length > 1 && (
+                <>
+                  <button onClick={() => setPhotoIdx(p => (p - 1 + photos.length) % photos.length)} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', background:'rgba(0,0,0,0.45)', color:'#fff', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
+                  <button onClick={() => setPhotoIdx(p => (p + 1) % photos.length)} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'rgba(0,0,0,0.45)', color:'#fff', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
+                  <div style={{ position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)', display:'flex', gap:6 }}>
+                    {photos.map((_, pi) => <div key={pi} style={{ width:6, height:6, borderRadius:'50%', background: pi === photoIdx ? '#fff' : 'rgba(255,255,255,0.4)', transition:'background .2s' }} />)}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div style={{ height:'100%', minHeight:380, display:'flex', alignItems:'center', justifyContent:'center', fontSize:64 }}>📦</div>
+          )}
+        </div>
+        {/* Right — details */}
+        <div style={{ padding:'36px 32px', display:'flex', flexDirection:'column', overflowY:'auto' }}>
+          <button onClick={onClose} style={{ alignSelf:'flex-end', background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#999', marginBottom:16, lineHeight:1 }}>✕</button>
+          {item.badge && (
+            <div style={{ display:'inline-block', fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', padding:'3px 10px', background:`${accent}22`, color: accent, marginBottom:14 }}>{item.badge}</div>
+          )}
+          <h2 style={{ fontSize:22, fontWeight:700, color:'#0F0D0A', lineHeight:1.2, marginBottom:10 }}>{item.name}</h2>
+          <p style={{ fontSize:14, color:'rgba(15,13,10,0.58)', lineHeight:1.72, marginBottom:20, flex:1 }}>{item.desc}</p>
+          {item.price && <div style={{ fontSize:22, fontWeight:700, color: accent, marginBottom:28 }}>{item.price}</div>}
+          <button
+            onClick={handleAction}
+            style={{ display:'block', width:'100%', padding:'13px 24px', background: accent, color:'#fff', border:'none', borderRadius:3, fontSize:14, fontWeight:700, cursor:'pointer', letterSpacing:'0.04em', marginTop:'auto' }}
+          >
+            {btnLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ══════════════════════════════════════════════════════════════
@@ -132,6 +243,7 @@ function Editorial({ cfg, page }: { cfg: any; page: Page }) {
   const imgs   = cfg.product_images || []
   const form_  = useFormSubmit(cfg.workspace_id, page.slug)
   const [navBg, setNavBg] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null)
   useEffect(() => {
     const onScroll = () => setNavBg(window.scrollY > 60)
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -254,7 +366,7 @@ function Editorial({ cfg, page }: { cfg: any; page: Page }) {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:1, background: P.ink4 }}>
               {(prods.items as any[]).map((item, i) => (
-                <div key={i} data-animate style={{ background: item.featured ? P.ink : P.bg, padding:'36px 28px', position:'relative', transition:'background .3s' }}>
+                <div key={i} data-animate onClick={() => setSelectedProduct({ item, itemIndex: i + 1 })} style={{ background: item.featured ? P.ink : P.bg, padding:'36px 28px', position:'relative', transition:'background .3s', cursor:'pointer' }}>
                   {item.badge && <div style={{ position:'absolute', top:20, right:20, fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', padding:'3px 8px', background: accent, color:'#fff' }}>{item.badge}</div>}
                   <div style={{ fontSize:10, color: item.featured ? 'rgba(255,255,255,0.4)' : P.ink3, marginBottom:12, letterSpacing:'0.06em' }}>{item.num}</div>
                   {imgs[i + 1] && (
@@ -382,6 +494,17 @@ function Editorial({ cfg, page }: { cfg: any; page: Page }) {
           </div>
         </div>
       </footer>
+
+      {selectedProduct && (
+        <ProductModal
+          sel={selectedProduct}
+          imgs={imgs}
+          accent={accent}
+          workspaceId={cfg.workspace_id || ''}
+          slug={page.slug}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   )
 }
@@ -409,6 +532,7 @@ function MinimalArchitect({ cfg, page }: { cfg: any; page: Page }) {
   const imgs   = cfg.product_images || []
   const form_  = useFormSubmit(cfg.workspace_id, page.slug)
   const [navBg, setNavBg] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null)
   useEffect(() => {
     const fn = () => setNavBg(window.scrollY > 60)
     window.addEventListener('scroll', fn, { passive: true })
@@ -485,7 +609,7 @@ function MinimalArchitect({ cfg, page }: { cfg: any; page: Page }) {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min((prods.items as any[]).length, 4)},1fr)`, gap:1, background: P.ink4 }}>
             {(prods.items as any[]).map((item, i) => (
-              <div key={i} data-animate style={{ background: P.bg, padding:'40px 32px' }}>
+              <div key={i} data-animate onClick={() => setSelectedProduct({ item, itemIndex: i })} style={{ background: P.bg, padding:'40px 32px', cursor:'pointer' }}>
                 <div style={{ fontSize:9, fontWeight:300, letterSpacing:'0.2em', textTransform:'uppercase', color: P.ink3, marginBottom:24 }}>{ROMAN[i]}</div>
                 {imgs[i] && <div style={{ height:200, marginBottom:20, overflow:'hidden' }}><Img src={imgs[i]} /></div>}
                 <h3 style={{ fontFamily: F.h, fontSize:22, fontWeight:400, color: P.ink, marginBottom:10 }}>{item.name}</h3>
@@ -634,6 +758,17 @@ function MinimalArchitect({ cfg, page }: { cfg: any; page: Page }) {
           </div>
         </div>
       </footer>
+
+      {selectedProduct && (
+        <ProductModal
+          sel={selectedProduct}
+          imgs={imgs}
+          accent={accent}
+          workspaceId={cfg.workspace_id || ''}
+          slug={page.slug}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   )
 }
@@ -658,6 +793,7 @@ function BoldExpressionist({ cfg, page }: { cfg: any; page: Page }) {
   const nav    = cfg.nav       || {}
   const imgs   = cfg.product_images || []
   const form_  = useFormSubmit(cfg.workspace_id, page.slug)
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null)
 
   return (
     <div dir={dir} style={{ background: P.bg, color: P.ink, fontFamily: F.b, minHeight:'100vh', overflowX:'hidden' }}>
@@ -736,10 +872,10 @@ function BoldExpressionist({ cfg, page }: { cfg: any; page: Page }) {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${Math.min((prods.items as any[]).length, 3)},1fr)`, borderTop:`1px solid ${P.ink4}` }}>
             {(prods.items as any[]).map((item, i) => (
-              <div key={i} data-animate style={{
+              <div key={i} data-animate onClick={() => setSelectedProduct({ item, itemIndex: i })} style={{
                 background: item.featured ? P.bg3 : 'transparent',
                 borderRight:`1px solid ${P.ink4}`, borderBottom:`1px solid ${P.ink4}`,
-                padding:'40px 32px', position:'relative'
+                padding:'40px 32px', position:'relative', cursor:'pointer'
               }}>
                 {item.featured && <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background: accent }} />}
                 {imgs[i] && <div style={{ height:220, marginBottom:24, overflow:'hidden' }}><Img src={imgs[i]} style={{ filter:'brightness(0.85)' }} /></div>}
@@ -842,6 +978,17 @@ function BoldExpressionist({ cfg, page }: { cfg: any; page: Page }) {
         </div>
       </section>
 
+      {selectedProduct && (
+        <ProductModal
+          sel={selectedProduct}
+          imgs={imgs}
+          accent={accent}
+          workspaceId={cfg.workspace_id || ''}
+          slug={page.slug}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
+
       {/* FOOTER — giant Bebas wordmark */}
       <footer style={{ background: P.dark, borderTop:`1px solid ${P.ink4}`, paddingTop:48 }}>
         <div style={{ maxWidth:1100, margin:'0 auto', padding:'0 40px' }}>
@@ -891,6 +1038,7 @@ function WarmStoryteller({ cfg, page }: { cfg: any; page: Page }) {
   const imgs   = cfg.product_images || []
   const form_  = useFormSubmit(cfg.workspace_id, page.slug)
   const [navBg, setNavBg] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null)
   useEffect(() => {
     const fn2 = () => setNavBg(window.scrollY > 60)
     window.addEventListener('scroll', fn2, { passive: true })
@@ -1021,7 +1169,7 @@ function WarmStoryteller({ cfg, page }: { cfg: any; page: Page }) {
             </h2>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:20 }}>
               {(prods.items as any[]).map((item, i) => (
-                <div key={i} data-animate style={{ background: item.featured ? P.dark : '#fff', borderRadius:4, overflow:'hidden', border:`1px solid ${P.ink4}`, boxShadow:'0 2px 12px rgba(44,31,14,0.06)' }}>
+                <div key={i} data-animate onClick={() => setSelectedProduct({ item, itemIndex: i })} style={{ background: item.featured ? P.dark : '#fff', borderRadius:4, overflow:'hidden', border:`1px solid ${P.ink4}`, boxShadow:'0 2px 12px rgba(44,31,14,0.06)', cursor:'pointer' }}>
                   {imgs[i] && <div style={{ height:200, overflow:'hidden' }}><Img src={imgs[i]} /></div>}
                   <div style={{ padding:'22px 20px' }}>
                     {item.badge && <div style={{ display:'inline-block', fontSize:9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', padding:'2px 8px', background:`${accent}20`, color: accent, borderRadius:2, marginBottom:10 }}>{item.badge}</div>}
@@ -1154,6 +1302,17 @@ function WarmStoryteller({ cfg, page }: { cfg: any; page: Page }) {
           </div>
         </div>
       </footer>
+
+      {selectedProduct && (
+        <ProductModal
+          sel={selectedProduct}
+          imgs={imgs}
+          accent={accent}
+          workspaceId={cfg.workspace_id || ''}
+          slug={page.slug}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   )
 }

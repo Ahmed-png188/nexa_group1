@@ -1515,8 +1515,13 @@ ACTION:edit_pending:تعليمات التعديل
 ACTION:check_ads
 ACTION:pause_ads
 ACTION:resume_ads
+ACTION:get_landing_page_url    ← رابط الصفحة الترويجية المنشورة
+ACTION:get_landing_page_leads  ← عدد الليدز المحصّلة من الصفحة
+ACTION:get_landing_page_views  ← عدد مشاهدات الصفحة الترويجية
+ACTION:publish_landing_page    ← نشر الصفحة الترويجية
+ACTION:get_product_clicks      ← إحصاءات النقرات على المنتجات
 
-أمثلة: "اشتراكي" / "خطتي" / "كم باقي" → ACTION:show_billing | "شحن" / "أضف كريديت" → ACTION:show_topup | "ترقية" / "خطة أفضل" → ACTION:show_upgrade | "رصيد" / "كريديت" → ACTION:show_credits
+أمثلة: "اشتراكي" / "خطتي" / "كم باقي" → ACTION:show_billing | "شحن" / "أضف كريديت" → ACTION:show_topup | "ترقية" / "خطة أفضل" → ACTION:show_upgrade | "رصيد" / "كريديت" → ACTION:show_credits | "صفحة" / "رابط صفحتي" → ACTION:get_landing_page_url | "ليدز الصفحة" / "كم سجّل" → ACTION:get_landing_page_leads
 
 سطر ACTION غير مرئي للمستخدم — يشغّل وظائف Nexa الحقيقية.
 إذا لم يكن هناك إجراء، رد بشكل طبيعي فقط بدون سطر ACTION.
@@ -1570,8 +1575,13 @@ ACTION:edit_pending:edit instructions here
 ACTION:check_ads
 ACTION:pause_ads
 ACTION:resume_ads
+ACTION:get_landing_page_url    ← live URL of the published landing page
+ACTION:get_landing_page_leads  ← lead count captured from the landing page
+ACTION:get_landing_page_views  ← total page views
+ACTION:publish_landing_page    ← publish the landing page live
+ACTION:get_product_clicks      ← product click analytics from the landing page
 
-Examples: "what plan am i on?" / "subscription info" / "days left" → ACTION:show_billing | "top up" / "buy credits" / "recharge" → ACTION:show_topup | "upgrade" / "change plan" / "better plan" → ACTION:show_upgrade | "credits" / "balance" → ACTION:show_credits
+Examples: "what plan am i on?" / "subscription info" / "days left" → ACTION:show_billing | "top up" / "buy credits" / "recharge" → ACTION:show_topup | "upgrade" / "change plan" / "better plan" → ACTION:show_upgrade | "credits" / "balance" → ACTION:show_credits | "my page" / "landing page url" / "page link" → ACTION:get_landing_page_url | "page leads" / "how many signups" → ACTION:get_landing_page_leads
 
 The ACTION line is invisible to the user — it triggers real Nexa functions.
 If no action needed, just reply naturally without any ACTION line.
@@ -1695,6 +1705,141 @@ If no action needed, just reply naturally without any ACTION line.
         case 'brand_doc':
           // Handled at top of POST handler for media
           break
+
+        case 'get_landing_page_url': {
+          const db2 = getDb()
+          const { data: lp } = await db2
+            .from('landing_pages')
+            .select('slug, status')
+            .eq('workspace_id', workspace_id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (lp?.status === 'published') {
+            const url = `https://nexaa.cc/p/${lp.slug}`
+            const msg = isAr
+              ? `رابط صفحتك الترويجية 🌐\n${url}`
+              : `Your landing page link 🌐\n${url}`
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          } else if (lp) {
+            const msg = isAr
+              ? 'صفحتك الترويجية موجودة لكن لم تُنشر بعد.\nانشرها من لوحة التحكم أو قل "انشر الصفحة".'
+              : 'Your landing page exists but is not published yet.\nPublish it from the dashboard or say "publish my page".'
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          } else {
+            const msg = isAr
+              ? 'ما عندك صفحة ترويجية بعد.\nافتح nexaa.cc/dashboard/landing-page وأنشئ واحدة 🚀'
+              : "You don't have a landing page yet.\nOpen nexaa.cc/dashboard/landing-page to create one 🚀"
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          }
+          break
+        }
+
+        case 'get_landing_page_leads': {
+          const db3 = getDb()
+          const { data: lp3 } = await db3
+            .from('landing_pages')
+            .select('leads_count, slug, status')
+            .eq('workspace_id', workspace_id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          const count = lp3?.leads_count ?? 0
+          const msg = isAr
+            ? `📊 ليدز صفحتك الترويجية: *${count.toLocaleString()} ليد*\n${count === 0 ? 'شارك الرابط لتبدأ في جمع الليدز 🔗' : count < 10 ? 'بداية ممتازة! استمر في المشاركة 🚀' : '✅ ممتاز! الصفحة تعمل بشكل جيد'}`
+            : `📊 Landing page leads: *${count.toLocaleString()} leads*\n${count === 0 ? 'Share your page link to start capturing leads 🔗' : count < 10 ? 'Great start! Keep sharing 🚀' : '✅ Excellent! Your page is converting well'}`
+          await sendWA(from, msg)
+          await logOutbound(workspace_id, phone, msg)
+          break
+        }
+
+        case 'get_landing_page_views': {
+          const db4 = getDb()
+          const { data: lp4 } = await db4
+            .from('landing_pages')
+            .select('views, leads_count')
+            .eq('workspace_id', workspace_id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          const views  = lp4?.views ?? 0
+          const leads4 = lp4?.leads_count ?? 0
+          const cvr    = views > 0 ? ((leads4 / views) * 100).toFixed(1) : '0'
+          const msg = isAr
+            ? `📈 إحصاءات صفحتك الترويجية:\n👁️ المشاهدات: *${views.toLocaleString()}*\n📋 الليدز: *${leads4.toLocaleString()}*\n📊 معدل التحويل: *${cvr}%*`
+            : `📈 Landing page stats:\n👁️ Views: *${views.toLocaleString()}*\n📋 Leads: *${leads4.toLocaleString()}*\n📊 Conversion rate: *${cvr}%*`
+          await sendWA(from, msg)
+          await logOutbound(workspace_id, phone, msg)
+          break
+        }
+
+        case 'publish_landing_page': {
+          const db5 = getDb()
+          const { data: lp5 } = await db5
+            .from('landing_pages')
+            .select('id, slug, status')
+            .eq('workspace_id', workspace_id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (!lp5) {
+            const msg = isAr ? 'ما في صفحة ترويجية لنشرها. أنشئها من nexaa.cc/dashboard/landing-page' : 'No landing page to publish. Create one at nexaa.cc/dashboard/landing-page'
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          } else if (lp5.status === 'published') {
+            const msg = isAr ? `الصفحة منشورة بالفعل 🌐\nnexaa.cc/p/${lp5.slug}` : `Page is already published 🌐\nnexaa.cc/p/${lp5.slug}`
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          } else {
+            await db5
+              .from('landing_pages')
+              .update({ status: 'published', published_at: new Date().toISOString() })
+              .eq('id', lp5.id)
+            const url = `https://nexaa.cc/p/${lp5.slug}`
+            const msg = isAr
+              ? `✅ تم نشر صفحتك الترويجية!\n\n🌐 ${url}\n\nشاركها مع جمهورك الآن 🚀`
+              : `✅ Your landing page is now live!\n\n🌐 ${url}\n\nShare it with your audience now 🚀`
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          }
+          break
+        }
+
+        case 'get_product_clicks': {
+          const db6 = getDb()
+          const { data: clicks } = await db6
+            .from('activity')
+            .select('title, metadata, created_at')
+            .eq('workspace_id', workspace_id)
+            .eq('type', 'landing_page_click')
+            .order('created_at', { ascending: false })
+            .limit(10)
+          if (!clicks?.length) {
+            const msg = isAr ? 'ما في نقرات على منتجاتك بعد 🛒\nشارك صفحتك الترويجية لتبدأ التفاعل' : "No product clicks yet 🛒\nShare your landing page to start getting engagement"
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          } else {
+            const counts: Record<string, number> = {}
+            for (const c of clicks) {
+              const name = (c.metadata as any)?.product_name || c.title
+              counts[name] = (counts[name] || 0) + 1
+            }
+            const top = Object.entries(counts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([name, n]) => `• ${name}: ${n}x`)
+              .join('\n')
+            const msg = isAr
+              ? `🛒 أكثر المنتجات تفاعلاً:\n${top}`
+              : `🛒 Top product interactions:\n${top}`
+            await sendWA(from, msg)
+            await logOutbound(workspace_id, phone, msg)
+          }
+          break
+        }
       }
     }
 
