@@ -1,65 +1,53 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import LandingPageRenderer from './LandingPageRenderer'
-import type { LandingPageConfig } from '@/lib/landing-templates'
 
-export const dynamic = 'force-dynamic'
-
-function getService() {
+function anon() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const service = getService()
-  const { data } = await service
+export async function generateMetadata(
+  { params }: { params: { slug: string } }
+): Promise<Metadata> {
+  const { data } = await anon()
     .from('landing_pages')
-    .select('title, config')
+    .select('meta_title,meta_description,config')
     .eq('slug', params.slug)
     .eq('status', 'published')
     .maybeSingle()
 
   if (!data) return { title: 'Page not found' }
-
-  const config = data.config as LandingPageConfig
+  const cfg = (data.config as any) || {}
   return {
-    title:       config?.seo_title       || data.title,
-    description: config?.seo_description || undefined,
+    title:       data.meta_title || cfg.brand_name || 'Brand',
+    description: data.meta_description || cfg.meta_description || '',
+    openGraph: {
+      title:       data.meta_title || cfg.brand_name || '',
+      description: data.meta_description || '',
+    },
   }
 }
 
-export default async function LandingPage({ params }: { params: { slug: string } }) {
-  const service = getService()
-
-  const { data: page } = await service
+export default async function Page({ params }: { params: { slug: string } }) {
+  const { data: page } = await anon()
     .from('landing_pages')
-    .select('id, title, config, workspace_id')
+    .select('*')
     .eq('slug', params.slug)
     .eq('status', 'published')
     .maybeSingle()
 
   if (!page) notFound()
 
-  // Increment view count
-  await service.rpc('increment_page_views', { page_id: page.id })
+  // Increment views (fire-and-forget)
+  void Promise.resolve(
+    anon().rpc('increment_page_views', { page_id: page.id })
+  ).catch(() => {})
 
-  // Get workspace info for brand name fallback
-  const { data: ws } = await service
-    .from('workspaces')
-    .select('brand_name, name')
-    .eq('id', page.workspace_id)
-    .maybeSingle()
-
-  const brandName = ws?.brand_name || ws?.name || ''
-
-  return (
-    <LandingPageRenderer
-      config={page.config as LandingPageConfig}
-      workspaceId={page.workspace_id}
-      brandName={brandName}
-    />
-  )
+  return <LandingPageRenderer page={page as any} />
 }
