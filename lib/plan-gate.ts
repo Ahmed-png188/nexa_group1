@@ -46,6 +46,10 @@ export const PLAN_FEATURES = {
       lead_auto_enroll:     false,
       lead_remove_branding: false,
       custom_sender_domain: false,
+      // Landing Page & Products
+      landing_page:          true,
+      landing_page_products: 3,
+      landing_custom_domain: false,
       // Amplify
       amplify:              false,
       amplify_ai_monitor:   false,
@@ -97,6 +101,10 @@ export const PLAN_FEATURES = {
       lead_auto_enroll:     true,
       lead_remove_branding: false,
       custom_sender_domain: false,
+      // Landing Page & Products
+      landing_page:          true,
+      landing_page_products: 10,
+      landing_custom_domain: true,
       amplify:              true,
       amplify_ai_monitor:   false,
       insights_basic:       true,
@@ -143,6 +151,10 @@ export const PLAN_FEATURES = {
       lead_auto_enroll:     true,
       lead_remove_branding: true,
       custom_sender_domain: true,
+      // Landing Page & Products
+      landing_page:          true,
+      landing_page_products: -1,
+      landing_custom_domain: true,
       amplify:              true,
       amplify_ai_monitor:   true,
       insights_basic:       true,
@@ -189,6 +201,10 @@ export const PLAN_FEATURES = {
       lead_auto_enroll:     true,
       lead_remove_branding: true,
       custom_sender_domain: true,
+      // Landing Page & Products
+      landing_page:          true,
+      landing_page_products: -1,
+      landing_custom_domain: true,
       amplify:              true,
       amplify_ai_monitor:   true,
       insights_basic:       true,
@@ -236,6 +252,10 @@ export const PLAN_FEATURES = {
       lead_auto_enroll:     false,
       lead_remove_branding: false,
       custom_sender_domain: false,
+      // Landing Page & Products
+      landing_page:          true,
+      landing_page_products: 3,
+      landing_custom_domain: false,
       amplify:              false,
       amplify_ai_monitor:   false,
       insights_basic:       true,
@@ -403,6 +423,8 @@ function formatFeature(feature: PlanFeature): string {
     amplify_ai_monitor:   'AI ad monitor',
     lead_remove_branding: 'Remove Nexa branding',
     custom_sender_domain: 'Custom sender domain',
+    landing_page:         'Landing page',
+    landing_custom_domain:'Custom domain for landing page',
     behavioral_triggers:  'Behavioral triggers',
     ab_testing:           'A/B testing',
     insights_full:        'Full analytics',
