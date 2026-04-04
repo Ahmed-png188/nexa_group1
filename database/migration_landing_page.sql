@@ -55,3 +55,13 @@ $$;
 
 GRANT EXECUTE ON FUNCTION increment_page_views TO anon;
 GRANT EXECUTE ON FUNCTION increment_page_views TO authenticated;
+
+-- Increment leads count (called by lead-capture API when source is landing_page)
+CREATE OR REPLACE FUNCTION increment_leads_count(page_id uuid)
+RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
+  UPDATE public.landing_pages
+  SET leads_count = leads_count + 1 WHERE id = page_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION increment_leads_count TO anon;
+GRANT EXECUTE ON FUNCTION increment_leads_count TO authenticated;

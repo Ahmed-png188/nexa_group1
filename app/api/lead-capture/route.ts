@@ -155,6 +155,20 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
+    // ── Increment landing page leads count if source is landing_page ──
+    if (source?.startsWith('landing_page:')) {
+      try {
+        const { data: lp } = await service
+          .from('landing_pages')
+          .select('id')
+          .eq('workspace_id', workspace_id)
+          .maybeSingle()
+        if (lp?.id) {
+          void service.rpc('increment_leads_count', { page_id: lp.id })
+        }
+      } catch {}
+    }
+
     // ── Activity log ──
     try {
       await createNotification({
